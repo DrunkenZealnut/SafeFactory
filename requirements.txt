@@ -1,0 +1,13 @@
+# Pinecone Agent Dependencies
+pinecone-client>=3.0.0
+openai>=1.0.0
+tiktoken>=0.5.0
+python-dotenv>=1.0.0
+Pillow>=10.0.0
+tqdm>=4.65.0
+langchain>=0.1.0
+langchain-text-splitters>=0.0.1
+
+# Web Server Dependencies
+flask>=3.0.0
+gunicorn>=21.0.0

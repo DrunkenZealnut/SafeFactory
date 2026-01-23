@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pinecone Agent - AI 문서 검색</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #e0e0e0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            padding: 40px 0;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            color: #00d4ff;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        header p {
+            color: #888;
+            font-size: 1.1rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 25px;
+            text-align: center;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 212, 255, 0.2);
+        }
+
+        .stat-card .icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .stat-card .value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #00d4ff;
+        }
+
+        .stat-card .label {
+            color: #888;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+
+        .main-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+
+        .main-card h2 {
+            color: #00d4ff;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .search-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .search-row {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .search-input-group {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .search-input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+
+        input[type="text"], select, textarea {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            color: #fff;
+            font-size: 1rem;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        input[type="text"]:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #00d4ff;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+        }
+
+        input[type="text"]::placeholder, textarea::placeholder {
+            color: #666;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
+            color: #000;
+        }
+
+        .btn-primary:hover {
+            transform: scale(1.02);
+            box-shadow: 0 5px 20px rgba(0, 212, 255, 0.4);
+        }
+
+        .btn-ai {
+            background: linear-gradient(135deg, #9c27b0 0%, #673ab7 100%);
+            color: #fff;
+        }
+
+        .btn-ai:hover {
+            transform: scale(1.02);
+            box-shadow: 0 5px 20px rgba(156, 39, 176, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ff4757 0%, #cc0022 100%);
+            color: #fff;
+        }
+
+        .btn-danger:hover {
+            transform: scale(1.02);
+            box-shadow: 0 5px 20px rgba(255, 71, 87, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results-container {
+            margin-top: 30px;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .results-header h3 {
+            color: #00d4ff;
+        }
+
+        .result-card {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: border-color 0.3s;
+        }
+
+        .result-card:hover {
+            border-color: #00d4ff;
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+
+        .result-score {
+            background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
+            color: #000;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        .result-meta {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+
+        .result-meta span {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 5px 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: #aaa;
+        }
+
+        .result-meta span.type-image {
+            background: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
+        }
+
+        .result-meta span.type-markdown {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4caf50;
+        }
+
+        .result-meta span.type-json {
+            background: rgba(156, 39, 176, 0.2);
+            color: #ce93d8;
+        }
+
+        .result-content {
+            color: #ccc;
+            line-height: 1.6;
+            font-size: 0.95rem;
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        /* AI Answer Styles */
+        .ai-answer-container {
+            background: rgba(156, 39, 176, 0.1);
+            border: 1px solid rgba(156, 39, 176, 0.3);
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 25px;
+        }
+
+        .ai-answer-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            color: #ce93d8;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .ai-answer-content {
+            color: #e0e0e0;
+            line-height: 1.8;
+            font-size: 1rem;
+        }
+
+        .ai-answer-content h1, .ai-answer-content h2, .ai-answer-content h3 {
+            color: #00d4ff;
+            margin: 20px 0 10px 0;
+        }
+
+        .ai-answer-content h1 { font-size: 1.5rem; }
+        .ai-answer-content h2 { font-size: 1.3rem; }
+        .ai-answer-content h3 { font-size: 1.1rem; }
+
+        .ai-answer-content p {
+            margin-bottom: 15px;
+        }
+
+        .ai-answer-content ul, .ai-answer-content ol {
+            margin: 15px 0;
+            padding-left: 25px;
+        }
+
+        .ai-answer-content li {
+            margin-bottom: 8px;
+        }
+
+        .ai-answer-content code {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9rem;
+        }
+
+        .ai-answer-content pre {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+
+        .ai-answer-content pre code {
+            background: none;
+            padding: 0;
+        }
+
+        .ai-answer-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+
+        .ai-answer-content th, .ai-answer-content td {
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 10px;
+            text-align: left;
+        }
+
+        .ai-answer-content th {
+            background: rgba(0, 212, 255, 0.2);
+            color: #00d4ff;
+        }
+
+        .ai-answer-content strong {
+            color: #00d4ff;
+        }
+
+        /* Citation styling */
+        .ai-answer-content a[href^="#source-"] {
+            background: linear-gradient(135deg, #9c27b0 0%, #673ab7 100%);
+            color: #fff;
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            text-decoration: none;
+            margin: 0 2px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .ai-answer-content a[href^="#source-"]:hover {
+            transform: scale(1.1);
+            box-shadow: 0 2px 8px rgba(156, 39, 176, 0.5);
+        }
+
+        .source-item {
+            scroll-margin-top: 20px;
+        }
+
+        .source-item.highlighted {
+            animation: highlight-pulse 2s ease-out;
+        }
+
+        @keyframes highlight-pulse {
+            0% { box-shadow: 0 0 0 3px rgba(156, 39, 176, 0.8); }
+            100% { box-shadow: 0 0 0 3px rgba(156, 39, 176, 0); }
+        }
+
+        .sources-section {
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sources-header {
+            color: #aaa;
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .source-item {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 12px 15px;
+            margin-bottom: 10px;
+            font-size: 0.85rem;
+        }
+
+        .source-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .source-item-file {
+            color: #00d4ff;
+            word-break: break-all;
+        }
+
+        .source-item-score {
+            color: #888;
+            font-size: 0.8rem;
+        }
+
+        .source-item-preview {
+            color: #888;
+            font-size: 0.8rem;
+            line-height: 1.4;
+        }
+
+        .namespace-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .namespace-tag {
+            background: rgba(0, 212, 255, 0.2);
+            color: #00d4ff;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .namespace-tag .count {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        .spinner.ai {
+            border-top-color: #9c27b0;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .empty-state .icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #333;
+            color: #fff;
+            padding: 15px 25px;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+            transform: translateX(150%);
+            transition: transform 0.3s;
+            z-index: 1000;
+        }
+
+        .toast.show {
+            transform: translateX(0);
+        }
+
+        .toast.success {
+            background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
+        }
+
+        .toast.error {
+            background: linear-gradient(135deg, #f44336 0%, #c62828 100%);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            color: #888;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .tab:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .tab.active {
+            background: rgba(0, 212, 255, 0.2);
+            border-color: #00d4ff;
+            color: #00d4ff;
+        }
+
+        .tab.ai-tab.active {
+            background: rgba(156, 39, 176, 0.2);
+            border-color: #9c27b0;
+            color: #ce93d8;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .hint {
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 8px;
+            padding: 12px 15px;
+            margin-top: 15px;
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+
+        .hint strong {
+            color: #00d4ff;
+        }
+
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.8rem;
+            }
+
+            .search-row {
+                flex-direction: column;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>
+                <span>🤖</span>
+                반도체 AI 검색
+            </h1>
+            <p>문서 기반 AI 질의응답 시스템</p>
+        </header>
+
+        <!-- Stats Cards -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+                <div class="icon">📊</div>
+                <div class="value" id="totalVectors">-</div>
+                <div class="label">총 벡터 수</div>
+            </div>
+            <div class="stat-card">
+                <div class="icon">📁</div>
+                <div class="value" id="namespaceCount">-</div>
+                <div class="label">네임스페이스</div>
+            </div>
+            <div class="stat-card">
+                <div class="icon">🔢</div>
+                <div class="value" id="dimension">-</div>
+                <div class="label">차원 (Dimension)</div>
+            </div>
+            <div class="stat-card">
+                <div class="icon">🗄️</div>
+                <div class="value" id="indexName">-</div>
+                <div class="label">인덱스</div>
+            </div>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="tabs">
+            <div class="tab ai-tab active" data-tab="ask">🤖 AI 질문</div>
+            <div class="tab" data-tab="search">🔍 벡터 검색</div>
+            <div class="tab" data-tab="namespaces">📁 네임스페이스</div>
+            <div class="tab" data-tab="delete">🗑️ 삭제</div>
+        </div>
+
+        <!-- AI Ask Tab -->
+        <div class="tab-content active" id="tab-ask">
+            <div class="main-card">
+                <h2>🤖 AI에게 질문하기</h2>
+                <p style="color: #888; margin-bottom: 20px;">
+                    반도체 관련 질문을 입력하면, 저장된 문서를 검색하여 AI가 종합적으로 답변합니다.
+                </p>
+                <form class="search-form" id="askForm">
+                    <div class="search-input-group">
+                        <label for="askQuery">질문 <span style="color: #9c27b0; font-size: 0.85rem;">(@로 문서 범위 지정 가능)</span></label>
+                        <textarea id="askQuery" name="query" placeholder="예: CVD와 PVD의 차이점은 무엇인가요?&#10;예: @반도체_제품_기획 에서 제품 기획 프로세스 설명해줘&#10;예: @패키지/ 폴더의 문서에서 조립 공정 종류는?" required></textarea>
+                    </div>
+                    <div class="search-row">
+                        <div class="search-input-group">
+                            <label for="askNamespace">네임스페이스</label>
+                            <select id="askNamespace" name="namespace">
+                                <option value="">전체</option>
+                            </select>
+                        </div>
+                        <div class="search-input-group">
+                            <label for="askTopK">참고 문서 수</label>
+                            <select id="askTopK" name="topK">
+                                <option value="5">5개</option>
+                                <option value="10" selected>10개</option>
+                                <option value="15">15개</option>
+                                <option value="20">20개</option>
+                            </select>
+                        </div>
+                        <div class="search-input-group" style="display: flex; align-items: flex-end;">
+                            <button type="submit" class="btn btn-ai" style="width: 100%;">
+                                🤖 AI 답변 받기
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+                <div class="hint">
+                    <strong>💡 Tip:</strong> <code>@</code>를 사용하여 검색 범위를 좁힐 수 있습니다.<br>
+                    • <code>@파일명</code> - 특정 파일에서만 검색 (예: <code>@반도체_아키텍처</code>)<br>
+                    • <code>@폴더명/</code> - 특정 폴더에서만 검색 (예: <code>@패키지/</code>)<br>
+                    • 여러 개 사용 가능: <code>@제품_기획 @아키텍처 CVD 공정 비교</code>
+                </div>
+
+                <div class="hint" style="background: rgba(156, 39, 176, 0.1); border-color: rgba(156, 39, 176, 0.3); margin-top: 10px;">
+                    <strong>📁 사용 가능한 문서:</strong>
+                    <span id="availableSources" style="color: #ce93d8;">로딩 중...</span>
+                </div>
+
+                <!-- Loading -->
+                <div class="loading" id="askLoading">
+                    <div class="spinner ai"></div>
+                    <p>AI가 문서를 분석하고 있습니다...</p>
+                </div>
+
+                <!-- AI Answer -->
+                <div class="results-container" id="askResultsContainer">
+                    <div class="empty-state" id="askEmptyState">
+                        <div class="icon">🤖</div>
+                        <p>질문을 입력하고 'AI 답변 받기' 버튼을 클릭하세요</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Tab -->
+        <div class="tab-content" id="tab-search">
+            <div class="main-card">
+                <h2>🔍 벡터 유사도 검색</h2>
+                <p style="color: #888; margin-bottom: 20px;">
+                    입력한 텍스트와 의미적으로 유사한 문서 청크를 검색합니다.
+                </p>
+                <form class="search-form" id="searchForm">
+                    <div class="search-row">
+                        <div class="search-input-group" style="flex: 2;">
+                            <label for="query">검색어</label>
+                            <input type="text" id="query" name="query" placeholder="검색할 내용을 입력하세요..." required>
+                        </div>
+                        <div class="search-input-group">
+                            <label for="namespace">네임스페이스</label>
+                            <select id="namespace" name="namespace">
+                                <option value="">전체</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="search-row">
+                        <div class="search-input-group">
+                            <label for="topK">결과 개수</label>
+                            <select id="topK" name="topK">
+                                <option value="3">3개</option>
+                                <option value="5" selected>5개</option>
+                                <option value="10">10개</option>
+                                <option value="20">20개</option>
+                            </select>
+                        </div>
+                        <div class="search-input-group">
+                            <label for="fileType">파일 타입</label>
+                            <select id="fileType" name="fileType">
+                                <option value="">전체</option>
+                                <option value="image">이미지</option>
+                                <option value="markdown">마크다운</option>
+                                <option value="json">JSON</option>
+                            </select>
+                        </div>
+                        <div class="search-input-group" style="display: flex; align-items: flex-end;">
+                            <button type="submit" class="btn btn-primary" style="width: 100%;">
+                                검색
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Loading -->
+                <div class="loading" id="searchLoading">
+                    <div class="spinner"></div>
+                    <p>검색 중...</p>
+                </div>
+
+                <!-- Results -->
+                <div class="results-container" id="resultsContainer">
+                    <div class="empty-state" id="emptyState">
+                        <div class="icon">🔍</div>
+                        <p>검색어를 입력하고 검색 버튼을 클릭하세요</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Namespaces Tab -->
+        <div class="tab-content" id="tab-namespaces">
+            <div class="main-card">
+                <h2>📁 네임스페이스 목록</h2>
+                <div class="namespace-list" id="namespaceList">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Delete Tab -->
+        <div class="tab-content" id="tab-delete">
+            <div class="main-card">
+                <h2>🗑️ 벡터 삭제</h2>
+                <form class="search-form" id="deleteForm">
+                    <div class="search-row">
+                        <div class="search-input-group">
+                            <label for="deleteNamespace">네임스페이스</label>
+                            <select id="deleteNamespace" name="deleteNamespace">
+                                <option value="">전체 (기본)</option>
+                            </select>
+                        </div>
+                        <div class="search-input-group">
+                            <label for="sourceFile">소스 파일 경로 (선택)</label>
+                            <input type="text" id="sourceFile" name="sourceFile" placeholder="특정 파일만 삭제하려면 경로 입력...">
+                        </div>
+                    </div>
+                    <div class="search-row">
+                        <button type="submit" class="btn btn-danger">
+                            🗑️ 삭제
+                        </button>
+                    </div>
+                </form>
+                <p style="margin-top: 20px; color: #ff6b6b; font-size: 0.9rem;">
+                    ⚠️ 주의: 삭제된 벡터는 복구할 수 없습니다.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // Tab functionality
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+                tab.classList.add('active');
+                document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+            });
+        });
+
+        // Toast notification
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast show ' + type;
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Load stats
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/stats');
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('totalVectors').textContent = data.data.total_vectors.toLocaleString();
+                    document.getElementById('namespaceCount').textContent = data.data.namespaces.length;
+                    document.getElementById('dimension').textContent = data.data.dimension;
+                    document.getElementById('indexName').textContent = data.data.index_name;
+
+                    // Update namespace dropdowns
+                    const selects = ['namespace', 'askNamespace', 'deleteNamespace'];
+                    const namespaceList = document.getElementById('namespaceList');
+
+                    // Find namespace with most vectors for auto-selection
+                    let maxVectorsNs = null;
+                    let maxVectors = 0;
+                    data.data.namespaces.forEach(ns => {
+                        if (ns.vector_count > maxVectors) {
+                            maxVectors = ns.vector_count;
+                            maxVectorsNs = ns.name === '(기본)' ? '' : ns.name;
+                        }
+                    });
+
+                    selects.forEach(selectId => {
+                        const select = document.getElementById(selectId);
+                        if (select) {
+                            const firstOption = select.options[0];
+                            select.innerHTML = '';
+                            select.appendChild(firstOption);
+
+                            data.data.namespaces.forEach(ns => {
+                                const option = document.createElement('option');
+                                option.value = ns.name === '(기본)' ? '' : ns.name;
+                                option.textContent = `${ns.name} (${ns.vector_count.toLocaleString()}개)`;
+                                select.appendChild(option);
+                            });
+
+                            // Auto-select the namespace with most vectors
+                            if (maxVectorsNs !== null) {
+                                select.value = maxVectorsNs;
+                            }
+                        }
+                    });
+
+                    namespaceList.innerHTML = '';
+                    data.data.namespaces.forEach(ns => {
+                        const tag = document.createElement('div');
+                        tag.className = 'namespace-tag';
+                        tag.innerHTML = `
+                            <span>${ns.name}</span>
+                            <span class="count">${ns.vector_count.toLocaleString()}개</span>
+                        `;
+                        namespaceList.appendChild(tag);
+                    });
+                }
+            } catch (error) {
+                console.error('Failed to load stats:', error);
+            }
+        }
+
+        // AI Ask functionality
+        document.getElementById('askForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const query = document.getElementById('askQuery').value;
+            const namespace = document.getElementById('askNamespace').value;
+            const topK = document.getElementById('askTopK').value;
+
+            const loading = document.getElementById('askLoading');
+            const resultsContainer = document.getElementById('askResultsContainer');
+
+            loading.classList.add('active');
+            resultsContainer.innerHTML = '';
+
+            try {
+                const response = await fetch('/api/ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query, namespace, top_k: topK })
+                });
+
+                const data = await response.json();
+
+                loading.classList.remove('active');
+
+                if (data.success) {
+                    // Convert citation numbers [1], [2] to clickable links
+                    let answerHtml = marked.parse(data.data.answer);
+                    answerHtml = answerHtml.replace(/\[(\d+)\]/g, '<a href="#source-$1" class="citation" data-source="$1">[$1]</a>');
+
+                    // Render AI answer with markdown
+                    let html = `
+                        <div class="ai-answer-container">
+                            <div class="ai-answer-header">
+                                <span>🤖</span> AI 답변
+                            </div>
+                            <div class="ai-answer-content" id="aiAnswerContent">
+                                ${answerHtml}
+                            </div>
+                        </div>
+                    `;
+
+                    // Add sources section
+                    if (data.data.sources && data.data.sources.length > 0) {
+                        html += `
+                            <div class="sources-section">
+                                <div class="sources-header">
+                                    <span>📚</span> 참고 문서 (${data.data.source_count}개)
+                                </div>
+                        `;
+
+                        data.data.sources.forEach((source, index) => {
+                            const typeClass = 'type-' + source.file_type;
+                            html += `
+                                <div class="source-item" id="source-${index + 1}">
+                                    <div class="source-item-header">
+                                        <span class="source-item-file">[${index + 1}] ${source.source_file.split('/').pop()}</span>
+                                        <span class="source-item-score">유사도: ${source.score}</span>
+                                    </div>
+                                    <div class="source-item-preview">${escapeHtml(source.content_preview)}</div>
+                                </div>
+                            `;
+                        });
+
+                        html += '</div>';
+                    }
+
+                    resultsContainer.innerHTML = html;
+
+                    // Add click handlers for citations
+                    document.querySelectorAll('.citation').forEach(link => {
+                        link.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            const sourceNum = link.dataset.source;
+                            const sourceEl = document.getElementById('source-' + sourceNum);
+                            if (sourceEl) {
+                                sourceEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                sourceEl.classList.add('highlighted');
+                                setTimeout(() => sourceEl.classList.remove('highlighted'), 2000);
+                            }
+                        });
+                    });
+                } else {
+                    showToast(data.error, 'error');
+                    resultsContainer.innerHTML = `
+                        <div class="empty-state">
+                            <div class="icon">❌</div>
+                            <p>${data.error}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                loading.classList.remove('active');
+                showToast('AI 답변 생성 중 오류가 발생했습니다.', 'error');
+            }
+        });
+
+        // Search functionality
+        document.getElementById('searchForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const query = document.getElementById('query').value;
+            const namespace = document.getElementById('namespace').value;
+            const topK = document.getElementById('topK').value;
+            const fileType = document.getElementById('fileType').value;
+
+            const loading = document.getElementById('searchLoading');
+            const resultsContainer = document.getElementById('resultsContainer');
+            const emptyState = document.getElementById('emptyState');
+
+            loading.classList.add('active');
+            resultsContainer.innerHTML = '';
+
+            try {
+                const response = await fetch('/api/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query, namespace, top_k: topK, file_type: fileType })
+                });
+
+                const data = await response.json();
+
+                loading.classList.remove('active');
+
+                if (data.success) {
+                    if (data.data.results.length === 0) {
+                        resultsContainer.innerHTML = `
+                            <div class="empty-state">
+                                <div class="icon">😕</div>
+                                <p>검색 결과가 없습니다</p>
+                            </div>
+                        `;
+                    } else {
+                        resultsContainer.innerHTML = `
+                            <div class="results-header">
+                                <h3>검색 결과 (${data.data.count}개)</h3>
+                            </div>
+                        `;
+
+                        data.data.results.forEach((result, index) => {
+                            const typeClass = 'type-' + result.file_type;
+                            const card = document.createElement('div');
+                            card.className = 'result-card';
+                            card.innerHTML = `
+                                <div class="result-header">
+                                    <div class="result-meta">
+                                        <span class="${typeClass}">${result.file_type}</span>
+                                        <span>📄 ${result.filename || result.source_file.split('/').pop()}</span>
+                                    </div>
+                                    <div class="result-score">유사도: ${result.score}</div>
+                                </div>
+                                <div class="result-meta">
+                                    <span title="${result.source_file}">📁 ${result.source_file}</span>
+                                </div>
+                                <div class="result-content">${escapeHtml(result.content)}</div>
+                            `;
+                            resultsContainer.appendChild(card);
+                        });
+                    }
+                } else {
+                    showToast(data.error, 'error');
+                }
+            } catch (error) {
+                loading.classList.remove('active');
+                showToast('검색 중 오류가 발생했습니다.', 'error');
+            }
+        });
+
+        // Delete functionality
+        document.getElementById('deleteForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const namespace = document.getElementById('deleteNamespace').value;
+            const sourceFile = document.getElementById('sourceFile').value;
+
+            const confirmMsg = sourceFile
+                ? `'${sourceFile}' 파일의 벡터를 삭제하시겠습니까?`
+                : `네임스페이스 '${namespace || '(기본)'}' 의 모든 벡터를 삭제하시겠습니까?`;
+
+            if (!confirm(confirmMsg)) return;
+
+            try {
+                const response = await fetch('/api/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        namespace,
+                        source_file: sourceFile,
+                        delete_all: !sourceFile
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast(data.message, 'success');
+                    loadStats();
+                } else {
+                    showToast(data.error, 'error');
+                }
+            } catch (error) {
+                showToast('삭제 중 오류가 발생했습니다.', 'error');
+            }
+        });
+
+        // Escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Load available sources for @ mention hints
+        async function loadSources() {
+            try {
+                const namespace = document.getElementById('askNamespace').value;
+                const response = await fetch(`/api/sources?namespace=${encodeURIComponent(namespace)}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    const sourcesEl = document.getElementById('availableSources');
+                    const folders = data.data.folders.slice(0, 5);
+                    const files = data.data.files.slice(0, 5);
+
+                    let hints = [];
+                    if (folders.length > 0) {
+                        // Extract short folder names
+                        const shortFolders = folders.map(f => {
+                            const parts = f.split('/');
+                            return parts[parts.length - 1];
+                        }).filter(f => f.length > 0).slice(0, 3);
+                        hints.push(...shortFolders.map(f => `@${f}/`));
+                    }
+                    if (files.length > 0) {
+                        // Extract keywords from file names
+                        const keywords = files.map(f => {
+                            // Extract meaningful part from filename
+                            const match = f.match(/_([\uAC00-\uD7AF_]+)\./);
+                            return match ? match[1].split('_').slice(0, 2).join('_') : null;
+                        }).filter(k => k).slice(0, 3);
+                        hints.push(...keywords.map(k => `@${k}`));
+                    }
+
+                    if (hints.length > 0) {
+                        sourcesEl.innerHTML = hints.map(h =>
+                            `<code style="background: rgba(156,39,176,0.2); padding: 2px 6px; border-radius: 4px; margin: 2px;">${h}</code>`
+                        ).join(' ');
+                    } else {
+                        sourcesEl.textContent = '문서 없음';
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load sources:', error);
+                document.getElementById('availableSources').textContent = '로드 실패';
+            }
+        }
+
+        // Reload sources when namespace changes
+        document.getElementById('askNamespace').addEventListener('change', loadSources);
+
+        // Initial load
+        loadStats();
+        setTimeout(loadSources, 1000); // Load sources after stats
+    </script>
+</body>
+</html>
