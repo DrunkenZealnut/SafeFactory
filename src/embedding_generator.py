@@ -3,9 +3,16 @@ Embedding Generator Module
 Generates embeddings using OpenAI's text-embedding models.
 """
 
+import os
+import certifi
+import httpx
 from typing import List, Optional
 from dataclasses import dataclass
 from openai import OpenAI
+
+# Set SSL certificate environment variables
+os.environ.setdefault('SSL_CERT_FILE', certifi.where())
+os.environ.setdefault('REQUESTS_CA_BUNDLE', certifi.where())
 
 
 @dataclass
@@ -41,7 +48,9 @@ class EmbeddingGenerator:
             model: Embedding model to use
             dimensions: Custom dimensions (only for text-embedding-3 models)
         """
-        self.client = OpenAI(api_key=api_key)
+        # Create httpx client with explicit SSL certificate verification
+        http_client = httpx.Client(verify=certifi.where())
+        self.client = OpenAI(api_key=api_key, http_client=http_client)
         self.model = model
 
         if model not in self.MODELS:

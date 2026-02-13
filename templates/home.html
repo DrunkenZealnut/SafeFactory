@@ -292,6 +292,9 @@
                 }
             } catch (error) {
                 console.error('Failed to load stats:', error);
+                document.getElementById('totalVectors').textContent = 'N/A';
+                document.getElementById('namespaceCount').textContent = 'N/A';
+                document.getElementById('indexName').textContent = '연결 실패';
             }
         }
 

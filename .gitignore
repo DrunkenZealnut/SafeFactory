@@ -36,6 +36,5 @@ temp/
 # Documents folder (contains uploaded files and data)
 documents/
 
-# MSDS folder - API integration and sensitive files
+# MSDS folder - API integration and sensitive files (PHP files, config with API keys, logs)
 msds/
-!msds_client.py

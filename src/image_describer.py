@@ -3,9 +3,16 @@ Image Describer Module
 Uses OpenAI Vision API to generate descriptions for images.
 """
 
+import os
 import base64
+import certifi
+import httpx
 from typing import Optional
 from openai import OpenAI
+
+# Set SSL certificate environment variables
+os.environ.setdefault('SSL_CERT_FILE', certifi.where())
+os.environ.setdefault('REQUESTS_CA_BUNDLE', certifi.where())
 
 
 class ImageDescriber:
@@ -34,7 +41,9 @@ class ImageDescriber:
             model: Vision model to use (default: gpt-4o-mini)
             max_tokens: Maximum tokens for the response
         """
-        self.client = OpenAI(api_key=api_key)
+        # Create httpx client with explicit SSL certificate verification
+        http_client = httpx.Client(verify=certifi.where())
+        self.client = OpenAI(api_key=api_key, http_client=http_client)
         self.model = model
         self.max_tokens = max_tokens
 

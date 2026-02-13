@@ -3,6 +3,7 @@ MSDS API Client (Python)
 산업안전보건공단 물질안전보건자료 API 클라이언트
 """
 
+import os
 import requests
 import xml.etree.ElementTree as ET
 from typing import Dict, List, Optional
@@ -13,7 +14,7 @@ class MsdsApiClient:
 
     # API 설정
     ENDPOINT = 'https://msds.kosha.or.kr/openapi/service/msdschem'
-    API_KEY = '3da39a9ef6e7aa6040a2446bf81662f67b368ddc20ae75b8d86ce3622a288418'
+    API_KEY = os.environ.get('MSDS_API_KEY', '')
 
     # 검색 조건
     SEARCH_BY_NAME = 0  # 국문명
@@ -79,7 +80,8 @@ class MsdsApiClient:
         url = f"{self.ENDPOINT}{path}"
 
         try:
-            response = self.session.get(url, params=params, timeout=30, verify=False)
+            # SSL 인증서 검증 활성화 - 보안을 위해 필수
+            response = self.session.get(url, params=params, timeout=30, verify=True)
             response.raise_for_status()
 
             # XML 파싱

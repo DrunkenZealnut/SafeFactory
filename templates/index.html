@@ -4,8 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pinecone Agent - AI 문서 검색</title>
-    <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"
+            integrity="sha384-dlfOVA+h/Yh4/i1P9xeBOpVqnMhTFPRzTg4xDFlDkPlf7qWwUou3scIafSGeqifq"
+            crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"
+            integrity="sha384-QOwafhd4fG/SoT0YXgHQTcFT/kV7YBfTMBjb5WkYqszQdPkrU5VIYAgdUwsAqjsV"
+            crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"
+            integrity="sha384-IIdvx9utVbG20X/hvcHPpj9PRjgL4mWPUIR56BAmP74jVU1NmVh0bqKLOZMvGIc7"
+            crossorigin="anonymous"></script>
+    <script src="/static/js/common.js"></script>
     <style>
         * {
             margin: 0;
@@ -531,6 +539,15 @@
             box-shadow: 0 2px 8px rgba(156, 39, 176, 0.5);
         }
 
+        .streaming-cursor {
+            display: inline;
+            color: #00d4ff;
+            animation: blink 0.7s step-end infinite;
+        }
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+
         .source-item {
             scroll-margin-top: 20px;
         }
@@ -588,6 +605,36 @@
             color: #888;
             font-size: 0.8rem;
             line-height: 1.4;
+        }
+
+        .source-item-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 6px;
+        }
+
+        .source-meta-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.72rem;
+            font-weight: 500;
+        }
+
+        .source-meta-tag.category {
+            background: rgba(0, 212, 255, 0.15);
+            color: #00d4ff;
+        }
+
+        .source-meta-tag.section-type {
+            background: rgba(156, 39, 176, 0.15);
+            color: #ce93d8;
+        }
+
+        .source-meta-tag.ncs-code {
+            background: rgba(255, 193, 7, 0.15);
+            color: #ffd54f;
         }
 
         /* Source Image Styles */
@@ -924,12 +971,7 @@
                     <div class="search-row">
                         <div class="search-input-group">
                             <label for="topK">결과 개수</label>
-                            <select id="topK" name="topK">
-                                <option value="3">3개</option>
-                                <option value="5" selected>5개</option>
-                                <option value="10">10개</option>
-                                <option value="20">20개</option>
-                            </select>
+                            <input type="number" id="topK" name="topK" value="5" min="1" max="10000" style="width: 80px; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
                         </div>
                         <div class="search-input-group">
                             <label for="fileType">파일 타입</label>
@@ -1039,141 +1081,9 @@
             }, 3000);
         }
 
-        // Lightbox functions
-        function openLightbox(imageSrc) {
-            const lightbox = document.getElementById('lightbox');
-            const lightboxImage = document.getElementById('lightboxImage');
-            lightboxImage.src = imageSrc;
-            lightbox.classList.add('active');
-        }
+        // Lightbox functions moved to common.js
 
-        function closeLightbox() {
-            document.getElementById('lightbox').classList.remove('active');
-        }
-
-        // Close lightbox on background click
-        document.getElementById('lightbox').addEventListener('click', (e) => {
-            if (e.target.id === 'lightbox') {
-                closeLightbox();
-            }
-        });
-
-        // Close lightbox on escape key
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                closeLightbox();
-            }
-        });
-
-        // Parse chart data from AI response
-        function extractChartData(answer) {
-            const chartRegex = /<!--CHART_DATA\s*([\s\S]*?)\s*CHART_DATA-->/g;
-            const charts = [];
-            let match;
-            while ((match = chartRegex.exec(answer)) !== null) {
-                try {
-                    charts.push(JSON.parse(match[1]));
-                } catch (e) {
-                    console.error('Failed to parse chart data:', e);
-                }
-            }
-            // Remove chart data from answer for display
-            const cleanAnswer = answer.replace(chartRegex, '');
-            return { cleanAnswer, charts };
-        }
-
-        // Render chart using Chart.js
-        function renderChart(chartData, containerId) {
-            const ctx = document.getElementById(containerId).getContext('2d');
-
-            const colors = [
-                'rgba(0, 212, 255, 0.8)',
-                'rgba(156, 39, 176, 0.8)',
-                'rgba(76, 175, 80, 0.8)',
-                'rgba(255, 193, 7, 0.8)',
-                'rgba(244, 67, 54, 0.8)',
-                'rgba(33, 150, 243, 0.8)'
-            ];
-
-            const config = {
-                type: chartData.type || 'bar',
-                data: {
-                    labels: chartData.labels || [],
-                    datasets: [{
-                        label: chartData.title || 'Data',
-                        data: chartData.data || [],
-                        backgroundColor: chartData.type === 'line'
-                            ? 'rgba(0, 212, 255, 0.2)'
-                            : colors.slice(0, chartData.data?.length || 1),
-                        borderColor: chartData.type === 'line'
-                            ? 'rgba(0, 212, 255, 1)'
-                            : colors.slice(0, chartData.data?.length || 1),
-                        borderWidth: 2
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            labels: { color: '#e0e0e0' }
-                        },
-                        title: {
-                            display: true,
-                            text: chartData.title || '',
-                            color: '#00d4ff',
-                            font: { size: 14 }
-                        }
-                    },
-                    scales: chartData.type !== 'pie' ? {
-                        y: {
-                            beginAtZero: true,
-                            ticks: { color: '#aaa' },
-                            grid: { color: 'rgba(255,255,255,0.1)' }
-                        },
-                        x: {
-                            ticks: { color: '#aaa' },
-                            grid: { color: 'rgba(255,255,255,0.1)' }
-                        }
-                    } : {}
-                }
-            };
-
-            const chart = new Chart(ctx, config);
-            activeCharts.push(chart);
-            return chart;
-        }
-
-        // Render image gallery
-        function renderImageGallery(images) {
-            if (!images || images.length === 0) return '';
-
-            let html = `
-                <div class="image-gallery">
-                    <div class="image-gallery-header">
-                        <span>🖼️</span> 관련 이미지 (${images.length}개) - 클릭하여 확대
-                    </div>
-                    <div class="image-grid">
-            `;
-
-            images.forEach(img => {
-                const escapedPath = escapeHtml(img.path).replace(/'/g, '&#39;');
-                const escapedName = escapeHtml(img.name);
-                const displayName = img.name.length > 30
-                    ? img.name.substring(0, 27) + '...'
-                    : img.name;
-                const escapedDisplayName = escapeHtml(displayName);
-                html += `
-                    <div class="image-item" onclick="openLightbox('${escapedPath}')">
-                        <img src="${escapedPath}" alt="${escapedName}" loading="lazy">
-                        <div class="image-overlay">${escapedDisplayName}</div>
-                    </div>
-                `;
-            });
-
-            html += '</div></div>';
-            return html;
-        }
+        // Chart and image gallery functions moved to common.js
 
         // Load stats
         async function loadStats() {
@@ -1201,12 +1111,22 @@
                         }
                     });
 
+                    const totalVectorCount = data.data.namespaces.reduce((sum, ns) => sum + ns.vector_count, 0);
+
                     selects.forEach(selectId => {
                         const select = document.getElementById(selectId);
                         if (select) {
                             const firstOption = select.options[0];
                             select.innerHTML = '';
                             select.appendChild(firstOption);
+
+                            // Add "전체" (All namespaces) option for ask/search selects
+                            if (selectId !== 'deleteNamespace' && data.data.namespaces.length > 1) {
+                                const allOption = document.createElement('option');
+                                allOption.value = 'all';
+                                allOption.textContent = `🔍 전체 검색 (${totalVectorCount.toLocaleString()}개)`;
+                                select.appendChild(allOption);
+                            }
 
                             data.data.namespaces.forEach(ns => {
                                 const option = document.createElement('option');
@@ -1235,10 +1155,119 @@
                 }
             } catch (error) {
                 console.error('Failed to load stats:', error);
+                document.getElementById('totalVectors').textContent = 'N/A';
+                document.getElementById('namespaceCount').textContent = 'N/A';
+                document.getElementById('dimension').textContent = 'N/A';
+                document.getElementById('indexName').textContent = '연결 실패';
             }
         }
 
-        // AI Ask functionality
+        // AI Ask functionality (SSE streaming)
+        function renderAskResults(resultsContainer, metadata, answerText, calculations) {
+            // Destroy previous charts
+            activeCharts.forEach(chart => chart.destroy());
+            activeCharts = [];
+
+            // Extract chart data from answer
+            const { cleanAnswer, charts } = extractChartData(answerText);
+
+            // Convert citation numbers [1], [2] to clickable links
+            let answerHtml = DOMPurify.sanitize(marked.parse(cleanAnswer));
+            answerHtml = answerHtml.replace(/\[(\d+)\]/g, '<a href="#source-$1" class="citation" data-source="$1">[$1]</a>');
+
+            let html = `
+                <div class="ai-answer-container">
+                    <div class="ai-answer-header">
+                        <span>🤖</span> AI 답변
+                    </div>
+                    <div class="ai-answer-content" id="aiAnswerContent">
+                        ${answerHtml}
+                    </div>
+                </div>
+            `;
+
+            // Add charts if present
+            if (charts.length > 0) {
+                charts.forEach((chartData, index) => {
+                    html += `
+                        <div class="chart-container">
+                            <div class="chart-header">
+                                <span>📊</span> ${chartData.title || '데이터 시각화'}
+                            </div>
+                            <div class="chart-wrapper">
+                                <canvas id="chart-${index}"></canvas>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            // Add image gallery
+            if (metadata.images && metadata.images.length > 0) {
+                html += renderImageGallery(metadata.images);
+            }
+
+            // Add sources section
+            if (metadata.sources && metadata.sources.length > 0) {
+                html += `
+                    <div class="sources-section">
+                        <div class="sources-header">
+                            <span>📚</span> 참고 문서 (${metadata.source_count || metadata.sources.length}개)
+                        </div>
+                `;
+                metadata.sources.forEach((source, index) => {
+                    const sourceFile = source.source_file || 'Unknown';
+                    const score = source.score !== undefined ? source.score : 0;
+                    const contentPreview = source.content_preview || '';
+                    const ncsCategory = source.ncs_category || '';
+                    const ncsSectionType = source.ncs_section_type || '';
+                    const ncsCode = source.ncs_code || '';
+
+                    let metaTags = '';
+                    if (ncsCategory) metaTags += `<span class="source-meta-tag category">${escapeHtml(ncsCategory)}</span>`;
+                    if (ncsSectionType && ncsSectionType !== 'general') metaTags += `<span class="source-meta-tag section-type">${escapeHtml(ncsSectionType)}</span>`;
+                    if (ncsCode) metaTags += `<span class="source-meta-tag ncs-code">${escapeHtml(ncsCode)}</span>`;
+
+                    html += `
+                        <div class="source-item" id="source-${index + 1}">
+                            <div class="source-item-header">
+                                <span class="source-item-file">[${index + 1}] ${escapeHtml(sourceFile.split('/').pop())}</span>
+                                <span class="source-item-score">유사도: ${score}</span>
+                            </div>
+                            ${metaTags ? `<div class="source-item-meta">${metaTags}</div>` : ''}
+                            <div class="source-item-preview">${escapeHtml(contentPreview)}</div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            }
+
+            resultsContainer.innerHTML = html;
+
+            // Render charts
+            if (charts.length > 0) {
+                charts.forEach((chartData, index) => {
+                    requestAnimationFrame(() => {
+                        try { renderChart(chartData, `chart-${index}`); }
+                        catch (e) { console.error('Chart render error:', e); }
+                    });
+                });
+            }
+
+            // Citation click handlers
+            document.querySelectorAll('.citation').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const sourceEl = document.getElementById('source-' + link.dataset.source);
+                    if (sourceEl) {
+                        sourceEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        sourceEl.classList.add('highlighted');
+                        setTimeout(() => sourceEl.classList.remove('highlighted'), 2000);
+                    }
+                });
+            });
+        }
+
         document.getElementById('askForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -1253,149 +1282,98 @@
             resultsContainer.innerHTML = '';
 
             try {
-                const response = await fetch('/api/ask', {
+                const response = await fetch('/api/ask/stream', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ query, namespace, top_k: topK })
                 });
 
-                const data = await response.json();
+                // Check if response is JSON (error or early response)
+                const contentType = response.headers.get('content-type') || '';
+                if (contentType.includes('application/json')) {
+                    const data = await response.json();
+                    loading.classList.remove('active');
+                    if (data.success && data.data) {
+                        renderAskResults(resultsContainer, data.data, data.data.answer || '', null);
+                    } else {
+                        showToast(data.error || '알 수 없는 오류', 'error');
+                        resultsContainer.innerHTML = `<div class="empty-state"><div class="icon">❌</div><p>${escapeHtml(data.error || '오류가 발생했습니다.')}</p></div>`;
+                    }
+                    return;
+                }
 
+                // SSE streaming response
+                let metadata = null;
+                let answerText = '';
+                let calculations = null;
+
+                // Show streaming UI: answer container + placeholder
+                resultsContainer.innerHTML = `
+                    <div class="ai-answer-container">
+                        <div class="ai-answer-header"><span>🤖</span> AI 답변</div>
+                        <div class="ai-answer-content" id="aiAnswerContent"><span class="streaming-cursor">▌</span></div>
+                    </div>
+                `;
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop(); // keep incomplete line in buffer
+
+                    for (const line of lines) {
+                        if (!line.startsWith('data: ')) continue;
+                        const jsonStr = line.slice(6);
+                        if (!jsonStr) continue;
+
+                        try {
+                            const event = JSON.parse(jsonStr);
+
+                            if (event.type === 'metadata') {
+                                metadata = event.data;
+                                loading.classList.remove('active');
+                            } else if (event.type === 'calculations') {
+                                calculations = event.data;
+                            } else if (event.type === 'token') {
+                                answerText += event.data;
+                                // Update streaming content
+                                const contentEl = document.getElementById('aiAnswerContent');
+                                if (contentEl) {
+                                    contentEl.innerHTML = DOMPurify.sanitize(marked.parse(answerText)) + '<span class="streaming-cursor">▌</span>';
+                                }
+                            } else if (event.type === 'done') {
+                                if (event.data && event.data.calculations) {
+                                    calculations = event.data.calculations;
+                                }
+                                // Final render with all data
+                                if (metadata) {
+                                    renderAskResults(resultsContainer, metadata, answerText, calculations);
+                                }
+                            } else if (event.type === 'error') {
+                                loading.classList.remove('active');
+                                showToast('오류: ' + event.data, 'error');
+                                resultsContainer.innerHTML = `<div class="empty-state"><div class="icon">❌</div><p>${escapeHtml(event.data)}</p></div>`;
+                            }
+                        } catch (parseErr) {
+                            console.error('SSE parse error:', parseErr, jsonStr);
+                        }
+                    }
+                }
+
+                // Ensure loading is removed
                 loading.classList.remove('active');
 
-                // Debug logging for troubleshooting
-                console.log('API Response:', data);
-
-                if (data.success) {
-                    // Validate response data
-                    if (!data.data || !data.data.answer) {
-                        console.error('Invalid response data:', data);
-                        showToast('응답 데이터 형식 오류', 'error');
-                        resultsContainer.innerHTML = `
-                            <div class="empty-state">
-                                <div class="icon">⚠️</div>
-                                <p>응답 데이터를 처리할 수 없습니다.</p>
-                            </div>
-                        `;
-                        return;
-                    }
-
-                    // Destroy previous charts
-                    activeCharts.forEach(chart => chart.destroy());
-                    activeCharts = [];
-
-                    // Extract chart data from answer
-                    const { cleanAnswer, charts } = extractChartData(data.data.answer || '');
-
-                    // Convert citation numbers [1], [2] to clickable links
-                    let answerHtml = marked.parse(cleanAnswer);
-                    answerHtml = answerHtml.replace(/\[(\d+)\]/g, '<a href="#source-$1" class="citation" data-source="$1">[$1]</a>');
-
-                    // Render AI answer with markdown
-                    let html = `
-                        <div class="ai-answer-container">
-                            <div class="ai-answer-header">
-                                <span>🤖</span> AI 답변
-                            </div>
-                            <div class="ai-answer-content" id="aiAnswerContent">
-                                ${answerHtml}
-                            </div>
-                        </div>
-                    `;
-
-                    // Add charts if present
-                    if (charts.length > 0) {
-                        charts.forEach((chartData, index) => {
-                            html += `
-                                <div class="chart-container">
-                                    <div class="chart-header">
-                                        <span>📊</span> ${chartData.title || '데이터 시각화'}
-                                    </div>
-                                    <div class="chart-wrapper">
-                                        <canvas id="chart-${index}"></canvas>
-                                    </div>
-                                </div>
-                            `;
-                        });
-                    }
-
-                    // Add image gallery if images are available
-                    if (data.data.images && data.data.images.length > 0) {
-                        html += renderImageGallery(data.data.images);
-                    }
-
-                    // Add sources section
-                    if (data.data.sources && data.data.sources.length > 0) {
-                        html += `
-                            <div class="sources-section">
-                                <div class="sources-header">
-                                    <span>📚</span> 참고 문서 (${data.data.source_count || data.data.sources.length}개)
-                                </div>
-                        `;
-
-                        data.data.sources.forEach((source, index) => {
-                            const sourceFile = source.source_file || 'Unknown';
-                            const fileType = source.file_type || 'unknown';
-                            const score = source.score !== undefined ? source.score : 0;
-                            const contentPreview = source.content_preview || '';
-                            const typeClass = 'type-' + fileType;
-                            html += `
-                                <div class="source-item" id="source-${index + 1}">
-                                    <div class="source-item-header">
-                                        <span class="source-item-file">[${index + 1}] ${escapeHtml(sourceFile.split('/').pop())}</span>
-                                        <span class="source-item-score">유사도: ${score}</span>
-                                    </div>
-                                    <div class="source-item-preview">${escapeHtml(contentPreview)}</div>
-                                </div>
-                            `;
-                        });
-
-                        html += '</div>';
-                    }
-
-                    try {
-                        resultsContainer.innerHTML = html;
-
-                        // Render charts after HTML is inserted
-                        if (charts.length > 0) {
-                            charts.forEach((chartData, index) => {
-                                requestAnimationFrame(() => {
-                                    try {
-                                        renderChart(chartData, `chart-${index}`);
-                                    } catch (chartErr) {
-                                        console.error('Chart render error:', chartErr);
-                                    }
-                                });
-                            });
-                        }
-
-                        // Add click handlers for citations
-                        document.querySelectorAll('.citation').forEach(link => {
-                            link.addEventListener('click', (e) => {
-                                e.preventDefault();
-                                const sourceNum = link.dataset.source;
-                                const sourceEl = document.getElementById('source-' + sourceNum);
-                                if (sourceEl) {
-                                    sourceEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                    sourceEl.classList.add('highlighted');
-                                    setTimeout(() => sourceEl.classList.remove('highlighted'), 2000);
-                                }
-                            });
-                        });
-                    } catch (renderErr) {
-                        console.error('Render error:', renderErr);
-                        showToast('결과 표시 중 오류 발생', 'error');
-                    }
-                } else {
-                    console.error('API error:', data.error);
-                    showToast(data.error || '알 수 없는 오류', 'error');
-                    resultsContainer.innerHTML = `
-                        <div class="empty-state">
-                            <div class="icon">❌</div>
-                            <p>${escapeHtml(data.error || '알 수 없는 오류가 발생했습니다.')}</p>
-                        </div>
-                    `;
+                // If stream ended without done event, render what we have
+                if (answerText && metadata && !document.querySelector('.sources-section')) {
+                    renderAskResults(resultsContainer, metadata, answerText, calculations);
                 }
+
             } catch (error) {
                 console.error('Fetch error:', error);
                 loading.classList.remove('active');
@@ -1511,12 +1489,7 @@
             }
         });
 
-        // Escape HTML
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
+        // escapeHtml function moved to common.js
 
         // Load available sources for @ mention hints
         async function loadSources() {

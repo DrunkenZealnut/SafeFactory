@@ -44,6 +44,12 @@ def main():
     process_parser.add_argument("--embedding-model", type=str, default="text-embedding-3-small",
                                choices=["text-embedding-3-small", "text-embedding-3-large"],
                                help="임베딩 모델")
+    process_parser.add_argument("--domain", type=str, default=None,
+                               help="도메인 분류 (예: safety, labor)")
+    process_parser.add_argument("--category", type=str, default=None,
+                               help="중분류 (예: machinery, hazmat, wage, accident)")
+    process_parser.add_argument("--subcategory", type=str, default=None,
+                               help="소분류 (예: crane, chemical, minimum_wage, compensation)")
 
     # Search command
     search_parser = subparsers.add_parser("search", help="Pinecone에서 검색")
@@ -51,6 +57,9 @@ def main():
     search_parser.add_argument("--top-k", "-k", type=int, default=5, help="결과 개수 (기본: 5)")
     search_parser.add_argument("--namespace", "-n", type=str, default="", help="Pinecone 네임스페이스")
     search_parser.add_argument("--filter-file-type", type=str, help="파일 타입 필터 (image/markdown/json)")
+    search_parser.add_argument("--filter-domain", type=str, help="도메인 필터 (예: safety, labor)")
+    search_parser.add_argument("--filter-category", type=str, help="중분류 필터")
+    search_parser.add_argument("--filter-subcategory", type=str, help="소분류 필터")
 
     # Stats command
     stats_parser = subparsers.add_parser("stats", help="인덱스 통계 확인")
@@ -103,13 +112,34 @@ def main():
             max_chunk_tokens=args.max_chunk_tokens
         )
 
+        # Build extra metadata from CLI flags
+        extra_metadata = {}
+        if args.domain:
+            extra_metadata['domain'] = args.domain
+        if args.category:
+            extra_metadata['category'] = args.category
+        if args.subcategory:
+            extra_metadata['subcategory'] = args.subcategory
+
+        # Auto-detect NCS documents from folder path
+        if 'ncs' in args.folder.lower():
+            extra_metadata.setdefault('domain', 'semiconductor')
+            for cat in ['반도체개발', '반도체장비', '반도체재료', '반도체제조']:
+                if cat in args.folder:
+                    extra_metadata.setdefault('category', cat)
+                    break
+
+        if extra_metadata:
+            print(f"🏷️ 메타데이터: {extra_metadata}")
+
         print(f"📁 폴더 처리 시작: {args.folder}")
         result = agent.process_folder(
             folder_path=args.folder,
             namespace=args.namespace,
             recursive=not args.no_recursive,
             batch_size=args.batch_size,
-            verbose=True
+            verbose=True,
+            extra_metadata=extra_metadata
         )
 
         print("\n" + "="*50)
@@ -135,9 +165,16 @@ def main():
             create_index_if_not_exists=False
         )
 
-        filter_dict = None
+        filter_dict = {}
         if args.filter_file_type:
-            filter_dict = {"file_type": args.filter_file_type}
+            filter_dict["file_type"] = args.filter_file_type
+        if args.filter_domain:
+            filter_dict["domain"] = args.filter_domain
+        if args.filter_category:
+            filter_dict["category"] = args.filter_category
+        if args.filter_subcategory:
+            filter_dict["subcategory"] = args.filter_subcategory
+        filter_dict = filter_dict or None
 
         results = agent.search(
             query=args.query,

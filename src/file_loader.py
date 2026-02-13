@@ -85,9 +85,19 @@ class FileLoader:
         )
 
     def _load_markdown(self, file_path: Path) -> LoadedFile:
-        """Load a markdown file."""
+        """Load a markdown file. Auto-detects marker _meta.json in the same directory."""
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
+
+        # Auto-detect marker _meta.json in the same directory
+        marker_meta = None
+        meta_candidates = list(file_path.parent.glob('*_meta.json'))
+        if meta_candidates:
+            try:
+                with open(meta_candidates[0], 'r', encoding='utf-8') as mf:
+                    marker_meta = json.load(mf)
+            except (json.JSONDecodeError, OSError):
+                pass
 
         return LoadedFile(
             path=str(file_path),
@@ -98,7 +108,8 @@ class FileLoader:
                 'extension': file_path.suffix.lower(),
                 'size_bytes': len(content.encode('utf-8')),
                 'relative_path': str(file_path.relative_to(self.folder_path)),
-                'line_count': content.count('\n') + 1
+                'line_count': content.count('\n') + 1,
+                'marker_meta': marker_meta
             }
         )
 
@@ -135,6 +146,9 @@ class FileLoader:
 
         for file_path in self.folder_path.glob(pattern):
             if file_path.is_file() and self._get_file_type(file_path):
+                # Skip _meta.json files (PDF structure metadata, not user content)
+                if file_path.name.endswith('_meta.json'):
+                    continue
                 yield file_path
 
     def load_file(self, file_path: Path) -> Optional[LoadedFile]:

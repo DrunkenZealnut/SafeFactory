@@ -126,7 +126,8 @@ class PineconeUploader:
         full_metadata = {
             "source_file": source_file,
             "chunk_index": chunk_index,
-            "content": content[:1000],  # Pinecone metadata size limit
+            "content": content[:40000],          # 전문 저장 (Pinecone 40KB 한도)
+            "content_preview": content[:1000],    # UI 미리보기용
             "content_length": len(content),
             **(metadata or {})
         }
@@ -258,6 +259,69 @@ class PineconeUploader:
             }
             for match in results.matches
         ]
+
+    def query_namespaces(
+        self,
+        vector: List[float],
+        namespaces: List[str],
+        top_k: int = 5,
+        filter: Optional[Dict] = None,
+        include_metadata: bool = True
+    ) -> List[Dict]:
+        """
+        Query multiple namespaces simultaneously using Pinecone server-side parallelism.
+
+        Args:
+            vector: Query vector
+            namespaces: List of namespace names to query
+            top_k: Number of results per namespace
+            filter: Metadata filter
+            include_metadata: Whether to include metadata
+
+        Returns:
+            Combined list of results from all namespaces, sorted by score
+        """
+        try:
+            results = self.index.query_namespaces(
+                vector=vector,
+                namespaces=namespaces,
+                top_k=top_k,
+                filter=filter or {},
+                include_metadata=include_metadata,
+                metric="cosine"
+            )
+
+            combined = []
+            for match in results.matches:
+                combined.append({
+                    "id": match.id,
+                    "score": match.score,
+                    "metadata": match.metadata if include_metadata else None,
+                    "namespace": match.namespace
+                })
+
+            # Already sorted by score from Pinecone
+            return combined[:top_k]
+
+        except Exception as e:
+            import logging
+            logging.error(f"Multi-namespace query failed: {e}")
+            # Fallback: sequential queries
+            all_results = []
+            for ns in namespaces:
+                try:
+                    ns_results = self.query(
+                        vector=vector, top_k=top_k,
+                        namespace=ns, filter=filter,
+                        include_metadata=include_metadata
+                    )
+                    for r in ns_results:
+                        r['namespace'] = ns
+                    all_results.extend(ns_results)
+                except Exception:
+                    pass
+            all_results.sort(key=lambda x: x.get('score', 0), reverse=True)
+            return all_results[:top_k]
 
     def delete_by_ids(self, ids: List[str], namespace: str = "") -> bool:
         """Delete vectors by IDs."""

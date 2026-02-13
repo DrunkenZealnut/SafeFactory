@@ -5,7 +5,7 @@
 - 참고: https://www.nodong.kr/insure_cal
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 from enum import Enum
 

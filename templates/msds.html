@@ -717,6 +717,9 @@
         </div>
     </div>
 
+    <!-- Common JavaScript utilities -->
+    <script src="/static/js/common.js"></script>
+
     <script>
         const searchForm = document.getElementById('searchForm');
         const searchResultsContainer = document.getElementById('searchResultsContainer');
@@ -730,6 +733,8 @@
         let currentResults = [];
         let currentDetail = null;
         let selectedChemId = null;
+
+        // escapeHtml function moved to common.js
 
         // MSDS Section Names
         const SECTION_NAMES = {
@@ -823,11 +828,11 @@
             const div = document.createElement('div');
             div.className = 'result-item';
             div.innerHTML = `
-                <div class="result-name">${item.prodNmKor || item.chemNmKor || '화학물질명 없음'}</div>
+                <div class="result-name">${escapeHtml(item.prodNmKor || item.chemNmKor || '화학물질명 없음')}</div>
                 <div class="result-info">
-                    ${item.casNo ? `<span>CAS: ${item.casNo}</span>` : ''}
-                    ${item.unNo ? `<span>UN: ${item.unNo}</span>` : ''}
-                    ${item.keNo ? `<span>KE: ${item.keNo}</span>` : ''}
+                    ${item.casNo ? `<span>CAS: ${escapeHtml(item.casNo)}</span>` : ''}
+                    ${item.unNo ? `<span>UN: ${escapeHtml(item.unNo)}</span>` : ''}
+                    ${item.keNo ? `<span>KE: ${escapeHtml(item.keNo)}</span>` : ''}
                 </div>
             `;
             return div;
@@ -899,11 +904,11 @@
 
             // Header
             document.getElementById('detailHeader').innerHTML = `
-                <h3>${firstItem.prodNmKor || firstItem.chemNmKor || '화학물질 정보'}</h3>
+                <h3>${escapeHtml(firstItem.prodNmKor || firstItem.chemNmKor || '화학물질 정보')}</h3>
                 <div class="detail-meta">
-                    ${firstItem.casNo ? `<span>CAS: ${firstItem.casNo}</span>` : ''}
-                    ${firstItem.unNo ? `<span>UN: ${firstItem.unNo}</span>` : ''}
-                    ${firstItem.keNo ? `<span>KE: ${firstItem.keNo}</span>` : ''}
+                    ${firstItem.casNo ? `<span>CAS: ${escapeHtml(firstItem.casNo)}</span>` : ''}
+                    ${firstItem.unNo ? `<span>UN: ${escapeHtml(firstItem.unNo)}</span>` : ''}
+                    ${firstItem.keNo ? `<span>KE: ${escapeHtml(firstItem.keNo)}</span>` : ''}
                 </div>
             `;
 
@@ -938,10 +943,10 @@
                     <div class="summary-card">
                         <div class="summary-card-title">🧪 화학물질 기본 정보</div>
                         <div class="summary-card-content">
-                            <strong>제품명:</strong> ${item.prodNmKor || item.chemNmKor || '-'}
-                            ${item.casNo ? `<strong>CAS 번호:</strong> ${item.casNo}` : ''}
-                            ${item.keNo ? `<strong>KE 번호:</strong> ${item.keNo}` : ''}
-                            ${item.unNo ? `<strong>UN 번호:</strong> ${item.unNo}` : ''}
+                            <strong>제품명:</strong> ${escapeHtml(item.prodNmKor || item.chemNmKor || '-')}
+                            ${item.casNo ? `<strong>CAS 번호:</strong> ${escapeHtml(item.casNo)}` : ''}
+                            ${item.keNo ? `<strong>KE 번호:</strong> ${escapeHtml(item.keNo)}` : ''}
+                            ${item.unNo ? `<strong>UN 번호:</strong> ${escapeHtml(item.unNo)}` : ''}
                         </div>
                     </div>
                 `;
@@ -992,7 +997,7 @@
 
             let html = '';
             if (title) {
-                html += `<strong>${title}:</strong><br>`;
+                html += `<strong>${escapeHtml(title)}:</strong><br>`;
             }
 
             const maxItems = 3;
@@ -1001,7 +1006,7 @@
                     const detail = item.itemDetail.length > 200
                         ? item.itemDetail.substring(0, 200) + '...'
                         : item.itemDetail;
-                    html += `${detail}<br><br>`;
+                    html += `${escapeHtml(detail)}<br><br>`;
                 }
             });
 
@@ -1024,7 +1029,7 @@
                 const header = document.createElement('div');
                 header.className = 'accordion-header';
                 header.innerHTML = `
-                    <span class="accordion-title">${sectionName}</span>
+                    <span class="accordion-title">${escapeHtml(sectionName)}</span>
                     <span class="accordion-icon">▼</span>
                 `;
 
@@ -1040,8 +1045,8 @@
                         const itemDiv = document.createElement('div');
                         itemDiv.className = 'section-item';
                         itemDiv.innerHTML = `
-                            <div class="section-item-name">${item.msdsItemNameKor || ''}</div>
-                            <div class="section-item-detail">${item.itemDetail || '정보 없음'}</div>
+                            <div class="section-item-name">${escapeHtml(item.msdsItemNameKor || '')}</div>
+                            <div class="section-item-detail">${escapeHtml(item.itemDetail || '정보 없음')}</div>
                         `;
                         body.appendChild(itemDiv);
                     });

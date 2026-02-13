@@ -7,7 +7,6 @@
 
 from dataclasses import dataclass
 from typing import Optional
-import math
 
 
 @dataclass
@@ -32,15 +31,6 @@ class InsuranceRates:
 
     # 산재보험: 전액 사업주 부담 (업종별 상이, 평균 약 1.47%)
     industrial_accident_employer: float = 0.0147
-
-
-@dataclass
-class TaxBracket:
-    """소득세 구간"""
-    lower: int
-    upper: int
-    base_tax: int
-    rate: float
 
 
 class WageCalculator:
