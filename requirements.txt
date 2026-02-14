@@ -10,6 +10,8 @@ langchain-text-splitters>=0.0.1
 
 # Web Server Dependencies
 flask>=3.0.0
+flask-cors>=6.0.0
+flask-limiter>=4.0.0
 gunicorn>=21.0.0
 
 # Database Dependencies

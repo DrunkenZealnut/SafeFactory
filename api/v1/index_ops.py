@@ -21,7 +21,7 @@ def api_stats():
             for ns_name, ns_info in stats['namespaces'].items():
                 namespaces.append({
                     'name': ns_name if ns_name else '(기본)',
-                    'vector_count': ns_info.vector_count
+                    'vector_count': ns_info['vector_count']
                 })
 
         return success_response(data={

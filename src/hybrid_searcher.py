@@ -112,6 +112,23 @@ class HybridSearcher:
         else:
             logging.warning("No documents to index")
 
+    def get_bm25_scores(self, query: str) -> Dict[str, float]:
+        """Return {doc_id: bm25_score} map for all indexed documents.
+
+        Uses the document 'id' field as key. Documents without an 'id' are
+        skipped. Returns an empty dict when no BM25 index is available.
+        """
+        if not self.bm25_index:
+            return {}
+        query_tokens = self._tokenize(query)
+        scores = self.bm25_index.get_scores(query_tokens)
+        score_map = {}
+        for idx, doc in self.doc_map.items():
+            doc_id = doc.get('id')
+            if doc_id:
+                score_map[doc_id] = round(scores[idx], 4)
+        return score_map
+
     def bm25_search(
         self,
         query: str,

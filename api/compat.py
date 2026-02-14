@@ -10,6 +10,8 @@ def register_compat_routes(app):
     from api.v1.index_ops import api_stats, api_namespaces, api_sources, api_delete
     from api.v1.search import api_search, api_ask, api_ask_stream
     from api.v1.msds import msds_search, msds_detail, msds_identify
+    from api.v1.health import api_health, api_domains
+    from api.v1.calculator import api_calculate_wage, api_calculate_insurance
 
     # Index operations
     app.add_url_rule('/api/stats', 'compat_stats', api_stats)
@@ -26,3 +28,11 @@ def register_compat_routes(app):
     app.add_url_rule('/api/msds/search', 'compat_msds_search', msds_search, methods=['POST'])
     app.add_url_rule('/api/msds/detail', 'compat_msds_detail', msds_detail, methods=['POST'])
     app.add_url_rule('/api/msds/identify', 'compat_msds_identify', msds_identify, methods=['POST'])
+
+    # Health & configuration
+    app.add_url_rule('/api/health', 'compat_health', api_health)
+    app.add_url_rule('/api/domains', 'compat_domains', api_domains)
+
+    # Calculator
+    app.add_url_rule('/api/calculate/wage', 'compat_calc_wage', api_calculate_wage, methods=['POST'])
+    app.add_url_rule('/api/calculate/insurance', 'compat_calc_insurance', api_calculate_insurance, methods=['POST'])

@@ -93,15 +93,8 @@ def api_search():
                 )
                 hybrid_results = hybrid_results[:top_k]
 
-            # Pre-compute BM25 scores and build id-based lookup once
-            bm25_score_map = {}
-            if hasattr(hybrid_searcher, 'bm25_index') and hybrid_searcher.bm25_index:
-                query_tokens = hybrid_searcher._tokenize(query)
-                scores = hybrid_searcher.bm25_index.get_scores(query_tokens)
-                for idx, doc in hybrid_searcher.doc_map.items():
-                    doc_id = doc.get('id')
-                    if doc_id:
-                        bm25_score_map[doc_id] = round(scores[idx], 4)
+            # Pre-compute BM25 scores via public API
+            bm25_score_map = hybrid_searcher.get_bm25_scores(query)
 
             formatted_results = []
             for r in hybrid_results:
@@ -321,19 +314,11 @@ def api_ask_stream():
                             token_event = json.dumps({'type': 'token', 'data': token}, ensure_ascii=False)
                             yield f"data: {token_event}\n\n"
                 else:
-                    # No tool calls - make a new streaming request for consistent UX
-                    stream = client.chat.completions.create(
-                        model="gpt-4o-mini",
-                        messages=messages,
-                        temperature=0.3,
-                        max_tokens=2500,
-                        stream=True
-                    )
-                    for chunk in stream:
-                        if chunk.choices and chunk.choices[0].delta.content:
-                            token = chunk.choices[0].delta.content
-                            token_event = json.dumps({'type': 'token', 'data': token}, ensure_ascii=False)
-                            yield f"data: {token_event}\n\n"
+                    # No tool calls - reuse the already-received response
+                    content = response_message.content or ""
+                    if content:
+                        token_event = json.dumps({'type': 'token', 'data': content}, ensure_ascii=False)
+                        yield f"data: {token_event}\n\n"
             else:
                 # No tools - stream directly
                 stream = client.chat.completions.create(

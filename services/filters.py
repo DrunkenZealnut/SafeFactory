@@ -1,9 +1,10 @@
 """Domain-specific metadata filter builders and mention parsing."""
 
 import re
+from typing import Optional
 
 
-def build_ncs_filter(query: str) -> dict:
+def build_ncs_filter(query: str) -> Optional[dict]:
     """Build Pinecone metadata filter from NCS-related query patterns."""
     if not query:
         return None
@@ -54,7 +55,7 @@ def build_ncs_filter(query: str) -> dict:
     return filters if filters else None
 
 
-def build_laborlaw_filter(query: str) -> dict:
+def build_laborlaw_filter(query: str) -> Optional[dict]:
     """Build Pinecone metadata filter for laborlaw queries."""
     if not query:
         return None
@@ -120,7 +121,7 @@ def build_laborlaw_filter(query: str) -> dict:
     return filters if filters else None
 
 
-def build_field_training_filter(query: str) -> dict:
+def build_field_training_filter(query: str) -> Optional[dict]:
     """Build Pinecone metadata filter for field-training queries."""
     if not query:
         return None
@@ -187,7 +188,7 @@ def build_field_training_filter(query: str) -> dict:
     return filters if filters else None
 
 
-def build_domain_filter(query: str, namespace: str) -> dict:
+def build_domain_filter(query: str, namespace: str) -> Optional[dict]:
     """Build Pinecone metadata filter based on domain namespace and query patterns."""
     if not query:
         return None

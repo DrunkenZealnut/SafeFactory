@@ -1,5 +1,6 @@
 """Shared RAG pipeline, LLM message builder, and image discovery."""
 
+import hashlib
 import logging
 import os
 import unicodedata
@@ -168,7 +169,7 @@ def run_rag_pipeline(data):
             for r in results:
                 # Deduplicate by content hash
                 content = r.get('metadata', {}).get('content', '')
-                content_id = hash(content[:200])
+                content_id = hashlib.md5(content[:200].encode()).hexdigest()
                 if content_id not in seen_ids:
                     seen_ids.add(content_id)
                     all_results.append(r)
