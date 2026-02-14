@@ -121,15 +121,19 @@ class MetadataManager:
         vector_count: int = 0,
         vector_ids: List[str] = None,
         status: str = 'pending',
-        error_message: str = None
+        error_message: str = None,
+        file_hash: str = None,
+        file_size: int = None
     ) -> bool:
         """Insert or update file metadata."""
         if not self.connection:
             return False
 
-        # Calculate file metadata
-        file_hash = self.calculate_file_hash(file_path)
-        file_size = os.path.getsize(file_path) if os.path.exists(file_path) else 0
+        # Use provided values or calculate from file_path
+        if file_hash is None:
+            file_hash = self.calculate_file_hash(file_path)
+        if file_size is None:
+            file_size = os.path.getsize(file_path) if os.path.exists(file_path) else 0
         last_modified = datetime.fromtimestamp(os.path.getmtime(file_path)) if os.path.exists(file_path) else None
         upload_date = datetime.now() if status == 'completed' else None
         vector_ids_json = json.dumps(vector_ids) if vector_ids else None

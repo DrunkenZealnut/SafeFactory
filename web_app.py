@@ -80,6 +80,17 @@ DOMAIN_PROMPTS = {
 3. 관련 법조항 인용 시 [1], [2] 형식 사용
 4. 마크다운 표로 계산 내역 정리
 5. 문서에 없는 내용은 추측하지 마세요""",
+
+    "field-training": """당신은 산업안전보건 전문가입니다.
+직업계고 현장실습생을 위한 안전보건 교육 자료를 바탕으로 답변합니다.
+
+답변 지침:
+1. 장비별 특성, 위험요인, 안전수칙을 체계적으로 설명
+2. 유해물질이 언급되면 보호장비 착용 지침을 반드시 포함
+3. 관련 법조항(산업안전보건법 등) 인용 시 [1], [2] 형식 사용
+4. 마크다운 표로 위험요인과 안전수칙을 정리
+5. 문서에 없는 내용은 추측하지 마세요
+6. **중요**: 이미지는 절대 직접 삽입하지 마세요. 관련 이미지는 시스템이 자동으로 표시합니다.""",
 }
 
 # Default system prompt (semiconductor/general domain)
@@ -373,7 +384,6 @@ CALCULATOR_FUNCTIONS = [
 
 def _build_ncs_filter(query: str) -> dict:
     """Build Pinecone metadata filter from NCS-related query patterns."""
-    import re
     filters = {}
 
     # Detect NCS category mentions
@@ -422,6 +432,158 @@ def _build_ncs_filter(query: str) -> dict:
         filters['learning_unit'] = int(lu_match.group(1))
 
     return filters if filters else None
+
+
+def _build_laborlaw_filter(query: str) -> dict:
+    """Build Pinecone metadata filter for laborlaw queries."""
+    filters = {}
+
+    # Detect content type
+    content_type_patterns = {
+        'law': ['법률', '법조항', '법령', '규정', '조항'],
+        'case': ['사례', '판례', '상담', '사건'],
+        'qa': ['질의', '회시', 'Q&A', '질문'],
+    }
+    for ct, keywords in content_type_patterns.items():
+        for kw in keywords:
+            if kw in query:
+                filters['content_type'] = ct
+                break
+        if 'content_type' in filters:
+            break
+
+    # Detect law category from query keywords
+    category_patterns = {
+        'wages': ['임금', '급여', '최저임금', '체불', '금품 청산', '퇴직급여', '실수령'],
+        'working_hours': ['근로시간', '연장근로', '야간근로', '휴일', '연차', '휴가', '탄력적', '주휴'],
+        'employment_contract': ['근로계약', '해고', '부당해고', '퇴직', '해고 예고', '계약해지'],
+        'women_minors': ['여성', '임산부', '모성', '육아', '생리휴가', '출산'],
+        'safety_health': ['안전', '산재', '산업재해', '보건'],
+        'workplace_harassment': ['괴롭힘', '직장 내 괴롭힘'],
+        'social_insurance': ['4대보험', '국민연금', '건강보험', '고용보험', '산재보험'],
+        'non_regular_workers': ['파견', '기간제', '비정규', '단시간'],
+        'labor_unions': ['노동조합', '단체교섭', '쟁의', '파업'],
+        'discrimination': ['차별', '균등처우', '성희롱', '평등'],
+        'accident_compensation': ['재해보상', '요양보상', '휴업보상', '장해보상'],
+        'enforcement_penalties': ['벌칙', '과태료', '근로감독'],
+    }
+    for category, keywords in category_patterns.items():
+        for kw in keywords:
+            if kw in query:
+                filters['law_category'] = category
+                break
+        if 'law_category' in filters:
+            break
+
+    # Detect specific law name
+    law_name_patterns = {
+        '근로기준법': ['근로기준법', '근기법'],
+        '최저임금법': ['최저임금법'],
+        '산업안전보건법': ['산업안전보건법', '산안법'],
+        '고용보험법': ['고용보험법'],
+        '산업재해보상보험법': ['산재보험법', '산업재해보상보험법'],
+        '남녀고용평등과 일ㆍ가정 양립 지원에 관한 법률': ['남녀고용평등법', '고용평등법'],
+        '파견근로자 보호 등에 관한 법률': ['파견법', '파견근로자보호법'],
+        '노동조합 및 노동관계조정법': ['노동조합법', '노조법'],
+    }
+    for law_name, keywords in law_name_patterns.items():
+        for kw in keywords:
+            if kw in query:
+                filters['law_name'] = law_name
+                break
+        if 'law_name' in filters:
+            break
+
+    # Detect article number reference
+    article_match = re.search(r'제\d+조(?:의\d+)?', query)
+    if article_match:
+        filters['article_number'] = article_match.group(0)
+
+    return filters if filters else None
+
+
+def _build_field_training_filter(query: str) -> dict:
+    """Build Pinecone metadata filter for field-training queries."""
+    filters = {}
+
+    # Detect training type
+    if '카드북' in query:
+        filters['training_type'] = 'cardbook'
+        cb_match = re.search(r'카드북\s*(\d+)', query)
+        if cb_match:
+            filters['cardbook_number'] = int(cb_match.group(1))
+    elif '건강관리' in query or '건강 관리' in query:
+        filters['training_type'] = 'health_guide'
+
+    # Detect equipment type
+    equipment_patterns = {
+        '차량계 건설기계작업': ['차량계', '건설기계', '굴삭기', '지게차', '크레인', '불도저', '로더'],
+        '중량물운반': ['중량물', '운반', '하역'],
+        '금속성형기계작업': ['금속성형', '프레스', '전단기', '절곡기'],
+        '금속절삭기계': ['금속절삭', '연삭기', '선반', '밀링', '절삭기계', '드릴'],
+        '식품제조작업': ['식품', '식품제조', '혼합기', '분쇄기'],
+        '세척제취급작업': ['세척제', '세척', '유기용제'],
+    }
+    for equip_type, keywords in equipment_patterns.items():
+        for kw in keywords:
+            if kw in query:
+                filters['equipment_type'] = equip_type
+                break
+        if 'equipment_type' in filters:
+            break
+
+    # Detect section type
+    section_patterns = {
+        'characteristics': ['특성', '특징', '구조'],
+        'accident_types': ['재해', '사고', '위험 유형', '위험요인'],
+        'safety_rules': ['안전수칙', '안전 수칙', '안전조치', '주의사항'],
+        'hazard_factors': ['유해요인', '유해물질', '노출'],
+        'health_management': ['건강관리', '건강영향', '증상'],
+        'process_overview': ['공정', '제조공정', '제조환경'],
+        'protective_equipment': ['보호구', '보호장비', '보안경'],
+        'msds_info': ['MSDS', '물질안전'],
+    }
+    for section_type, keywords in section_patterns.items():
+        for kw in keywords:
+            if kw in query:
+                filters['ft_section_type'] = section_type
+                break
+        if 'ft_section_type' in filters:
+            break
+
+    # Detect hazard category
+    hazard_patterns = {
+        'chemical_exposure': ['화학물질', '유기용제', '불산', '암모니아'],
+        'cuts': ['베임', '절단'],
+        'entanglement': ['끼임', '말림'],
+        'struck_by': ['맞음', '비산', '날림'],
+        'falls': ['넘어짐', '미끄러짐', '추락'],
+        'dust_inhalation': ['분진', '흡입'],
+    }
+    for hazard, keywords in hazard_patterns.items():
+        for kw in keywords:
+            if kw in query:
+                filters['hazard_category'] = hazard
+                break
+        if 'hazard_category' in filters:
+            break
+
+    return filters if filters else None
+
+
+def _build_domain_filter(query: str, namespace: str) -> dict:
+    """Build Pinecone metadata filter based on domain namespace and query patterns."""
+    if namespace == 'laborlaw':
+        return _build_laborlaw_filter(query)
+    elif namespace == 'field-training':
+        return _build_field_training_filter(query)
+    elif namespace == 'all':
+        # For cross-namespace search, don't apply domain-specific filters
+        # because a laborlaw filter would incorrectly exclude semiconductor results
+        return None
+    else:
+        # Default: semiconductor/NCS
+        return _build_ncs_filter(query)
 
 
 def parse_mentions(query):
@@ -496,6 +658,23 @@ DOMAIN_CONFIG = {
         ],
         'features': ['임금 계산', '4대보험', '근로기준법', '판례 검색', '법률 상담']
     },
+    'field-training': {
+        'title': '현장실습 안전교육',
+        'icon': '🏭',
+        'namespace': 'field-training',
+        'color': '#e91e63',
+        'color_rgb': '233, 30, 99',
+        'gradient_from': '#e91e63',
+        'gradient_to': '#c2185b',
+        'description': '직업계고 현장실습 안전보건 가이드',
+        'sample_questions': [
+            '연삭기 작업 시 안전수칙은?',
+            '반도체 포토공정의 유해요인은?',
+            '금속절삭기계 재해유형을 알려주세요',
+            '현장실습생 건강관리 방법은?',
+        ],
+        'features': ['장비 안전', '유해요인', '안전수칙', '건강관리']
+    },
     'msds': {
         'title': 'MSDS 화학물질 정보',
         'icon': '🧪',
@@ -534,6 +713,13 @@ def laborlaw():
     """Labor law domain page."""
     config = DOMAIN_CONFIG['laborlaw']
     return render_template('domain.html', domain='laborlaw', config=config)
+
+
+@app.route('/field-training')
+def field_training():
+    """Field training safety domain page."""
+    config = DOMAIN_CONFIG['field-training']
+    return render_template('domain.html', domain='field-training', config=config)
 
 
 @app.route('/msds')
@@ -807,10 +993,10 @@ def _run_rag_pipeline(data):
             enhanced_queries = [search_query]
 
     # ========================================
-    # Phase 2: Multi-Query Search (with NCS metadata filtering)
+    # Phase 2: Multi-Query Search (with domain metadata filtering)
     # ========================================
-    # Build NCS-aware metadata filter from query
-    ncs_filter = _build_ncs_filter(search_query)
+    # Build domain-aware metadata filter from query and namespace
+    domain_filter = _build_domain_filter(search_query, namespace)
 
     # Search with multiple query variations and merge results
     # When BM25 is skipped, fetch more candidates so the reranker has a wider pool
@@ -839,14 +1025,14 @@ def _run_rag_pipeline(data):
                     query=eq,
                     namespaces=ns_list,
                     top_k=search_top_k,
-                    filter=ncs_filter
+                    filter=domain_filter
                 )
             else:
                 results = agent.search(
                     query=eq,
                     top_k=search_top_k,
                     namespace=namespace,
-                    filter=ncs_filter
+                    filter=domain_filter
                 )
             for r in results:
                 # Deduplicate by content hash
@@ -981,7 +1167,7 @@ def _run_rag_pipeline(data):
             if file_type == 'image' or source_file.lower().endswith(('.jpeg', '.jpg', '.png', '.gif')):
                 image_url = f'/documents/{unicodedata.normalize("NFC", source_file)}'
 
-            sources.append({
+            source_entry = {
                 'source_file': source_file,
                 'file_type': file_type,
                 'score': round(score, 4) if isinstance(score, float) else score,
@@ -991,7 +1177,18 @@ def _run_rag_pipeline(data):
                 'ncs_document_title': metadata.get('ncs_document_title', ''),
                 'ncs_section_type': metadata.get('ncs_section_type', ''),
                 'ncs_code': metadata.get('ncs_code', ''),
-            })
+            }
+            # Laborlaw domain metadata
+            for key in ('content_type', 'law_name', 'law_number', 'law_date',
+                        'law_category', 'article_number', 'case_collection'):
+                if metadata.get(key):
+                    source_entry[key] = metadata[key]
+            # Field-training domain metadata
+            for key in ('training_type', 'cardbook_number', 'equipment_type',
+                        'ft_section_type', 'hazard_category'):
+                if metadata.get(key):
+                    source_entry[key] = metadata[key]
+            sources.append(source_entry)
 
     context = "\n\n---\n\n".join(context_parts)
 
@@ -1288,12 +1485,12 @@ CHART_DATA-->"""
     ]
 
 
-def _handle_tool_calls(client, messages, tool_calls):
+def _handle_tool_calls(client, messages, response_message):
     """Execute tool calls and return (calculation_results, updated_messages)."""
     calculation_results = []
-    messages.append(tool_calls)  # append the assistant message with tool_calls
+    messages.append(response_message)  # append the assistant message with tool_calls
 
-    for tool_call in tool_calls.tool_calls:
+    for tool_call in response_message.tool_calls:
         function_name = tool_call.function.name
         try:
             function_args = json.loads(tool_call.function.arguments)

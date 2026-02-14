@@ -6,6 +6,7 @@ Implements semantic chunking for intelligent text splitting.
 import json
 import os
 import re
+import unicodedata
 import certifi
 import httpx
 import tiktoken
@@ -412,6 +413,78 @@ class SemanticChunker:
 
         return all_segments
 
+    # Laborlaw section boundary patterns for hard splitting
+    LABORLAW_SECTION_PATTERNS = [
+        r'^#{1,4}\s*제\d+장',               # 장(Chapter) headers: 제1장 총칙
+        r'^-?\s*제\d+조(?:의\d+)?\s*\(',    # 조(Article): 제23조(해고 등의 제한)
+        r'^#{1,4}\s*제\d+조',               # Markdown-headed articles
+        r'^#{1,4}\s*부\s*칙',               # 부칙(Supplementary Provisions)
+    ]
+
+    def _split_by_laborlaw_structure(self, text: str) -> List[str]:
+        """Split laborlaw text by chapter/article boundaries then by structure within each."""
+        boundary_pattern = '|'.join(self.LABORLAW_SECTION_PATTERNS)
+        compiled = re.compile(boundary_pattern, re.MULTILINE)
+
+        boundaries = [m.start() for m in compiled.finditer(text)]
+
+        if not boundaries:
+            return self._split_by_structure(text)
+
+        if boundaries[0] != 0:
+            boundaries.insert(0, 0)
+        boundaries.append(len(text))
+
+        sections = []
+        for i in range(len(boundaries) - 1):
+            section_text = text[boundaries[i]:boundaries[i + 1]].strip()
+            if section_text:
+                sections.append(section_text)
+
+        all_segments = []
+        for section in sections:
+            sub_segments = self._split_by_structure(section)
+            all_segments.extend(sub_segments)
+
+        return all_segments
+
+    # Field-training section boundary patterns for hard splitting
+    FIELD_TRAINING_SECTION_PATTERNS = [
+        r'^#{1,4}\s*\**\d{2}\s*\|',              # Cardbook: ## 01 | 연삭기의 특성
+        r'^#{1,4}\s*\**\d{2}\**\s',               # Cardbook: ## **02** 선반 재해발생
+        r'^#{1,3}\s*[IVXⅠⅡⅢⅣⅤl]+[\.\s]',       # Health guide: Roman numerals
+        r'^#{1,3}\s*\d+\.\d+\.\s',                # Health guide: 2.1. 확산공정
+        r'^#{1,3}\s*\d+\.\s+[가-힣]',             # Health guide: 1. 반도체 제조환경
+        r'^◈\s',                                   # Process subsections
+    ]
+
+    def _split_by_field_training_structure(self, text: str) -> List[str]:
+        """Split field-training text by section boundaries then by structure within each."""
+        boundary_pattern = '|'.join(self.FIELD_TRAINING_SECTION_PATTERNS)
+        compiled = re.compile(boundary_pattern, re.MULTILINE)
+
+        boundaries = [m.start() for m in compiled.finditer(text)]
+
+        if not boundaries:
+            return self._split_by_structure(text)
+
+        if boundaries[0] != 0:
+            boundaries.insert(0, 0)
+        boundaries.append(len(text))
+
+        sections = []
+        for i in range(len(boundaries) - 1):
+            section_text = text[boundaries[i]:boundaries[i + 1]].strip()
+            if section_text:
+                sections.append(section_text)
+
+        all_segments = []
+        for section in sections:
+            sub_segments = self._split_by_structure(section)
+            all_segments.extend(sub_segments)
+
+        return all_segments
+
     def _merge_small_segments(self, segments: List[str]) -> List[str]:
         """Merge segments that are too small."""
         merged = []
@@ -544,73 +617,144 @@ class SemanticChunker:
 
     def _extract_ncs_metadata(self, source_file: str, text: str) -> Dict:
         """Extract NCS-specific metadata from file path and content."""
-        import unicodedata
-        ncs_meta = {}
-
-        # Normalize path to NFC for consistent Korean character matching (macOS uses NFD)
-        normalized_path = unicodedata.normalize('NFC', source_file)
-
-        # Extract NCS code from filename
-        # Matches both versioned (LM1903060101_23v6) and unversioned (LM1903060107)
-        code_match = re.search(r'(LM\d{10}(?:_\d+v\d+)?)', normalized_path)
-        if code_match:
-            ncs_meta['ncs_code'] = code_match.group(1)
-
-        # Extract NCS category from path
-        ncs_categories = ['반도체개발', '반도체장비', '반도체재료', '반도체제조']
-        for cat in ncs_categories:
-            if cat in normalized_path:
-                ncs_meta['ncs_category'] = cat
-                break
-
-        # Extract document title from path (handles both versioned and unversioned)
-        title_match = re.search(r'LM\d{10}(?:_\d+v\d+)?_(.+?)(?:/|$)', normalized_path)
-        if title_match:
-            ncs_meta['ncs_document_title'] = title_match.group(1).replace('_', ' ')
-
-        return ncs_meta
+        from src.ncs_utils import extract_ncs_metadata
+        return extract_ncs_metadata(source_file)
 
     def _classify_ncs_section(self, section_title: str) -> str:
-        """Classify NCS section by type based on title patterns.
+        """Classify NCS section by type based on title patterns."""
+        from src.ncs_utils import classify_section
+        section_type, _ = classify_section(section_title)
+        return section_type
 
-        Strips markdown bold markers and normalizes special characters
-        before matching, to handle variants like **필요 지식 /**, 필요 지식 🖊, etc.
-        """
+    def _extract_learning_unit(self, section_title: str) -> Optional[int]:
+        """Extract learning unit number from section title."""
+        if not section_title:
+            return None
+        match = re.search(r'학습\s*(\d+)', section_title)
+        return int(match.group(1)) if match else None
+
+    # ========================================
+    # Laborlaw domain metadata extraction
+    # ========================================
+
+    def _extract_laborlaw_metadata(self, source_file: str, text: str) -> Dict:
+        """Extract laborlaw-specific metadata from file path and content."""
+
+        meta = {}
+        normalized_path = unicodedata.normalize('NFC', source_file)
+
+        # Determine content_type from path structure
+        if '/laws/' in normalized_path:
+            meta['content_type'] = 'law'
+
+            # Extract law name, number, date from path pattern:
+            # YYYYMMdd_HHMMSS_<법률명>_법률_제<번호>호_<공포일>_
+            law_match = re.search(
+                r'\d{8}_\d{6}_(.+?)_법률_제(\d+)호_(\d{8})_',
+                normalized_path
+            )
+            if law_match:
+                meta['law_name'] = law_match.group(1).replace('_', ' ')
+                meta['law_number'] = int(law_match.group(2))
+                meta['law_date'] = law_match.group(3)
+            else:
+                # Fallback: extract law name between timestamp and trailing slash
+                name_match = re.search(r'\d{8}_\d{6}_(.+?)(?:/|$)', normalized_path)
+                if name_match:
+                    meta['law_name'] = name_match.group(1).replace('_', ' ')
+
+        elif '/cases/korean/' in normalized_path:
+            meta['content_type'] = 'case'
+            case_match = re.search(r'/cases/korean/([^/]+)', normalized_path)
+            if case_match:
+                meta['case_collection'] = case_match.group(1).replace('_', ' ')
+
+        elif '/cases/' in normalized_path:
+            meta['content_type'] = 'qa'
+            case_match = re.search(r'/cases/(?:English/)?([^/]+)', normalized_path)
+            if case_match:
+                meta['case_collection'] = case_match.group(1).replace('_', ' ')
+
+        return meta
+
+    def _classify_laborlaw_category(self, section_title: str, text: str) -> str:
+        """Classify laborlaw content into category based on heading and content."""
+        if not section_title and not text:
+            return 'general'
+
+        combined = f"{section_title or ''} {text[:500]}"
+
+        patterns = [
+            (r'총칙|목적|정의|적용\s*범위', 'general_provisions'),
+            (r'근로계약|해고|계약기간|퇴직', 'employment_contract'),
+            (r'임금|급여|최저임금|금품\s*청산|체불|퇴직급여', 'wages'),
+            (r'근로시간|휴식|휴일|휴가|연차|연장\s*근로|야간\s*근로|탄력적', 'working_hours'),
+            (r'여성|소년|임산부|생리|육아|모성', 'women_minors'),
+            (r'안전|보건|산업재해|산재', 'safety_health'),
+            (r'괴롭힘', 'workplace_harassment'),
+            (r'재해\s*보상|요양|휴업\s*보상|장해|유족', 'accident_compensation'),
+            (r'취업규칙', 'work_rules'),
+            (r'기숙사', 'dormitory'),
+            (r'근로감독|벌칙|과태료|양벌', 'enforcement_penalties'),
+            (r'고용보험|실업', 'employment_insurance'),
+            (r'파견|기간제|단시간|비정규', 'non_regular_workers'),
+            (r'노동조합|단체교섭|쟁의|파업', 'labor_unions'),
+            (r'차별|균등|평등|성희롱', 'discrimination'),
+            (r'4대\s*보험|국민연금|건강보험|장기요양', 'social_insurance'),
+        ]
+
+        for pattern, category in patterns:
+            if re.search(pattern, combined):
+                return category
+
+        return 'general'
+
+    def _extract_article_number(self, text: str) -> Optional[str]:
+        """Extract article number (조) from law text."""
+        match = re.search(r'제\d+조(?:의\d+)?', text[:300])
+        return match.group(0) if match else None
+
+    # ========================================
+    # Field-training domain metadata extraction
+    # ========================================
+
+    def _extract_field_training_metadata(self, source_file: str, text: str) -> Dict:
+        """Extract field-training-specific metadata from file path and content."""
+
+        meta = {}
+        normalized_path = unicodedata.normalize('NFC', source_file)
+
+        # Detect cardbook vs health guide
+        cardbook_match = re.search(r'카드북(\d+)_(.+?)_웹용', normalized_path)
+        if cardbook_match:
+            meta['training_type'] = 'cardbook'
+            meta['cardbook_number'] = int(cardbook_match.group(1))
+            meta['equipment_type'] = cardbook_match.group(2).replace('_', ' ')
+        elif '건강관리' in normalized_path and '길잡이' in normalized_path:
+            meta['training_type'] = 'health_guide'
+        else:
+            meta['training_type'] = 'training_material'
+
+        return meta
+
+    def _classify_field_training_section(self, section_title: str, text: str) -> str:
+        """Classify field-training section type from heading patterns."""
         if not section_title:
             return 'general'
 
-        # Strip markdown bold and extra whitespace
         title = re.sub(r'\*+', '', section_title).strip()
-        # Normalize middle-dot variants (・, ‧, ·) to a single space
-        title = re.sub(r'[・‧·]', ' ', title)
 
         patterns = [
-            (r'필요\s*지식', 'required_knowledge'),
-            (r'수행\s*순서', 'performance_procedure'),
-            (r'수행\s*내용', 'performance_content'),
-            (r'수행\s*tip', 'performance_tip'),
-            (r'학습\s*목표', 'learning_objective'),
-            (r'학습모듈의\s*목표', 'learning_objective'),
-            (r'평가\s*준거', 'evaluation_criteria'),
-            (r'평가\s*방법', 'evaluation_method'),
-            (r'평가자\s*체크리스트', 'evaluation_checklist'),
-            (r'평가자\s*질문', 'evaluation_question'),
-            (r'서술형\s*시험', 'evaluation_written'),
-            (r'논술형\s*시험', 'evaluation_essay'),
-            (r'구두\s*발표', 'evaluation_oral'),
-            (r'피드백', 'feedback'),
-            (r'교수\s*방법', 'teaching_method'),
-            (r'학습\s*방법', 'learning_method'),
-            (r'안전\s*유의\s*사항', 'safety_notes'),
-            (r'안전\s*유의사항', 'safety_notes'),
-            (r'핵심\s*용어', 'key_terms'),
-            (r'선수\s*학습|선수학습', 'prerequisite'),
-            (r'기기\s*\(?\s*장비', 'equipment'),
-            (r'재료\s*자료', 'materials'),
-            (r'학습모듈의\s*내용\s*체계', 'module_structure'),
-            (r'NCS\s*학습모듈의\s*위치', 'module_position'),
-            (r'NCS\s*학습모듈이란', 'module_intro'),
-            (r'학습\s+(\d+)', 'learning_unit'),
+            (r'특성|특징|구조', 'characteristics'),
+            (r'재해발생\s*유형|위험요인|위험\s*유형|주요\s*위험', 'accident_types'),
+            (r'안전수칙|안전\s*수칙|안전조치', 'safety_rules'),
+            (r'공정개요|공정\s*개요|제조공정', 'process_overview'),
+            (r'유해요인|유해\s*위험|노출특성|사용물질', 'hazard_factors'),
+            (r'건강관리|건강\s*관리|건강영향|건강\s*영향', 'health_management'),
+            (r'보호구|보호장비|호흡보호', 'protective_equipment'),
+            (r'MSDS|물질안전|경고표지', 'msds_info'),
+            (r'비상|응급|세척설비', 'emergency'),
+            (r'차례|목차', 'table_of_contents'),
         ]
 
         for pattern, section_type in patterns:
@@ -619,12 +763,29 @@ class SemanticChunker:
 
         return 'general'
 
-    def _extract_learning_unit(self, section_title: str) -> Optional[int]:
-        """Extract learning unit number from section title."""
-        if not section_title:
-            return None
-        match = re.search(r'학습\s*(\d+)', section_title)
-        return int(match.group(1)) if match else None
+    def _classify_hazard_category(self, text: str) -> Optional[str]:
+        """Classify hazard type from content keywords."""
+        sample = text[:500]
+
+        hazard_patterns = [
+            (r'끼임|말림|감김', 'entanglement'),
+            (r'베임|절단|절삭', 'cuts'),
+            (r'맞음|비산|날림|튀어', 'struck_by'),
+            (r'넘어짐|미끄러짐|추락', 'falls'),
+            (r'화학물질|유기용제|불산|황산|암모니아', 'chemical_exposure'),
+            (r'분진|흡입|가스', 'dust_inhalation'),
+            (r'소음|진동', 'noise_vibration'),
+            (r'감전|전기|누전', 'electrical'),
+            (r'화재|폭발|인화', 'fire_explosion'),
+            (r'방사선|X-선|UV|자외선', 'radiation'),
+            (r'고온|저온|열상|동상', 'temperature'),
+        ]
+
+        for pattern, hazard in hazard_patterns:
+            if re.search(pattern, sample):
+                return hazard
+
+        return None
 
     def _add_contextual_prefix(
         self,
@@ -686,13 +847,25 @@ class SemanticChunker:
             document_summary = self._generate_document_summary(text)
             section_titles = self._extract_section_titles(text)
 
-        # Detect NCS document and extract metadata
-        is_ncs = bool(re.search(r'LM\d{10}', source_file))
-        ncs_metadata = self._extract_ncs_metadata(source_file, text) if is_ncs else {}
+        # Detect document domain and extract metadata
 
-        # Step 1: Split by structure (NCS-aware or default)
+        normalized_source = unicodedata.normalize('NFC', source_file)
+
+        is_ncs = bool(re.search(r'LM\d{10}', source_file))
+        is_laborlaw = '/laborlaw/' in normalized_source
+        is_field_training = '/현장실습/' in normalized_source or '카드북' in normalized_source
+
+        ncs_metadata = self._extract_ncs_metadata(source_file, text) if is_ncs else {}
+        laborlaw_metadata = self._extract_laborlaw_metadata(source_file, text) if is_laborlaw else {}
+        ft_metadata = self._extract_field_training_metadata(source_file, text) if is_field_training else {}
+
+        # Step 1: Split by structure (domain-aware)
         if is_ncs:
             segments = self._split_by_ncs_structure(text)
+        elif is_laborlaw:
+            segments = self._split_by_laborlaw_structure(text)
+        elif is_field_training:
+            segments = self._split_by_field_training_structure(text)
         else:
             segments = self._split_by_structure(text)
 
@@ -791,6 +964,24 @@ class SemanticChunker:
                 learning_unit = self._extract_learning_unit(section_title)
                 if learning_unit is not None:
                     chunk_metadata['learning_unit'] = learning_unit
+
+            # Add laborlaw-specific metadata
+            if laborlaw_metadata:
+                chunk_metadata.update(laborlaw_metadata)
+                law_category = self._classify_laborlaw_category(section_title, segment)
+                chunk_metadata['law_category'] = law_category
+                article = self._extract_article_number(segment)
+                if article:
+                    chunk_metadata['article_number'] = article
+
+            # Add field-training-specific metadata
+            if ft_metadata:
+                chunk_metadata.update(ft_metadata)
+                ft_section_type = self._classify_field_training_section(section_title, segment)
+                chunk_metadata['ft_section_type'] = ft_section_type
+                hazard = self._classify_hazard_category(segment)
+                if hazard:
+                    chunk_metadata['hazard_category'] = hazard
 
             chunk = Chunk(
                 content=enhanced_content,
