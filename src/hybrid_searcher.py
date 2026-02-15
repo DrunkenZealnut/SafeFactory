@@ -3,6 +3,7 @@ Hybrid Searcher Module
 Combines BM25 keyword search with vector search using Reciprocal Rank Fusion (RRF).
 """
 
+import hashlib
 import os
 import re
 import logging
@@ -179,7 +180,7 @@ class HybridSearcher:
         for rank, doc in enumerate(vector_results, start=1):
             # Create unique identifier from content hash
             content = doc.get('metadata', {}).get('content', '')
-            doc_id = hash(content[:200])  # Use first 200 chars for ID
+            doc_id = hashlib.md5(content[:200].encode()).hexdigest()  # Use first 200 chars for ID
 
             if doc_id not in rrf_scores:
                 rrf_scores[doc_id] = {
@@ -198,7 +199,7 @@ class HybridSearcher:
                 continue
 
             content = doc.get('metadata', {}).get('content', '')
-            doc_id = hash(content[:200])
+            doc_id = hashlib.md5(content[:200].encode()).hexdigest()
 
             if doc_id not in rrf_scores:
                 rrf_scores[doc_id] = {

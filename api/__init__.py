@@ -65,10 +65,10 @@ def init_api(app):
             for endpoint in ('v1.api_ask', 'v1.api_ask_stream'):
                 fn = app.view_functions.get(endpoint)
                 if fn:
-                    limiter.limit("20 per minute")(fn)
+                    app.view_functions[endpoint] = limiter.limit("20 per minute")(fn)
             fn = app.view_functions.get('v1.api_search')
             if fn:
-                limiter.limit("30 per minute")(fn)
+                app.view_functions['v1.api_search'] = limiter.limit("30 per minute")(fn)
         except ImportError:
             import logging
             logging.warning("[Rate Limit] flask-limiter not installed, skipping rate limiting")

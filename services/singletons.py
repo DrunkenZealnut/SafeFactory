@@ -15,6 +15,14 @@ _hybrid_searcher = None
 _uploader = None
 
 
+def _require_env(name):
+    """Return env var value or raise with a clear message."""
+    value = os.getenv(name)
+    if not value:
+        raise RuntimeError(f"환경 변수 {name}이(가) 설정되지 않았습니다. .env 파일을 확인하세요.")
+    return value
+
+
 def get_openai_client():
     """Get or create OpenAI client with SSL certificate configuration."""
     global _openai_client
@@ -26,8 +34,9 @@ def get_openai_client():
                 from openai import OpenAI
                 http_client = httpx.Client(verify=certifi.where())
                 _openai_client = OpenAI(
-                    api_key=os.getenv("OPENAI_API_KEY"),
-                    http_client=http_client
+                    api_key=_require_env("OPENAI_API_KEY"),
+                    http_client=http_client,
+                    timeout=60.0
                 )
     return _openai_client
 
@@ -40,8 +49,8 @@ def get_agent():
             if _agent is None:
                 from src.agent import PineconeAgent
                 _agent = PineconeAgent(
-                    openai_api_key=os.getenv("OPENAI_API_KEY"),
-                    pinecone_api_key=os.getenv("PINECONE_API_KEY"),
+                    openai_api_key=_require_env("OPENAI_API_KEY"),
+                    pinecone_api_key=_require_env("PINECONE_API_KEY"),
                     pinecone_index_name=os.getenv("PINECONE_INDEX_NAME", "document-index"),
                     create_index_if_not_exists=False
                 )
@@ -55,7 +64,7 @@ def get_query_enhancer():
         with _lock:
             if _query_enhancer is None:
                 from src.query_enhancer import QueryEnhancer
-                _query_enhancer = QueryEnhancer(os.getenv("OPENAI_API_KEY"))
+                _query_enhancer = QueryEnhancer(_require_env("OPENAI_API_KEY"))
     return _query_enhancer
 
 
@@ -66,7 +75,7 @@ def get_context_optimizer():
         with _lock:
             if _context_optimizer is None:
                 from src.context_optimizer import ContextOptimizer
-                _context_optimizer = ContextOptimizer(os.getenv("OPENAI_API_KEY"))
+                _context_optimizer = ContextOptimizer(_require_env("OPENAI_API_KEY"))
     return _context_optimizer
 
 
@@ -79,7 +88,7 @@ def get_pinecone_client():
         logging.warning(f"Failed to get Pinecone client from agent: {e}")
         try:
             from pinecone import Pinecone
-            return Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
+            return Pinecone(api_key=_require_env("PINECONE_API_KEY"))
         except Exception as e2:
             logging.error(f"Failed to create standalone Pinecone client: {e2}")
             return None
@@ -116,7 +125,7 @@ def get_uploader():
             if _uploader is None:
                 from src.pinecone_uploader import PineconeUploader
                 _uploader = PineconeUploader(
-                    api_key=os.getenv("PINECONE_API_KEY"),
+                    api_key=_require_env("PINECONE_API_KEY"),
                     index_name=os.getenv("PINECONE_INDEX_NAME", "document-index"),
                     create_if_not_exists=False
                 )

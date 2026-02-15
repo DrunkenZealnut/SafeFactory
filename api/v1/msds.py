@@ -96,8 +96,16 @@ def msds_identify():
         if not image_data:
             return error_response('이미지 데이터가 없습니다.', 400)
 
-        # Remove data URL prefix if present
+        # Extract MIME type and remove data URL prefix if present
+        mime_type = "image/jpeg"
         if ',' in image_data:
+            prefix = image_data.split(',')[0]
+            if 'png' in prefix:
+                mime_type = "image/png"
+            elif 'gif' in prefix:
+                mime_type = "image/gif"
+            elif 'webp' in prefix:
+                mime_type = "image/webp"
             image_data = image_data.split(',')[1]
 
         # Use OpenAI Vision API to identify chemical
@@ -125,7 +133,7 @@ def msds_identify():
                         {
                             "type": "image_url",
                             "image_url": {
-                                "url": f"data:image/jpeg;base64,{image_data}"
+                                "url": f"data:{mime_type};base64,{image_data}"
                             }
                         }
                     ]
@@ -170,9 +178,7 @@ def msds_identify():
             )
 
     except json.JSONDecodeError as e:
-        return error_response(
-            f'응답 파싱 실패: {str(e)}', 422,
-            details={'raw_response': result_text}
-        )
+        logging.error(f"[API/msds/identify] JSON decode error: {str(e)}, raw: {result_text}")
+        return error_response('응답 파싱 실패', 422)
     except Exception as e:
         return error_response(str(e), 500)

@@ -50,7 +50,7 @@ class EmbeddingGenerator:
         """
         # Create httpx client with explicit SSL certificate verification
         http_client = httpx.Client(verify=certifi.where())
-        self.client = OpenAI(api_key=api_key, http_client=http_client)
+        self.client = OpenAI(api_key=api_key, http_client=http_client, timeout=60.0)
         self.model = model
 
         if model not in self.MODELS:

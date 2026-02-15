@@ -16,12 +16,16 @@ def api_health():
     """Health check endpoint for monitoring and native app connectivity."""
     services = {}
 
-    # Check Pinecone connectivity
+    # Check Pinecone connectivity with actual server query
     try:
         from services.singletons import get_agent
         agent = get_agent()
         if agent:
-            services['pinecone'] = 'connected'
+            try:
+                agent.get_stats()
+                services['pinecone'] = 'connected'
+            except Exception:
+                services['pinecone'] = 'degraded'
         else:
             services['pinecone'] = 'unavailable'
     except Exception:

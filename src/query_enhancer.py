@@ -40,7 +40,7 @@ class QueryEnhancer:
             temperature: Generation temperature
         """
         http_client = httpx.Client(verify=certifi.where())
-        self.client = OpenAI(api_key=openai_api_key, http_client=http_client)
+        self.client = OpenAI(api_key=openai_api_key, http_client=http_client, timeout=60.0)
         self.model = model
         self.temperature = temperature
 

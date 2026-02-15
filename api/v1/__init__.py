@@ -10,3 +10,4 @@ from api.v1 import search      # noqa: E402, F401
 from api.v1 import msds        # noqa: E402, F401
 from api.v1 import health      # noqa: E402, F401
 from api.v1 import calculator  # noqa: E402, F401
+from api.v1 import auth        # noqa: E402, F401

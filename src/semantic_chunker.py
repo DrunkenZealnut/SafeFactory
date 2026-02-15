@@ -305,7 +305,7 @@ class SemanticChunker:
         """
         # Create httpx client with explicit SSL certificate verification
         http_client = httpx.Client(verify=certifi.where())
-        self.client = OpenAI(api_key=openai_api_key, http_client=http_client)
+        self.client = OpenAI(api_key=openai_api_key, http_client=http_client, timeout=60.0)
         self.model = model
         self.max_chunk_tokens = max_chunk_tokens
         self.min_chunk_tokens = min_chunk_tokens

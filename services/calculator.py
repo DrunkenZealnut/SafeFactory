@@ -54,11 +54,7 @@ def calculate_insurance(
     }
     company_size = size_map.get(company_size_code, CompanySize.UNDER_150)
 
-    industry = IndustryType.OTHERS
-    for ind in IndustryType:
-        if ind.name == industry_code:
-            industry = ind
-            break
+    industry = getattr(IndustryType, industry_code, IndustryType.OTHERS)
 
     result = calc.calculate_all(
         monthly_income=monthly_income,

@@ -44,7 +44,7 @@ def api_namespaces():
         namespaces = []
         if stats.get('namespaces'):
             for ns_name in stats['namespaces'].keys():
-                namespaces.append(ns_name if ns_name else '')
+                namespaces.append(ns_name if ns_name else '(기본)')
 
         return success_response(data=namespaces)
     except Exception as e:
@@ -114,11 +114,14 @@ def api_delete():
             return error_response('요청 데이터가 없습니다.', 400)
         namespace = data.get('namespace', '')
         delete_all = data.get('delete_all', False)
+        confirm = data.get('confirm', False)
         source_file = data.get('source_file', '')
 
         uploader = get_uploader()
 
         if delete_all:
+            if not confirm:
+                return error_response('전체 삭제를 확인하려면 confirm=true를 포함해주세요.', 400)
             uploader.index.delete(delete_all=True, namespace=namespace)
             return success_response(message=f"네임스페이스 '{namespace or '(기본)'}' 의 모든 벡터가 삭제되었습니다.")
         elif source_file:

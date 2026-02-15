@@ -1,8 +1,10 @@
-"""Search, ask, and ask/stream (SSE) endpoints."""
+"""Search, ask, ask/stream (SSE), and PDF resolve endpoints."""
 
 import json
 import logging
+import re
 import unicodedata
+from urllib.parse import quote
 from flask import request, Response, stream_with_context
 
 from api.v1 import v1_bp
@@ -10,7 +12,21 @@ from api.response import success_response, error_response
 from services.singletons import get_agent, get_hybrid_searcher_instance
 from services.rag_pipeline import run_rag_pipeline, build_llm_messages, find_related_images
 from services.calculator import CALCULATOR_FUNCTIONS, handle_tool_calls, calculate_wage, calculate_insurance
-from services.domain_config import DOMAIN_PROMPTS, DEFAULT_SYSTEM_PROMPT
+from services.domain_config import DOCUMENTS_PATH, DOMAIN_PROMPTS, DEFAULT_SYSTEM_PROMPT
+
+
+def _collect_related_images(sources, max_images=12):
+    """Collect related images from source documents."""
+    related_images = []
+    seen_folders = set()
+    for source in sources:
+        source_file = source.get('source_file', '')
+        folder_key = '/'.join(source_file.split('/')[:3])
+        if folder_key not in seen_folders:
+            seen_folders.add(folder_key)
+            images = find_related_images(source_file)
+            related_images.extend(images)
+    return related_images[:max_images]
 
 
 @v1_bp.route('/search', methods=['POST'])
@@ -187,18 +203,7 @@ def api_ask():
         else:
             answer = response_message.content
 
-        # Collect related images from source documents
-        related_images = []
-        seen_folders = set()
-        for source in sources:
-            source_file = source.get('source_file', '')
-            folder_key = '/'.join(source_file.split('/')[:3])
-            if folder_key not in seen_folders:
-                seen_folders.add(folder_key)
-                images = find_related_images(source_file)
-                related_images.extend(images)
-
-        related_images = related_images[:12]
+        related_images = _collect_related_images(sources)
 
         return success_response(data={
             'query': query,
@@ -250,17 +255,7 @@ def api_ask_stream():
         try:
             calculation_results = []
 
-            # Collect related images
-            related_images = []
-            seen_folders = set()
-            for source in sources:
-                source_file = source.get('source_file', '')
-                folder_key = '/'.join(source_file.split('/')[:3])
-                if folder_key not in seen_folders:
-                    seen_folders.add(folder_key)
-                    images = find_related_images(source_file)
-                    related_images.extend(images)
-            related_images = related_images[:12]
+            related_images = _collect_related_images(sources)
 
             # Send metadata event first (sources, images, query info)
             metadata_event = json.dumps({
@@ -355,3 +350,81 @@ def api_ask_stream():
             'Connection': 'keep-alive'
         }
     )
+
+
+@v1_bp.route('/pdf/resolve', methods=['POST'])
+def api_pdf_resolve():
+    """Resolve a source_file path to its corresponding PDF URL.
+
+    Extracts the LM code from the source markdown path and searches
+    the ``documents/ncs/pdfs/`` directory tree for a matching PDF.
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return error_response('요청 데이터가 없습니다.', 400)
+
+        source_file = data.get('source_file', '').strip()
+        if not source_file:
+            return error_response('source_file이 필요합니다.', 400)
+
+        # Extract LM code (e.g. LM1903060409)
+        lm_match = re.search(r'(LM\d+)', source_file)
+        if not lm_match:
+            return success_response(data={'found': False, 'pdf_url': None})
+
+        lm_code = lm_match.group(1)
+
+        # Extract category from source path: ncs/data/<category>/LM.../...
+        parts = source_file.replace('\\', '/').split('/')
+        category = None
+        for i, part in enumerate(parts):
+            if part == 'data' and i + 1 < len(parts):
+                category = parts[i + 1]
+                break
+
+        pdfs_dir = DOCUMENTS_PATH / 'ncs' / 'pdfs'
+        found_pdf = None
+
+        # Search category subdirectory first (both NFC and NFD normalizations)
+        if category:
+            for norm_form in ('NFC', 'NFD'):
+                category_dir = pdfs_dir / unicodedata.normalize(norm_form, category)
+                try:
+                    if category_dir.exists():
+                        for pdf_file in category_dir.iterdir():
+                            if pdf_file.suffix.lower() == '.pdf' and lm_code in pdf_file.name:
+                                found_pdf = pdf_file
+                                break
+                except PermissionError:
+                    logging.warning(f"[API/pdf/resolve] Permission denied: {category_dir}")
+                    continue
+                if found_pdf:
+                    break
+
+        # Fallback: search all pdfs subdirectories
+        if not found_pdf and pdfs_dir.exists():
+            try:
+                for pdf_file in pdfs_dir.rglob('*.pdf'):
+                    if lm_code in pdf_file.name:
+                        found_pdf = pdf_file
+                        break
+            except PermissionError:
+                logging.warning(f"[API/pdf/resolve] Permission denied during rglob: {pdfs_dir}")
+
+        if found_pdf:
+            relative_path = found_pdf.relative_to(DOCUMENTS_PATH)
+            # Encode each path component individually to handle special characters (#, ?, &, spaces)
+            encoded_parts = '/'.join(quote(part, safe='') for part in relative_path.parts)
+            pdf_url = f'/documents/{encoded_parts}'
+            return success_response(data={
+                'found': True,
+                'pdf_url': pdf_url,
+                'filename': found_pdf.name,
+            })
+
+        return success_response(data={'found': False, 'pdf_url': None})
+
+    except Exception as e:
+        logging.exception(f"[API/pdf/resolve] Error: {str(e)}")
+        return error_response(str(e), 500)

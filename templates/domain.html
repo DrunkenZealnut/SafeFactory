@@ -66,6 +66,42 @@
         nav .nav-links {
             display: flex;
             gap: 20px;
+            align-items: center;
+        }
+
+        nav .user-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-left: 20px;
+            padding-left: 20px;
+            border-left: 1px solid rgba(255,255,255,0.15);
+        }
+
+        nav .user-avatar {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        nav .user-name {
+            color: #ccc;
+            font-size: 0.9rem;
+        }
+
+        nav .btn-login-sm {
+            background: rgba(255,255,255,0.1);
+            padding: 5px 14px;
+            border-radius: 6px;
+            color: #ccc;
+            font-size: 0.85rem;
+            margin-left: 20px;
+        }
+
+        nav .btn-login-sm:hover {
+            background: rgba(255,255,255,0.2);
+            color: #fff;
         }
 
         header {
@@ -861,6 +897,111 @@
             color: var(--primary-color);
         }
 
+        /* PDF Viewer Modal */
+        .pdf-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 3000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .pdf-modal-overlay.active {
+            display: flex;
+        }
+
+        .pdf-modal {
+            background: #1e1e2e;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 16px;
+            width: 90%;
+            max-width: 1000px;
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .pdf-modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            flex-shrink: 0;
+        }
+
+        .pdf-modal-title {
+            color: var(--primary-color);
+            font-size: 0.95rem;
+            font-weight: 600;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+            margin-right: 15px;
+        }
+
+        .pdf-modal-close {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: #aaa;
+            font-size: 1.4rem;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .pdf-modal-close:hover {
+            background: rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+        }
+
+        .pdf-modal-body {
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .pdf-modal-body iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .pdf-modal-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #888;
+            font-size: 1rem;
+        }
+
+        /* Clickable source file name */
+        .source-item-file.clickable {
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .source-item-file.clickable:hover {
+            color: #fff;
+            text-decoration: underline;
+        }
+
         /* Sample Question Links */
         .sample-question {
             cursor: pointer;
@@ -982,6 +1123,17 @@
             <div class="nav-links">
                 <a href="/semiconductor">🔬 반도체</a>
                 <a href="/laborlaw">⚖️ 노동법</a>
+                {% if current_user.is_authenticated %}
+                <div class="user-section">
+                    {% if current_user.profile_image %}
+                    <img src="{{ current_user.profile_image }}" alt="" class="user-avatar">
+                    {% endif %}
+                    <a href="/mypage">{{ current_user.name }}</a>
+                    <form action="/logout" method="POST" style="display:inline;margin:0;"><button type="submit" style="background:none;border:none;cursor:pointer;font:inherit;color:#fff;padding:0;text-decoration:none;font-size:1rem;transition:color 0.3s;">로그아웃</button></form>
+                </div>
+                {% else %}
+                <a href="/login" class="btn-login-sm">로그인</a>
+                {% endif %}
             </div>
         </div>
     </nav>
@@ -1209,6 +1361,19 @@
         <img id="lightboxImage" src="" alt="Full size image">
     </div>
 
+    <!-- PDF Viewer Modal -->
+    <div class="pdf-modal-overlay" id="pdfModal">
+        <div class="pdf-modal">
+            <div class="pdf-modal-header">
+                <span class="pdf-modal-title" id="pdfModalTitle">PDF 문서</span>
+                <button class="pdf-modal-close" onclick="closePdfModal()" title="닫기">&times;</button>
+            </div>
+            <div class="pdf-modal-body" id="pdfModalBody">
+                <div class="pdf-modal-loading">PDF를 불러오는 중...</div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Default namespace configuration
         const DEFAULT_NAMESPACE = '{{ config.namespace }}';
@@ -1420,7 +1585,7 @@
                     html += `
                         <div class="source-item" id="source-${index + 1}">
                             <div class="source-item-header">
-                                <span class="source-item-file">[${index + 1}] ${escapeHtml(sourceFile.split('/').pop())}</span>
+                                <span class="source-item-file clickable" data-source-file="${escapeHtml(sourceFile)}" onclick="openPdfViewer(this)" title="PDF 원본 보기">[${index + 1}] ${escapeHtml(sourceFile.split('/').pop())}</span>
                                 <span class="source-item-score">유사도: ${score}</span>
                             </div>
                             ${metaTags ? `<div class="source-item-meta">${metaTags}</div>` : ''}
@@ -1681,7 +1846,8 @@
                     body: JSON.stringify({
                         namespace,
                         source_file: sourceFile,
-                        delete_all: !sourceFile
+                        delete_all: !sourceFile,
+                        confirm: true
                     })
                 });
 
@@ -1748,6 +1914,61 @@
 
         // Reload sources when namespace changes
         document.getElementById('askNamespace').addEventListener('change', loadSources);
+
+        // ========================================
+        // PDF Viewer Modal
+        // ========================================
+        function openPdfViewer(el) {
+            const sourceFile = el.getAttribute('data-source-file');
+            if (!sourceFile) return;
+
+            const modal = document.getElementById('pdfModal');
+            const body = document.getElementById('pdfModalBody');
+            const title = document.getElementById('pdfModalTitle');
+
+            title.textContent = sourceFile.split('/').pop();
+            body.innerHTML = '<div class="pdf-modal-loading">PDF를 찾는 중...</div>';
+            modal.classList.add('active');
+
+            fetch('/api/pdf/resolve', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ source_file: sourceFile })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.data.found) {
+                    const pdfUrl = data.data.pdf_url;
+                    title.textContent = data.data.filename || sourceFile.split('/').pop();
+                    body.innerHTML = `<iframe src="${pdfUrl}"></iframe>`;
+                } else {
+                    body.innerHTML = '<div class="pdf-modal-loading">해당 소스 파일의 PDF를 찾을 수 없습니다.</div>';
+                }
+            })
+            .catch(err => {
+                console.error('PDF resolve error:', err);
+                body.innerHTML = '<div class="pdf-modal-loading">PDF 로드 중 오류가 발생했습니다.</div>';
+            });
+        }
+
+        function closePdfModal() {
+            const modal = document.getElementById('pdfModal');
+            const body = document.getElementById('pdfModalBody');
+            modal.classList.remove('active');
+            // Clear iframe to stop loading
+            body.innerHTML = '';
+        }
+
+        // Close PDF modal on ESC key or overlay click
+        document.getElementById('pdfModal').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) closePdfModal();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('pdfModal');
+                if (modal.classList.contains('active')) closePdfModal();
+            }
+        });
 
         // Initial load
         loadStats();

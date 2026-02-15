@@ -66,6 +66,7 @@ def run_rag_pipeline(data):
     try:
         top_k = max(1, min(int(data.get('top_k', 10)), 100))
     except (ValueError, TypeError):
+        logging.warning(f"[RAG] Invalid top_k value: {data.get('top_k')}, using default 10")
         top_k = 10
     use_enhancement = data.get('use_enhancement', True)
 

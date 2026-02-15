@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>마이페이지 - Pinecone Agent</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #e0e0e0;
+        }
+
+        .top-nav {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 12px 30px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .top-nav a {
+            color: #aaa;
+            text-decoration: none;
+            font-size: 0.95rem;
+            transition: color 0.2s;
+        }
+
+        .top-nav a:hover {
+            color: #00d4ff;
+        }
+
+        .top-nav .home-link {
+            font-size: 1.1rem;
+            color: #ccc;
+        }
+
+        .top-nav .spacer { flex: 1; }
+
+        .top-nav .btn-logout {
+            color: #888;
+            font-size: 0.85rem;
+        }
+
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            color: #00d4ff;
+            margin-bottom: 30px;
+        }
+
+        .profile-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 35px;
+            margin-bottom: 25px;
+        }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid rgba(0, 212, 255, 0.3);
+        }
+
+        .profile-avatar-placeholder {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(0, 212, 255, 0.15);
+            border: 3px solid rgba(0, 212, 255, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: #00d4ff;
+        }
+
+        .profile-name {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #e0e0e0;
+        }
+
+        .profile-role {
+            font-size: 0.85rem;
+            margin-top: 4px;
+            padding: 3px 10px;
+            border-radius: 10px;
+            display: inline-block;
+        }
+
+        .role-admin {
+            background: rgba(255, 152, 0, 0.15);
+            color: #ff9800;
+            border: 1px solid rgba(255, 152, 0, 0.3);
+        }
+
+        .role-user {
+            background: rgba(0, 212, 255, 0.15);
+            color: #00d4ff;
+            border: 1px solid rgba(0, 212, 255, 0.3);
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 120px 1fr;
+            gap: 15px 20px;
+        }
+
+        .info-label {
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        .info-value {
+            color: #e0e0e0;
+            font-size: 0.95rem;
+            word-break: break-all;
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            color: #e0e0e0;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .social-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .social-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+        }
+
+        .social-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.8rem;
+            flex-shrink: 0;
+        }
+
+        .social-icon.google {
+            background: #fff;
+            color: #4285F4;
+        }
+
+        .social-icon.kakao {
+            background: #FEE500;
+            color: #191919;
+        }
+
+        .social-provider {
+            font-weight: 500;
+            color: #e0e0e0;
+        }
+
+        .social-date {
+            color: #666;
+            font-size: 0.8rem;
+            margin-left: auto;
+        }
+
+        .btn-danger {
+            margin-top: 30px;
+            display: inline-block;
+            padding: 10px 24px;
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 10px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, 0.25);
+        }
+
+        @media (max-width: 480px) {
+            .profile-header {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .info-grid {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+
+            .info-label {
+                margin-top: 8px;
+                font-weight: 600;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="top-nav">
+        <a href="/" class="home-link">Pinecone Agent</a>
+        <span class="spacer"></span>
+        <a href="/mypage" style="color: #00d4ff;">마이페이지</a>
+        <form action="/logout" method="POST" style="display:inline;margin:0;"><button type="submit" class="btn-logout" style="background:none;border:none;cursor:pointer;font:inherit;color:inherit;padding:0;">로그아웃</button></form>
+    </nav>
+
+    <div class="container">
+        <h1>마이페이지</h1>
+
+        <div class="profile-card">
+            <div class="profile-header">
+                {% if current_user.profile_image %}
+                <img src="{{ current_user.profile_image }}" alt="" class="profile-avatar">
+                {% else %}
+                <div class="profile-avatar-placeholder">{{ current_user.name[0] if current_user.name else '?' }}</div>
+                {% endif %}
+                <div>
+                    <div class="profile-name">{{ current_user.name }}</div>
+                    <span class="profile-role {{ 'role-admin' if current_user.role == 'admin' else 'role-user' }}">
+                        {{ 'Admin' if current_user.role == 'admin' else 'User' }}
+                    </span>
+                </div>
+            </div>
+
+            <div class="info-grid">
+                <div class="info-label">이메일</div>
+                <div class="info-value">{{ current_user.email }}</div>
+
+                <div class="info-label">가입일</div>
+                <div class="info-value">{{ current_user.created_at.strftime('%Y-%m-%d %H:%M') if current_user.created_at else '-' }}</div>
+
+                <div class="info-label">마지막 로그인</div>
+                <div class="info-value">{{ current_user.last_login.strftime('%Y-%m-%d %H:%M') if current_user.last_login else '-' }}</div>
+            </div>
+        </div>
+
+        <div class="profile-card">
+            <div class="section-title">연결된 소셜 계정</div>
+            <div class="social-list">
+                {% for account in social_accounts %}
+                <div class="social-item">
+                    <div class="social-icon {{ account.provider }}">
+                        {% if account.provider == 'google' %}G{% else %}K{% endif %}
+                    </div>
+                    <span class="social-provider">
+                        {{ 'Google' if account.provider == 'google' else 'Kakao' }}
+                    </span>
+                    <span class="social-date">
+                        {{ account.created_at.strftime('%Y-%m-%d') if account.created_at else '' }}
+                    </span>
+                </div>
+                {% endfor %}
+                {% if not social_accounts %}
+                <div style="color: #666; text-align: center; padding: 15px;">
+                    연결된 소셜 계정이 없습니다.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <form action="/logout" method="POST" style="display:inline;margin:0;"><button type="submit" class="btn-danger" style="cursor:pointer;font:inherit;">로그아웃</button></form>
+    </div>
+</body>
+</html>

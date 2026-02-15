@@ -57,6 +57,36 @@
             font-weight: bold;
         }
 
+        nav .spacer {
+            flex: 1;
+        }
+
+        nav .user-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        nav .user-avatar {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        nav .btn-login-sm {
+            background: rgba(255,255,255,0.1);
+            padding: 5px 14px;
+            border-radius: 6px;
+            color: #ccc;
+            font-size: 0.85rem;
+        }
+
+        nav .btn-login-sm:hover {
+            background: rgba(255,255,255,0.2);
+            color: #fff;
+        }
+
         /* Header */
         header {
             text-align: center;
@@ -606,6 +636,18 @@
             <a href="/semiconductor">🔬 반도체</a>
             <a href="/laborlaw">⚖️ 노동법</a>
             <a href="/msds" class="current">{{ config.icon }} MSDS</a>
+            <span class="spacer"></span>
+            {% if current_user.is_authenticated %}
+            <div class="user-section">
+                {% if current_user.profile_image %}
+                <img src="{{ current_user.profile_image }}" alt="" class="user-avatar">
+                {% endif %}
+                <a href="/mypage">{{ current_user.name }}</a>
+                <form action="/logout" method="POST" style="display:inline;margin:0;"><button type="submit" style="background:none;border:none;cursor:pointer;font:inherit;color:#fff;padding:0;text-decoration:none;font-size:1rem;transition:color 0.3s;">로그아웃</button></form>
+            </div>
+            {% else %}
+            <a href="/login" class="btn-login-sm">로그인</a>
+            {% endif %}
         </nav>
 
         <!-- Header -->

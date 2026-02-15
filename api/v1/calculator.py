@@ -6,6 +6,18 @@ from api.v1 import v1_bp
 from api.response import success_response, error_response
 from services.calculator import calculate_wage, calculate_insurance
 
+VALID_COMPANY_SIZES = {'small', 'medium', 'large'}
+VALID_COMPANY_SIZE_CODES = {'UNDER_150', 'PRIORITY_SUPPORT', 'FROM_150_TO_999', 'OVER_1000'}
+VALID_INDUSTRY_CODES = {
+    'MINING_COAL', 'MINING_METAL', 'MINING_OTHER', 'FOOD_BEVERAGE', 'TEXTILE',
+    'WOOD_PAPER', 'CHEMICAL', 'CEMENT', 'METAL_BASIC', 'METAL_FABRICATION',
+    'MACHINERY', 'ELECTRONICS', 'ELECTRICAL', 'PRECISION', 'TRANSPORT_EQUIP',
+    'SHIP_BUILDING', 'OTHER_MANUFACTURING', 'ELECTRICITY_GAS_WATER',
+    'CONSTRUCTION', 'TRANSPORT_STORAGE', 'TELECOM', 'FINANCE_INSURANCE',
+    'PROFESSIONAL', 'WHOLESALE_RETAIL', 'REAL_ESTATE', 'EDUCATION',
+    'HEALTH_SOCIAL', 'ENTERTAINMENT', 'OTHERS',
+}
+
 
 @v1_bp.route('/calculate/wage', methods=['POST'])
 def api_calculate_wage():
@@ -36,6 +48,9 @@ def api_calculate_wage():
             return error_response('tax_free_monthly, dependents, children_8_to_20은 음수일 수 없습니다.', 400)
 
         company_size = data.get('company_size', 'small')
+        if company_size not in VALID_COMPANY_SIZES:
+            return error_response(
+                f'company_size는 {", ".join(sorted(VALID_COMPANY_SIZES))} 중 하나여야 합니다.', 400)
 
         result = calculate_wage(
             salary_type=salary_type,
@@ -75,7 +90,14 @@ def api_calculate_insurance():
             return error_response('non_taxable은 음수일 수 없습니다.', 400)
 
         company_size_code = data.get('company_size_code', 'UNDER_150')
+        if company_size_code not in VALID_COMPANY_SIZE_CODES:
+            return error_response(
+                f'company_size_code는 {", ".join(sorted(VALID_COMPANY_SIZE_CODES))} 중 하나여야 합니다.', 400)
+
         industry_code = data.get('industry_code', 'OTHERS')
+        if industry_code not in VALID_INDUSTRY_CODES:
+            return error_response(
+                f'유효하지 않은 industry_code입니다: {industry_code}', 400)
 
         result = calculate_insurance(
             monthly_income=monthly_income,

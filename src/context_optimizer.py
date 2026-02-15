@@ -55,7 +55,7 @@ class ContextOptimizer:
 
         if openai_api_key:
             http_client = httpx.Client(verify=certifi.where())
-            self.client = OpenAI(api_key=openai_api_key, http_client=http_client)
+            self.client = OpenAI(api_key=openai_api_key, http_client=http_client, timeout=60.0)
         else:
             self.client = None
 

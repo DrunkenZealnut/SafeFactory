@@ -17,14 +17,73 @@
             min-height: 100vh;
             color: #e0e0e0;
             display: flex;
+            flex-direction: column;
             align-items: center;
-            justify-content: center;
-            padding: 20px;
+            padding: 0;
+        }
+
+        .top-nav {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 12px 30px;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .top-nav a {
+            color: #aaa;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+
+        .top-nav a:hover {
+            color: #00d4ff;
+        }
+
+        .top-nav .user-name {
+            color: #e0e0e0;
+            font-size: 0.9rem;
+        }
+
+        .top-nav .user-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .top-nav .btn-login {
+            background: rgba(0, 212, 255, 0.15);
+            color: #00d4ff;
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            padding: 6px 16px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .top-nav .btn-login:hover {
+            background: rgba(0, 212, 255, 0.25);
+        }
+
+        .top-nav .btn-logout {
+            color: #888;
+            font-size: 0.85rem;
         }
 
         .container {
             max-width: 1000px;
             width: 100%;
+            padding: 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
 
         header {
@@ -221,6 +280,19 @@
     </style>
 </head>
 <body>
+    <nav class="top-nav">
+        {% if current_user.is_authenticated %}
+            {% if current_user.profile_image %}
+            <img src="{{ current_user.profile_image }}" alt="" class="user-avatar">
+            {% endif %}
+            <span class="user-name">{{ current_user.name }}</span>
+            <a href="/mypage">마이페이지</a>
+            <form action="/logout" method="POST" style="display:inline;margin:0;"><button type="submit" class="btn-logout" style="background:none;border:none;cursor:pointer;font:inherit;color:inherit;padding:0;">로그아웃</button></form>
+        {% else %}
+            <a href="/login" class="btn-login">로그인</a>
+        {% endif %}
+    </nav>
+
     <div class="container">
         <header>
             <h1>🤖 Pinecone Agent</h1>
