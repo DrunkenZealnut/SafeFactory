@@ -53,7 +53,7 @@ def estimate_metadata(namespace: str, folder_path: str, metadata_manager: Metada
 
             # Check if already exists
             existing = metadata_manager.get_file_metadata(namespace, source_file)
-            if existing and existing['status'] == 'completed':
+            if existing and existing.get('status') == 'completed':
                 skipped_count += 1
                 if skipped_count % 100 == 0:
                     print(f"  Skipped {skipped_count} existing records...")
@@ -84,7 +84,9 @@ def estimate_metadata(namespace: str, folder_path: str, metadata_manager: Metada
                 chunk_count=chunk_count,
                 vector_count=vector_count,
                 vector_ids=[],  # Empty for now
-                status='completed'
+                status='completed',
+                file_hash=file_hash,
+                file_size=file_size
             )
 
             if success:

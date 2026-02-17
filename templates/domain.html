@@ -42,7 +42,10 @@
             margin-bottom: 20px;
         }
 
-        nav .container {
+        nav .nav-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -51,8 +54,9 @@
         nav a {
             color: #fff;
             text-decoration: none;
-            font-size: 1rem;
+            font-size: 0.9rem;
             transition: color 0.3s;
+            white-space: nowrap;
         }
 
         nav a:hover {
@@ -60,13 +64,16 @@
         }
 
         nav .home-link {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
+            flex-shrink: 0;
         }
 
         nav .nav-links {
             display: flex;
-            gap: 20px;
+            gap: 12px;
             align-items: center;
+            flex-wrap: wrap;
+            justify-content: flex-end;
         }
 
         nav .user-section {
@@ -90,6 +97,10 @@
             font-size: 0.9rem;
         }
 
+        nav .admin-link {
+            color: #00d4ff !important;
+        }
+
         nav .btn-login-sm {
             background: rgba(255,255,255,0.1);
             padding: 5px 14px;
@@ -102,6 +113,18 @@
         nav .btn-login-sm:hover {
             background: rgba(255,255,255,0.2);
             color: #fff;
+        }
+
+        nav .btn-logout {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font: inherit;
+            color: #fff;
+            padding: 0;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.3s;
         }
 
         header {
@@ -122,61 +145,6 @@
         header p {
             color: #888;
             font-size: 1.1rem;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .stat-card {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 16px;
-            padding: 25px;
-            text-align: center;
-            transition: transform 0.3s, box-shadow 0.3s;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(var(--primary-color-rgb), 0.2);
-        }
-
-        .stat-card .icon {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-        }
-
-        .stat-card .value {
-            font-size: 2rem;
-            font-weight: bold;
-            color: var(--primary-color);
-        }
-
-        .stat-card .label {
-            color: #888;
-            font-size: 0.9rem;
-            margin-top: 5px;
-        }
-
-        .main-card {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 20px;
-            padding: 30px;
-            margin-bottom: 30px;
-        }
-
-        .main-card h2 {
-            color: var(--primary-color);
-            margin-bottom: 20px;
-            font-size: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
         }
 
         .search-form {
@@ -258,16 +226,6 @@
         .btn-ai:hover {
             transform: scale(1.02);
             box-shadow: 0 5px 20px rgba(156, 39, 176, 0.4);
-        }
-
-        .btn-danger {
-            background: linear-gradient(135deg, #ff4757 0%, #cc0022 100%);
-            color: #fff;
-        }
-
-        .btn-danger:hover {
-            transform: scale(1.02);
-            box-shadow: 0 5px 20px rgba(255, 71, 87, 0.4);
         }
 
         .btn:disabled {
@@ -752,31 +710,6 @@
             opacity: 1;
         }
 
-        .namespace-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 15px;
-        }
-
-        .namespace-tag {
-            background: rgba(var(--primary-color-rgb), 0.2);
-            color: var(--primary-color);
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .namespace-tag .count {
-            background: rgba(0, 0, 0, 0.3);
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 0.8rem;
-        }
-
         .loading {
             display: none;
             text-align: center;
@@ -842,37 +775,51 @@
             background: linear-gradient(135deg, #f44336 0%, #c62828 100%);
         }
 
+        .main-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+
         .tabs {
             display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
+            background: rgba(0, 0, 0, 0.3);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 0;
+            margin: 0;
         }
 
         .tab {
-            padding: 12px 24px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
+            flex: 1;
+            padding: 16px 20px;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
             color: #888;
             cursor: pointer;
             transition: all 0.3s;
+            font-size: 1rem;
+            font-weight: 500;
+            text-align: center;
         }
 
         .tab:hover {
-            background: rgba(255, 255, 255, 0.1);
+            color: #ccc;
+            background: rgba(255, 255, 255, 0.03);
         }
 
         .tab.active {
-            background: rgba(var(--primary-color-rgb), 0.2);
-            border-color: var(--primary-color);
             color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+            background: rgba(var(--primary-color-rgb), 0.05);
         }
 
         .tab.ai-tab.active {
-            background: rgba(156, 39, 176, 0.2);
-            border-color: #9c27b0;
             color: #ce93d8;
+            border-bottom-color: #9c27b0;
+            background: rgba(156, 39, 176, 0.05);
         }
 
         .tab-content {
@@ -881,6 +828,10 @@
 
         .tab-content.active {
             display: block;
+        }
+
+        .tab-body {
+            padding: 30px;
         }
 
         .hint {
@@ -1022,13 +973,18 @@
                 flex-direction: column;
             }
 
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
+            nav .nav-inner {
+                flex-direction: column;
+                gap: 10px;
             }
 
             nav .nav-links {
-                flex-direction: column;
-                gap: 10px;
+                gap: 8px;
+                justify-content: center;
+            }
+
+            nav a {
+                font-size: 0.8rem;
             }
         }
 
@@ -1118,18 +1074,26 @@
 <body>
     <!-- Navigation Bar -->
     <nav>
-        <div class="container">
+        <div class="nav-inner">
             <a href="/" class="home-link">🏠 홈</a>
             <div class="nav-links">
                 <a href="/semiconductor">🔬 반도체</a>
                 <a href="/laborlaw">⚖️ 노동법</a>
+                <a href="/field-training">🏭 현장실습</a>
+                <a href="/safeguide">🛡️ 안전보건</a>
+                <a href="/msds">🧪 MSDS</a>
+                <a href="/community">💬 커뮤니티</a>
                 {% if current_user.is_authenticated %}
                 <div class="user-section">
                     {% if current_user.profile_image %}
-                    <img src="{{ current_user.profile_image }}" alt="" class="user-avatar">
+                    <img src="{{ current_user.profile_image }}" alt="{{ current_user.name }}님의 프로필 사진" class="user-avatar">
                     {% endif %}
-                    <a href="/mypage">{{ current_user.name }}</a>
-                    <form action="/logout" method="POST" style="display:inline;margin:0;"><button type="submit" style="background:none;border:none;cursor:pointer;font:inherit;color:#fff;padding:0;text-decoration:none;font-size:1rem;transition:color 0.3s;">로그아웃</button></form>
+                    <span class="user-name">{{ current_user.name }}</span>
+                    {% if current_user.role == 'admin' %}
+                    <a href="/admin" class="admin-link">관리자</a>
+                    {% endif %}
+                    <a href="/mypage">마이페이지</a>
+                    <form action="/logout" method="POST" style="display:inline;margin:0;"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn-logout">로그아웃</button></form>
                 </div>
                 {% else %}
                 <a href="/login" class="btn-login-sm">로그인</a>
@@ -1147,45 +1111,16 @@
             <p>{{ config.description }}</p>
         </header>
 
-        <!-- Stats Cards -->
-        <div class="stats-grid" id="statsGrid">
-            <div class="stat-card">
-                <div class="icon">📊</div>
-                <div class="value" id="totalVectors">-</div>
-                <div class="label">총 벡터 수</div>
-            </div>
-            <div class="stat-card">
-                <div class="icon">📁</div>
-                <div class="value" id="namespaceCount">-</div>
-                <div class="label">네임스페이스</div>
-            </div>
-            <div class="stat-card">
-                <div class="icon">🔢</div>
-                <div class="value" id="dimension">-</div>
-                <div class="label">차원 (Dimension)</div>
-            </div>
-            <div class="stat-card">
-                <div class="icon">🗄️</div>
-                <div class="value" id="indexName">-</div>
-                <div class="label">인덱스</div>
-            </div>
-        </div>
-
+        <div class="main-panel">
         <!-- Tab Navigation -->
         <div class="tabs">
             <div class="tab ai-tab active" data-tab="ask">🤖 AI 질문</div>
             <div class="tab" data-tab="search">🔍 벡터 검색</div>
-            <div class="tab" data-tab="namespaces">📁 네임스페이스</div>
-            <div class="tab" data-tab="delete">🗑️ 삭제</div>
         </div>
 
         <!-- AI Ask Tab -->
         <div class="tab-content active" id="tab-ask">
-            <div class="main-card">
-                <h2>🤖 AI에게 질문하기</h2>
-                <p style="color: #888; margin-bottom: 20px;">
-                    {{ config.description }}
-                </p>
+            <div class="tab-body">
                 <form class="search-form" id="askForm">
                     <div class="search-input-group">
                         <label for="askQuery">질문 <span style="color: #9c27b0; font-size: 0.85rem;">(@로 문서 범위 지정 가능)</span></label>
@@ -1245,11 +1180,7 @@
 
         <!-- Search Tab -->
         <div class="tab-content" id="tab-search">
-            <div class="main-card">
-                <h2>🔍 문서 검색</h2>
-                <p style="color: #888; margin-bottom: 20px;">
-                    입력한 텍스트와 의미적으로 유사한 문서 청크를 검색합니다.
-                </p>
+            <div class="tab-body">
 
                 <!-- Search Mode Selector -->
                 <div class="search-mode-selector" id="searchModeSelector">
@@ -1312,44 +1243,7 @@
             </div>
         </div>
 
-        <!-- Namespaces Tab -->
-        <div class="tab-content" id="tab-namespaces">
-            <div class="main-card">
-                <h2>📁 네임스페이스 목록</h2>
-                <div class="namespace-list" id="namespaceList">
-                    <!-- Populated by JavaScript -->
-                </div>
-            </div>
-        </div>
-
-        <!-- Delete Tab -->
-        <div class="tab-content" id="tab-delete">
-            <div class="main-card">
-                <h2>🗑️ 벡터 삭제</h2>
-                <form class="search-form" id="deleteForm">
-                    <div class="search-row">
-                        <div class="search-input-group">
-                            <label for="deleteNamespace">네임스페이스</label>
-                            <select id="deleteNamespace" name="deleteNamespace">
-                                <option value="">전체 (기본)</option>
-                            </select>
-                        </div>
-                        <div class="search-input-group">
-                            <label for="sourceFile">소스 파일 경로 (선택)</label>
-                            <input type="text" id="sourceFile" name="sourceFile" placeholder="특정 파일만 삭제하려면 경로 입력...">
-                        </div>
-                    </div>
-                    <div class="search-row">
-                        <button type="submit" class="btn btn-danger">
-                            🗑️ 삭제
-                        </button>
-                    </div>
-                </form>
-                <p style="margin-top: 20px; color: #ff6b6b; font-size: 0.9rem;">
-                    ⚠️ 주의: 삭제된 벡터는 복구할 수 없습니다.
-                </p>
-            </div>
-        </div>
+        </div><!-- /main-panel -->
     </div>
 
     <!-- Toast Notification -->
@@ -1444,14 +1338,8 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    document.getElementById('totalVectors').textContent = data.data.total_vectors.toLocaleString();
-                    document.getElementById('namespaceCount').textContent = data.data.namespaces.length;
-                    document.getElementById('dimension').textContent = data.data.dimension;
-                    document.getElementById('indexName').textContent = data.data.index_name;
-
                     // Update namespace dropdowns
-                    const selects = ['namespace', 'askNamespace', 'deleteNamespace'];
-                    const namespaceList = document.getElementById('namespaceList');
+                    const selects = ['namespace', 'askNamespace'];
 
                     // Find namespace with most vectors for auto-selection
                     let maxVectorsNs = null;
@@ -1473,7 +1361,7 @@
                             select.appendChild(firstOption);
 
                             // Add "전체" (All namespaces) option for ask/search selects
-                            if (selectId !== 'deleteNamespace' && data.data.namespaces.length > 1) {
+                            if (data.data.namespaces.length > 1) {
                                 const allOption = document.createElement('option');
                                 allOption.value = 'all';
                                 allOption.textContent = `🔍 전체 검색 (${totalVectorCount.toLocaleString()}개)`;
@@ -1496,23 +1384,9 @@
                         }
                     });
 
-                    namespaceList.innerHTML = '';
-                    data.data.namespaces.forEach(ns => {
-                        const tag = document.createElement('div');
-                        tag.className = 'namespace-tag';
-                        tag.innerHTML = `
-                            <span>${ns.name}</span>
-                            <span class="count">${ns.vector_count.toLocaleString()}개</span>
-                        `;
-                        namespaceList.appendChild(tag);
-                    });
                 }
             } catch (error) {
                 console.error('Failed to load stats:', error);
-                document.getElementById('totalVectors').textContent = 'N/A';
-                document.getElementById('namespaceCount').textContent = 'N/A';
-                document.getElementById('dimension').textContent = 'N/A';
-                document.getElementById('indexName').textContent = '연결 실패';
             }
         }
 
@@ -1826,44 +1700,6 @@
             }
         });
 
-        // Delete functionality
-        document.getElementById('deleteForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            const namespace = document.getElementById('deleteNamespace').value;
-            const sourceFile = document.getElementById('sourceFile').value;
-
-            const confirmMsg = sourceFile
-                ? `'${sourceFile}' 파일의 벡터를 삭제하시겠습니까?`
-                : `네임스페이스 '${namespace || '(기본)'}' 의 모든 벡터를 삭제하시겠습니까?`;
-
-            if (!confirm(confirmMsg)) return;
-
-            try {
-                const response = await fetch('/api/delete', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        namespace,
-                        source_file: sourceFile,
-                        delete_all: !sourceFile,
-                        confirm: true
-                    })
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    showToast(data.message, 'success');
-                    loadStats();
-                } else {
-                    showToast(data.error, 'error');
-                }
-            } catch (error) {
-                showToast('삭제 중 오류가 발생했습니다.', 'error');
-            }
-        });
-
         // Escape HTML
         // escapeHtml function moved to common.js
 
@@ -1939,8 +1775,21 @@
             .then(data => {
                 if (data.success && data.data.found) {
                     const pdfUrl = data.data.pdf_url;
+                    try {
+                        const url = new URL(pdfUrl, window.location.origin);
+                        if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+                            body.innerHTML = '<div class="pdf-modal-loading">유효하지 않은 PDF URL입니다.</div>';
+                            return;
+                        }
+                    } catch (e) {
+                        body.innerHTML = '<div class="pdf-modal-loading">유효하지 않은 PDF URL입니다.</div>';
+                        return;
+                    }
                     title.textContent = data.data.filename || sourceFile.split('/').pop();
-                    body.innerHTML = `<iframe src="${pdfUrl}"></iframe>`;
+                    const iframe = document.createElement('iframe');
+                    iframe.src = pdfUrl;
+                    body.innerHTML = '';
+                    body.appendChild(iframe);
                 } else {
                     body.innerHTML = '<div class="pdf-modal-loading">해당 소스 파일의 PDF를 찾을 수 없습니다.</div>';
                 }

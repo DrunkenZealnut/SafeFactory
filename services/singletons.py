@@ -4,7 +4,7 @@ import os
 import logging
 import threading
 
-_lock = threading.Lock()
+_lock = threading.RLock()
 
 _agent = None
 _openai_client = None
@@ -13,6 +13,7 @@ _context_optimizer = None
 _reranker = None
 _hybrid_searcher = None
 _uploader = None
+_pinecone_client = None
 
 
 def _require_env(name):
@@ -81,17 +82,21 @@ def get_context_optimizer():
 
 def get_pinecone_client():
     """Get Pinecone client from agent or create standalone."""
-    try:
-        agent = get_agent()
-        return agent.pinecone_uploader.pc
-    except Exception as e:
-        logging.warning(f"Failed to get Pinecone client from agent: {e}")
-        try:
-            from pinecone import Pinecone
-            return Pinecone(api_key=_require_env("PINECONE_API_KEY"))
-        except Exception as e2:
-            logging.error(f"Failed to create standalone Pinecone client: {e2}")
-            return None
+    global _pinecone_client
+    if _pinecone_client is None:
+        with _lock:
+            if _pinecone_client is None:
+                try:
+                    agent = get_agent()
+                    _pinecone_client = agent.pinecone_uploader.pc
+                except Exception as e:
+                    logging.warning("Failed to get Pinecone client from agent: %s", e)
+                    try:
+                        from pinecone import Pinecone
+                        _pinecone_client = Pinecone(api_key=_require_env("PINECONE_API_KEY"))
+                    except Exception as e2:
+                        logging.error("Failed to create standalone Pinecone client: %s", e2)
+    return _pinecone_client
 
 
 def get_reranker_instance():

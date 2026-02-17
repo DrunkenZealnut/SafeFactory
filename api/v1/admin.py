@@ -565,7 +565,7 @@ def _full_pinecone_sync(uploader, namespaces):
     }
 
     ns_results = {}
-    with ThreadPoolExecutor(max_workers=len(active_ns) or 1) as ns_exec:
+    with ThreadPoolExecutor(max_workers=min(len(active_ns), 10) or 1) as ns_exec:
         ns_futures = {
             ns_exec.submit(_enumerate_namespace_sources, uploader, ns): ns
             for ns in active_ns
@@ -979,9 +979,9 @@ def admin_document_delete(doc_id):
             filter={'source_file': doc.source_file},
             namespace=doc.namespace,
         )
-    except Exception:
-        logging.warning('Pinecone document delete failed for %s (ns=%s), proceeding with DB deletion',
-                        doc.source_file, doc.namespace)
+    except Exception as e:
+        logging.warning('Pinecone document delete failed for %s (ns=%s): %s — orphan vectors may remain',
+                        doc.source_file, doc.namespace, e)
 
     _log_action('delete_document', 'document', doc_id, {
         'filename': doc.filename, 'namespace': doc.namespace,
@@ -1000,8 +1000,8 @@ def admin_namespace_delete(ns):
         from services.singletons import get_uploader
         uploader = get_uploader()
         uploader.index.delete(delete_all=True, namespace=ns)
-    except Exception:
-        logging.warning('Pinecone namespace delete failed for %s, proceeding with DB deletion', ns)
+    except Exception as e:
+        logging.warning('Pinecone namespace delete failed for %s: %s — orphan vectors may remain', ns, e)
 
     count = Document.query.filter_by(namespace=ns).delete()
     _log_action('delete_namespace', 'namespace', details={'namespace': ns, 'documents': count})
@@ -1202,7 +1202,7 @@ def admin_categories_list():
 @admin_required
 def admin_category_create():
     """Create a new category."""
-    data = request.get_json()
+    data = request.get_json(silent=True)
     if not data:
         return error_response('요청 데이터가 없습니다.', 400)
 
@@ -1238,7 +1238,7 @@ def admin_category_update(cat_id):
     if not cat:
         return error_response('카테고리를 찾을 수 없습니다.', 404)
 
-    data = request.get_json()
+    data = request.get_json(silent=True)
     if not data:
         return error_response('요청 데이터가 없습니다.', 400)
 
@@ -1379,7 +1379,7 @@ def admin_user_role(user_id):
     if not user:
         return error_response('사용자를 찾을 수 없습니다.', 404)
 
-    data = request.get_json()
+    data = request.get_json(silent=True)
     new_role = (data.get('role') or '').strip() if data else ''
     if new_role not in ('user', 'admin'):
         return error_response("역할은 'user' 또는 'admin'이어야 합니다.", 400)

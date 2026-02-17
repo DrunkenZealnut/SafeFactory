@@ -2,12 +2,12 @@
 
 import logging
 import os
-
-logger = logging.getLogger(__name__)
 import time
 import unicodedata
 from pathlib import Path
 from threading import Lock
+
+logger = logging.getLogger(__name__)
 
 from services.domain_config import DOCUMENTS_PATH
 
@@ -146,7 +146,12 @@ def scan_directory(relative_path='', file_types=None):
     result = {'directories': directories, 'files': files}
 
     with _cache_lock:
-        _cache[cache_key] = (time.time(), result)
+        # Double-check: another thread may have populated while we scanned
+        cached = _cache.get(cache_key)
+        if not cached or time.time() - cached[0] >= _CACHE_TTL:
+            _cache[cache_key] = (time.time(), result)
+        else:
+            result = cached[1]
 
     return result
 

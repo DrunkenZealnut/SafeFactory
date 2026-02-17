@@ -1,5 +1,7 @@
 """Standalone calculator endpoints for wage and insurance calculations."""
 
+import logging
+
 from flask import request
 
 from api.v1 import v1_bp
@@ -23,7 +25,7 @@ VALID_INDUSTRY_CODES = {
 def api_calculate_wage():
     """Calculate net salary, taxes, and social insurance from gross salary."""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return error_response('요청 데이터가 없습니다.', 400)
 
@@ -63,15 +65,16 @@ def api_calculate_wage():
 
         return success_response(data=result)
 
-    except Exception as e:
-        return error_response(str(e), 500)
+    except Exception:
+        logging.exception('Calculation failed')
+        return error_response('계산 중 오류가 발생했습니다.', 500)
 
 
 @v1_bp.route('/calculate/insurance', methods=['POST'])
 def api_calculate_insurance():
     """Calculate detailed social insurance premiums."""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return error_response('요청 데이터가 없습니다.', 400)
 
@@ -108,5 +111,6 @@ def api_calculate_insurance():
 
         return success_response(data=result)
 
-    except Exception as e:
-        return error_response(str(e), 500)
+    except Exception:
+        logging.exception('Calculation failed')
+        return error_response('계산 중 오류가 발생했습니다.', 500)

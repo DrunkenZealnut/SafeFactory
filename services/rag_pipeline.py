@@ -11,6 +11,7 @@ from services.domain_config import (
     DEFAULT_SYSTEM_PROMPT,
     COT_INSTRUCTIONS,
     VISUAL_GUIDELINES,
+    NAMESPACE_DOMAIN_MAP,
 )
 from services.filters import parse_mentions, build_domain_filter
 from services.singletons import (
@@ -23,7 +24,7 @@ from services.singletons import (
     get_uploader,
 )
 
-MIN_RELEVANCE_SCORE = 0.3
+MIN_RELEVANCE_SCORE = float(os.environ.get('MIN_RELEVANCE_SCORE', '0.3'))
 
 
 def find_related_images(source_file: str) -> list:
@@ -54,7 +55,7 @@ def find_related_images(source_file: str) -> list:
                             'name': img_file.name
                         })
     except Exception as e:
-        logging.warning(f"Error finding images: {e}")
+        logging.warning("Error finding images: %s", e)
     return images[:10]  # Limit to 10 images
 
 
@@ -66,7 +67,7 @@ def run_rag_pipeline(data):
     try:
         top_k = max(1, min(int(data.get('top_k', 10)), 100))
     except (ValueError, TypeError):
-        logging.warning(f"[RAG] Invalid top_k value: {data.get('top_k')}, using default 10")
+        logging.warning("[RAG] Invalid top_k value: %s, using default 10", data.get('top_k'))
         top_k = 10
     use_enhancement = data.get('use_enhancement', True)
 
@@ -110,20 +111,20 @@ def run_rag_pipeline(data):
             # HyDE: generate hypothetical document for longer queries
             if len(search_query) >= 30:
                 try:
-                    domain = 'laborlaw' if namespace == 'laborlaw' else 'semiconductor'
+                    domain = NAMESPACE_DOMAIN_MAP.get(namespace, 'semiconductor')
                     hyde_doc = query_enhancer.hyde(search_query, domain=domain)
                     if hyde_doc and hyde_doc != search_query:
                         enhanced_queries.append(hyde_doc)
                         logging.info(f"[HyDE] Added hypothetical document query")
                 except Exception as e:
-                    logging.warning(f"[HyDE] Failed: {e}")
+                    logging.warning("[HyDE] Failed: %s", e)
 
             # Extract keywords for potential filtering
             keywords = query_enhancer.extract_keywords(search_query)
             logging.info(f"[Query Enhancement] Keywords: {keywords}")
 
         except Exception as e:
-            logging.warning(f"[Query Enhancement] Failed: {e}, using original query")
+            logging.warning("[Query Enhancement] Failed: %s, using original query", e)
             enhanced_queries = [search_query]
 
     # ========================================
@@ -175,7 +176,7 @@ def run_rag_pipeline(data):
                     seen_ids.add(content_id)
                     all_results.append(r)
         except Exception as e:
-            logging.warning(f"[Search] Failed for query '{eq[:30]}...': {e}")
+            logging.warning("[Search] Failed for query '%.30s...': %s", eq, e)
 
     results = all_results
     logging.info(f"[Search] Retrieved {len(results)} unique documents from {len(enhanced_queries)} queries")
@@ -237,7 +238,7 @@ def run_rag_pipeline(data):
             )
             logging.info(f"[Hybrid Search] Applied BM25 + keyword boosting")
         except Exception as e:
-            logging.warning(f"[Hybrid Search] Failed: {e}, using vector results only")
+            logging.warning("[Hybrid Search] Failed: %s, using vector results only", e)
 
     # ========================================
     # Phase 5: Reranking
@@ -252,7 +253,7 @@ def run_rag_pipeline(data):
             )
             logging.info(f"[Reranking] Reranked to {len(results)} documents")
         except Exception as e:
-            logging.warning(f"[Reranking] Failed: {e}, using original order")
+            logging.warning("[Reranking] Failed: %s, using original order", e)
 
     # ========================================
     # Phase 6: Context Optimization
@@ -269,10 +270,14 @@ def run_rag_pipeline(data):
 
             logging.info(f"[Context Optimization] Final context: {len(results)} documents")
         except Exception as e:
-            logging.warning(f"[Context Optimization] Failed: {e}")
+            logging.warning("[Context Optimization] Failed: %s", e)
 
-    # Filter by minimum relevance score
-    results = [r for r in results if r.get('rerank_score', r.get('rrf_score', r.get('score', 0))) >= MIN_RELEVANCE_SCORE]
+    # Filter by minimum relevance score (per-request override via min_score)
+    try:
+        min_score = float(data.get('min_score', MIN_RELEVANCE_SCORE))
+    except (ValueError, TypeError):
+        min_score = MIN_RELEVANCE_SCORE
+    results = [r for r in results if r.get('rerank_score', r.get('rrf_score', r.get('score', 0))) >= min_score]
 
     # Limit to top_k after all processing
     results = results[:top_k]

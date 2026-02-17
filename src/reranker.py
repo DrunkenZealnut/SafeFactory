@@ -60,7 +60,7 @@ class Reranker:
                 )
                 logging.info(f"Loaded cross-encoder model: {model_path}")
             except Exception as e:
-                logging.error(f"Failed to load cross-encoder model: {e}")
+                logging.error("Failed to load cross-encoder model: %s", e)
                 self.model = None
 
     def rerank(
@@ -115,7 +115,7 @@ class Reranker:
             return reranked[:top_k]
 
         except Exception as e:
-            logging.error(f"Reranking failed: {e}")
+            logging.error("Reranking failed: %s", e)
             return docs[:top_k]
 
     def mmr(
@@ -300,7 +300,7 @@ class PineconeReranker:
             return reranked
 
         except Exception as e:
-            logging.error(f"Pinecone reranking failed: {e}")
+            logging.error("Pinecone reranking failed: %s", e)
             return docs[:top_k]
 
     def hybrid_rerank(
@@ -425,7 +425,7 @@ def get_reranker(
             logging.info("Using Pinecone Inference reranker (bge-reranker-v2-m3)")
             return reranker
         except Exception as e:
-            logging.warning(f"Pinecone reranker init failed: {e}, falling back to local")
+            logging.warning("Pinecone reranker init failed: %s, falling back to local", e)
 
     # Fallback to local cross-encoder
     if use_cross_encoder and CROSS_ENCODER_AVAILABLE:

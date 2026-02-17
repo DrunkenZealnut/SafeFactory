@@ -51,8 +51,9 @@ def msds_search():
 
         return success_response(data=result)
 
-    except Exception as e:
-        return error_response(str(e), 500)
+    except Exception:
+        logging.exception('MSDS API error')
+        return error_response('MSDS 조회 중 오류가 발생했습니다.', 500)
 
 
 @v1_bp.route('/msds/detail', methods=['POST'])
@@ -79,8 +80,9 @@ def msds_detail():
 
         return success_response(data=result)
 
-    except Exception as e:
-        return error_response(str(e), 500)
+    except Exception:
+        logging.exception('MSDS API error')
+        return error_response('MSDS 조회 중 오류가 발생했습니다.', 500)
 
 
 @v1_bp.route('/msds/identify', methods=['POST'])
@@ -99,14 +101,13 @@ def msds_identify():
         # Extract MIME type and remove data URL prefix if present
         mime_type = "image/jpeg"
         if ',' in image_data:
-            prefix = image_data.split(',')[0]
+            prefix, image_data = image_data.split(',', 1)
             if 'png' in prefix:
                 mime_type = "image/png"
             elif 'gif' in prefix:
                 mime_type = "image/gif"
             elif 'webp' in prefix:
                 mime_type = "image/webp"
-            image_data = image_data.split(',')[1]
 
         # Use OpenAI Vision API to identify chemical
         client = get_openai_client()
@@ -178,7 +179,8 @@ def msds_identify():
             )
 
     except json.JSONDecodeError as e:
-        logging.error(f"[API/msds/identify] JSON decode error: {str(e)}, raw: {result_text}")
+        logging.error("[API/msds/identify] JSON decode error: %s, raw: %.500s", e, result_text)
         return error_response('응답 파싱 실패', 422)
-    except Exception as e:
-        return error_response(str(e), 500)
+    except Exception:
+        logging.exception('MSDS API error')
+        return error_response('MSDS 조회 중 오류가 발생했습니다.', 500)

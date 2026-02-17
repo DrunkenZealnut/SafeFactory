@@ -127,5 +127,5 @@ cd ~/pinecone_agent
   source venv/bin/activate
   pip install -r requirements.txt
   pkill -f gunicorn; sleep 2
-  nohup venv/bin/gunicorn web_app:app --bind 127.0.0.1:5001 --workers 2 --timeout 120 > app.log 2>&1 &
+  nohup venv/bin/gunicorn web_app:app --bind 127.0.0.1:5001 --workers 2 --timeout 180 > app.log 2>&1 &
   curl -s http://localhost:5001/api/stats

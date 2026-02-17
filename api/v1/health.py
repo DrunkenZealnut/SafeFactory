@@ -5,7 +5,7 @@ import sys
 import time
 
 from api.v1 import v1_bp
-from api.response import success_response, error_response
+from api.response import success_response
 from services.domain_config import DOMAIN_CONFIG
 
 _start_time = time.time()
@@ -50,7 +50,27 @@ def api_health():
 @v1_bp.route('/domains', methods=['GET'])
 def api_domains():
     """Return domain configuration for native app dynamic rendering."""
+    from models import Category
+    try:
+        categories = Category.query.filter_by(is_active=True).order_by(Category.sort_order).all()
+    except Exception:
+        categories = []
+
+    community_config = {
+        'title': '커뮤니티',
+        'icon': '💬',
+        'color': '#7c4dff',
+        'color_rgb': '124, 77, 255',
+        'description': '질문, 정보공유, 자유로운 소통 공간',
+        'type': 'community',
+        'route': '/community',
+        'api_base': '/api/v1/community',
+        'categories': [c.to_dict() for c in categories],
+        'features': ['질문/답변', '정보공유', '자유게시판', '공지사항'],
+    }
+
     return success_response(data={
         'domains': DOMAIN_CONFIG,
-        'count': len(DOMAIN_CONFIG),
+        'community': community_config,
+        'count': len(DOMAIN_CONFIG) + 1,
     })

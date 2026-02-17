@@ -293,7 +293,7 @@ def main():
     for ns in namespaces:
         ns_info = stats['namespaces'][ns]
         ns_name = ns if ns else "(default)"
-        print(f"  - {ns_name}: {ns_info['vector_count']} vectors")
+        print(f"  - {ns_name}: {ns_info.get('vector_count', 0)} vectors")
 
     # Process each namespace
     total_saved = 0

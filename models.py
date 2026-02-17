@@ -398,8 +398,12 @@ def seed_categories():
         Category(name='자유', slug='free', description='자유로운 대화',
                  color='#9c27b0', icon='💬', sort_order=3),
     ]
-    db.session.add_all(defaults)
-    db.session.commit()
+    try:
+        db.session.add_all(defaults)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logging.warning("Failed to seed categories: %s", e)
 
 
 # ---------------------------------------------------------------------------

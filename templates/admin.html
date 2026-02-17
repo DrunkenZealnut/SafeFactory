@@ -544,8 +544,8 @@
                         <option value="orphaned">고아</option>
                     </select>
                     <select id="doc-type-filter">
-                        <option value="">전체 파일</option>
-                        <option value="md,pdf" selected>문서 (md, pdf)</option>
+                        <option value="" selected>전체 파일</option>
+                        <option value="md,pdf">문서 (md, pdf)</option>
                         <option value="md">마크다운만</option>
                         <option value="pdf">PDF만</option>
                         <option value="jpeg,jpg,png,gif,webp">이미지만</option>
@@ -760,9 +760,13 @@
     // ---------------------------------------------------------------------------
     // Utility
     // ---------------------------------------------------------------------------
+    const CSRF_TOKEN = '{{ csrf_token() }}';
+
     async function apiFetch(path, opts = {}) {
+        const csrfHeaders = opts.method && opts.method.toUpperCase() !== 'GET'
+            ? { 'X-CSRFToken': CSRF_TOKEN } : {};
         const res = await fetch(`${API}${path}`, {
-            headers: { 'Content-Type': 'application/json', ...opts.headers },
+            headers: { 'Content-Type': 'application/json', ...csrfHeaders, ...opts.headers },
             ...opts,
         });
         const contentType = res.headers.get('content-type');
@@ -812,6 +816,13 @@
         return d.innerHTML;
     }
 
+    function truncateJson(obj, maxLen = 60) {
+        if (!obj) return '-';
+        const str = JSON.stringify(obj);
+        if (str.length <= maxLen) return str;
+        return [...str].slice(0, maxLen).join('') + '...';
+    }
+
     // ---------------------------------------------------------------------------
     // Section Navigation
     // ---------------------------------------------------------------------------
@@ -858,7 +869,7 @@
                 <td>${escHtml(l.admin?.name || '-')}</td>
                 <td>${escHtml(l.action)}</td>
                 <td>${escHtml(l.target_type || '-')} ${l.target_id || ''}</td>
-                <td title="${escHtml(JSON.stringify(l.details))}">${escHtml(l.details ? JSON.stringify(l.details).slice(0,60) : '-')}</td>
+                <td title="${escHtml(JSON.stringify(l.details))}">${escHtml(truncateJson(l.details, 60))}</td>
             </tr>`).join('');
         } catch (e) { console.error(e); }
     }
@@ -1067,7 +1078,7 @@
                         <td>${docStatusBadge(d.status)}</td>
                         <td>${fmtDate(d.created_at)}</td>
                         <td>
-                            <button class="btn btn-danger btn-sm" onclick="deleteDocument(${d.id}, '${escHtml(d.filename)}')">삭제</button>
+                            <button class="btn btn-danger btn-sm" data-action="delete-doc" data-id="${d.id}" data-filename="${escHtml(d.filename)}">삭제</button>
                         </td>
                     </tr>`;
                 }).join('');
@@ -1152,9 +1163,9 @@
                         <td>${fmtDate(p.created_at)}</td>
                         <td>
                             <div class="btn-group">
-                                <button class="btn btn-sm ${p.is_pinned?'btn-warning':'btn'}" onclick="togglePin(${p.id})">${p.is_pinned?'고정해제':'고정'}</button>
-                                ${p.is_deleted ? `<button class="btn btn-success btn-sm" onclick="restorePost(${p.id})">복원</button>` : ''}
-                                <button class="btn btn-danger btn-sm" onclick="hardDeletePost(${p.id})">완전삭제</button>
+                                <button class="btn btn-sm ${p.is_pinned?'btn-warning':'btn'}" data-action="toggle-pin" data-id="${p.id}">${p.is_pinned?'고정해제':'고정'}</button>
+                                ${p.is_deleted ? `<button class="btn btn-success btn-sm" data-action="restore-post" data-id="${p.id}">복원</button>` : ''}
+                                <button class="btn btn-danger btn-sm" data-action="hard-delete-post" data-id="${p.id}">완전삭제</button>
                             </div>
                         </td>
                     </tr>`;
@@ -1322,8 +1333,8 @@
                     <td>${fmtDate(u.created_at)}</td>
                     <td>
                         <div class="btn-group">
-                            <button class="btn btn-sm" onclick="toggleRole(${u.id},'${u.role}')">${u.role==='admin'?'일반으로':'관리자로'}</button>
-                            <button class="btn btn-sm ${u.is_active?'btn-danger':'btn-success'}" onclick="toggleActive(${u.id})">${u.is_active?'비활성화':'활성화'}</button>
+                            <button class="btn btn-sm" data-action="toggle-role" data-id="${u.id}" data-role="${escHtml(u.role)}">${u.role==='admin'?'일반으로':'관리자로'}</button>
+                            <button class="btn btn-sm ${u.is_active?'btn-danger':'btn-success'}" data-action="toggle-active" data-id="${u.id}">${u.is_active?'비활성화':'활성화'}</button>
                         </div>
                     </td>
                 </tr>`).join('');
@@ -1432,7 +1443,7 @@
                     <td>${escHtml(l.action)}</td>
                     <td>${escHtml(l.target_type || '-')}</td>
                     <td>${l.target_id || '-'}</td>
-                    <td title="${escHtml(JSON.stringify(l.details))}">${escHtml(l.details ? JSON.stringify(l.details).slice(0,80) : '-')}</td>
+                    <td title="${escHtml(JSON.stringify(l.details))}">${escHtml(truncateJson(l.details, 80))}</td>
                 </tr>`).join('');
             }
             renderPagination('log-pagination', data.current_page, data.pages, 'loadLogs');
@@ -1469,6 +1480,35 @@
         let t;
         return function(...args) { clearTimeout(t); t = setTimeout(() => fn.apply(this, args), ms); };
     }
+
+    // ---------------------------------------------------------------------------
+    // Event delegation for data-action buttons (XSS-safe)
+    // ---------------------------------------------------------------------------
+    document.addEventListener('click', e => {
+        const btn = e.target.closest('[data-action]');
+        if (!btn) return;
+        const id = parseInt(btn.dataset.id);
+        switch (btn.dataset.action) {
+            case 'delete-doc':
+                deleteDocument(id, btn.dataset.filename);
+                break;
+            case 'toggle-pin':
+                togglePin(id);
+                break;
+            case 'restore-post':
+                restorePost(id);
+                break;
+            case 'hard-delete-post':
+                hardDeletePost(id);
+                break;
+            case 'toggle-role':
+                toggleRole(id, btn.dataset.role);
+                break;
+            case 'toggle-active':
+                toggleActive(id);
+                break;
+        }
+    });
 
     // ---------------------------------------------------------------------------
     // Section loader map + init

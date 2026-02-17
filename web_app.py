@@ -124,11 +124,25 @@ def _handle_oauth_callback(provider, user_info):
         provider=provider, provider_user_id=provider_user_id,
     ).first()
 
+    real_email = user_info.get('email')  # None if provider didn't supply one
+
     if social:
         user = social.user
         social.access_token = user_info.get('access_token')
         social.refresh_token = user_info.get('refresh_token')
         social.provider_data = user_info.get('raw')
+
+        # Upgrade placeholder email when a real one becomes available
+        if real_email and user.email.endswith('@oauth.local'):
+            existing_by_email = User.query.filter_by(email=real_email).first()
+            if existing_by_email and existing_by_email.id != user.id:
+                # Merge: move social accounts to the real-email user, delete placeholder
+                for sa in user.social_accounts:
+                    sa.user_id = existing_by_email.id
+                db.session.delete(user)
+                user = existing_by_email
+            else:
+                user.email = real_email
     else:
         # Find existing user by email or create new
         user = User.query.filter_by(email=email).first()

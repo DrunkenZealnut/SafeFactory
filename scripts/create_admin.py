@@ -27,25 +27,30 @@ def main():
     from models import db, User
 
     with app.app_context():
-        existing = User.query.filter_by(email=args.email).first()
-        if existing:
-            if existing.role == 'admin':
-                print(f"Admin already exists: {args.email}")
-            else:
-                existing.role = 'admin'
-                db.session.commit()
-                print(f"Updated to admin: {args.email} (existing name '{existing.name}' preserved)")
-            return
+        try:
+            existing = User.query.filter_by(email=args.email).first()
+            if existing:
+                if existing.role == 'admin':
+                    print(f"Admin already exists: {args.email}")
+                else:
+                    existing.role = 'admin'
+                    db.session.commit()
+                    print(f"Updated to admin: {args.email} (existing name '{existing.name}' preserved)")
+                return
 
-        user = User(
-            email=args.email,
-            name=args.name,
-            role='admin',
-        )
-        db.session.add(user)
-        db.session.commit()
-        print(f"Admin created: {args.email} ({args.name})")
-        print("This email will have admin privileges when logging in via social login.")
+            user = User(
+                email=args.email,
+                name=args.name,
+                role='admin',
+            )
+            db.session.add(user)
+            db.session.commit()
+            print(f"Admin created: {args.email} ({args.name})")
+            print("This email will have admin privileges when logging in via social login.")
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
 
 
 if __name__ == '__main__':

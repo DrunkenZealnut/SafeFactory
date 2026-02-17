@@ -5,26 +5,32 @@ from pathlib import Path
 # Documents folder path for serving images
 DOCUMENTS_PATH = Path(__file__).parent.parent / "documents"
 
+# ---------------------------------------------------------------------------
+# Directory-to-namespace mapping for filesystem sync
+# ---------------------------------------------------------------------------
+DIRECTORY_NAMESPACE_MAP = {
+    'ncs': '',                     # 반도체 (기본 네임스페이스)
+    'laborlaw': 'laborlaw',
+    '현장실습': 'field-training',
+    '안전보건공단': 'safeguide',
+}
+DEFAULT_NAMESPACE = ''
+
+
+def get_namespace_for_path(relative_path: str) -> str:
+    """Determine Pinecone namespace from a path relative to DOCUMENTS_PATH."""
+    parts = Path(relative_path).parts if relative_path else ()
+    top_dir = parts[0] if parts else ''
+    return DIRECTORY_NAMESPACE_MAP.get(top_dir, DEFAULT_NAMESPACE)
+
 # Domain-specific system prompts
 DOMAIN_PROMPTS = {
     "laborlaw": """당신은 한국 노동법 전문가입니다.
 제공된 법률 문서들을 바탕으로 사용자의 질문에 대해 정확한 답변을 제공합니다.
 
-## 계산기 도구 사용 (중요)
+## 계산 규칙 (참고 문서 기반)
 
-**임금 및 보험료 계산이 필요한 경우 반드시 제공된 함수를 사용하세요:**
-
-1. **calculate_wage**: 실수령액, 4대보험료, 소득세 계산
-   - 사용 시기: 연봉/월급에서 실제 받는 급여를 계산할 때
-   - 예시: "연봉 5000만원 실수령액은?", "월급 300만원 세금 얼마?"
-
-2. **calculate_insurance**: 4대보험료 상세 계산
-   - 사용 시기: 업종별/규모별 보험료를 자세히 알고 싶을 때
-   - 예시: "건설업 4대보험료는?", "300만원 국민연금 얼마?"
-
-**함수를 사용한 후에는 결과를 마크다운 표로 정리하여 보기 좋게 제시하세요.**
-
-## 필수 계산 규칙 (수동 계산 시)
+임금, 보험료 등의 계산이 필요한 경우 **반드시 제공된 참고 문서에 포함된 요율, 기준, 법조항을 근거**로 직접 계산하세요.
 
 ### 주휴수당
 - 조건: 주 15시간 이상 근무 시 의무 지급
@@ -40,12 +46,15 @@ DOMAIN_PROMPTS = {
 - 야간근로(22시~06시): 통상임금 × 1.5배
 - 휴일근로: 통상임금 × 1.5배 (8시간 초과 시 2.0배)
 
+### 4대보험료
+- 참고 문서에 포함된 보험료율을 사용하여 계산
+- 근로자 부담분과 사업주 부담분을 구분하여 표시
+
 ## 답변 지침
-1. **임금/보험료 계산 시 함수를 우선 사용**하고, 결과를 표로 정리
-2. 계산 과정을 단계별로 설명
+1. 계산 시 참고 문서의 요율·기준을 인용하고, 계산 과정을 단계별로 설명
+2. 계산 결과는 마크다운 표로 정리
 3. 관련 법조항 인용 시 [1], [2] 형식 사용
-4. 마크다운 표로 계산 내역 정리
-5. 문서에 없는 내용은 추측하지 마세요""",
+4. 문서에 없는 내용은 추측하지 마세요""",
 
     "field-training": """당신은 산업안전보건 전문가입니다.
 직업계고 현장실습생을 위한 안전보건 교육 자료를 바탕으로 답변합니다.
@@ -53,6 +62,17 @@ DOMAIN_PROMPTS = {
 답변 지침:
 1. 장비별 특성, 위험요인, 안전수칙을 체계적으로 설명
 2. 유해물질이 언급되면 보호장비 착용 지침을 반드시 포함
+3. 관련 법조항(산업안전보건법 등) 인용 시 [1], [2] 형식 사용
+4. 마크다운 표로 위험요인과 안전수칙을 정리
+5. 문서에 없는 내용은 추측하지 마세요
+6. **중요**: 이미지는 절대 직접 삽입하지 마세요. 관련 이미지는 시스템이 자동으로 표시합니다.""",
+
+    "safeguide": """당신은 안전보건공단의 안전보건 가이드 전문가입니다.
+안전보건공단에서 발행한 공식 안전보건 자료를 바탕으로 답변합니다.
+
+답변 지침:
+1. 산업 현장의 안전수칙, 위험요인, 예방대책을 체계적으로 설명
+2. 유해물질·위험기계 관련 질문 시 보호장비 착용 지침을 반드시 포함
 3. 관련 법조항(산업안전보건법 등) 인용 시 [1], [2] 형식 사용
 4. 마크다운 표로 위험요인과 안전수칙을 정리
 5. 문서에 없는 내용은 추측하지 마세요
@@ -126,6 +146,23 @@ DOMAIN_CONFIG = {
         ],
         'features': ['장비 안전', '유해요인', '안전수칙', '건강관리']
     },
+    'safeguide': {
+        'title': '안전보건 가이드',
+        'icon': '🛡️',
+        'namespace': 'safeguide',
+        'color': '#2196f3',
+        'color_rgb': '33, 150, 243',
+        'gradient_from': '#2196f3',
+        'gradient_to': '#1565c0',
+        'description': '안전보건공단 공식 안전보건 교육자료 검색',
+        'sample_questions': [
+            '작업장 안전수칙을 알려주세요',
+            '유해화학물질 취급 시 주의사항은?',
+            '보호구 착용 기준을 설명해주세요',
+            '산업재해 예방을 위한 안전관리는?'
+        ],
+        'features': ['안전수칙', '위험요인', '보호구', '예방대책']
+    },
     'msds': {
         'title': 'MSDS 화학물질 정보',
         'icon': '🧪',
@@ -144,6 +181,9 @@ DOMAIN_CONFIG = {
         'features': ['화학물질 검색', 'MSDS 정보', '안전 데이터', 'CAS 번호 조회']
     }
 }
+
+# Reverse mapping: namespace → domain key (e.g. 'laborlaw' → 'laborlaw', '' → 'semiconductor')
+NAMESPACE_DOMAIN_MAP = {cfg['namespace']: key for key, cfg in DOMAIN_CONFIG.items()}
 
 # Chain-of-Thought and visual guidelines (shared by ask and ask/stream)
 COT_INSTRUCTIONS = """

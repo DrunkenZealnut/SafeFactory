@@ -38,3 +38,6 @@ documents/
 
 # MSDS folder - API integration and sensitive files (PHP files, config with API keys, logs)
 msds/
+
+# User-uploaded files
+static/uploads/

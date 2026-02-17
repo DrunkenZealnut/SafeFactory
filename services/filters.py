@@ -8,6 +8,7 @@ def build_ncs_filter(query: str) -> Optional[dict]:
     """Build Pinecone metadata filter from NCS-related query patterns."""
     if not query:
         return None
+    query_lower = query.lower()
     filters = {}
 
     ncs_categories = {
@@ -18,7 +19,7 @@ def build_ncs_filter(query: str) -> Optional[dict]:
     }
     for cat, keywords in ncs_categories.items():
         for kw in keywords:
-            if kw in query:
+            if kw.lower() in query_lower:
                 filters['ncs_category'] = cat
                 break
         if 'ncs_category' in filters:
@@ -42,7 +43,7 @@ def build_ncs_filter(query: str) -> Optional[dict]:
     }
     for section_type, keywords in section_patterns.items():
         for kw in keywords:
-            if kw in query:
+            if kw.lower() in query_lower:
                 filters['ncs_section_type'] = section_type
                 break
         if 'ncs_section_type' in filters:
@@ -59,6 +60,7 @@ def build_laborlaw_filter(query: str) -> Optional[dict]:
     """Build Pinecone metadata filter for laborlaw queries."""
     if not query:
         return None
+    query_lower = query.lower()
     filters = {}
 
     content_type_patterns = {
@@ -68,7 +70,7 @@ def build_laborlaw_filter(query: str) -> Optional[dict]:
     }
     for ct, keywords in content_type_patterns.items():
         for kw in keywords:
-            if kw in query:
+            if kw.lower() in query_lower:
                 filters['content_type'] = ct
                 break
         if 'content_type' in filters:
@@ -90,7 +92,7 @@ def build_laborlaw_filter(query: str) -> Optional[dict]:
     }
     for category, keywords in category_patterns.items():
         for kw in keywords:
-            if kw in query:
+            if kw.lower() in query_lower:
                 filters['law_category'] = category
                 break
         if 'law_category' in filters:
@@ -108,7 +110,7 @@ def build_laborlaw_filter(query: str) -> Optional[dict]:
     }
     for law_name, keywords in law_name_patterns.items():
         for kw in keywords:
-            if kw in query:
+            if kw.lower() in query_lower:
                 filters['law_name'] = law_name
                 break
         if 'law_name' in filters:
@@ -125,14 +127,15 @@ def build_field_training_filter(query: str) -> Optional[dict]:
     """Build Pinecone metadata filter for field-training queries."""
     if not query:
         return None
+    query_lower = query.lower()
     filters = {}
 
-    if '카드북' in query:
+    if '카드북' in query_lower:
         filters['training_type'] = 'cardbook'
         cb_match = re.search(r'카드북\s*(\d+)', query)
         if cb_match:
             filters['cardbook_number'] = int(cb_match.group(1))
-    elif '건강관리' in query or '건강 관리' in query:
+    elif '건강관리' in query_lower or '건강 관리' in query_lower:
         filters['training_type'] = 'health_guide'
 
     equipment_patterns = {
@@ -145,7 +148,7 @@ def build_field_training_filter(query: str) -> Optional[dict]:
     }
     for equip_type, keywords in equipment_patterns.items():
         for kw in keywords:
-            if kw in query:
+            if kw.lower() in query_lower:
                 filters['equipment_type'] = equip_type
                 break
         if 'equipment_type' in filters:
@@ -163,7 +166,7 @@ def build_field_training_filter(query: str) -> Optional[dict]:
     }
     for section_type, keywords in section_patterns.items():
         for kw in keywords:
-            if kw in query:
+            if kw.lower() in query_lower:
                 filters['ft_section_type'] = section_type
                 break
         if 'ft_section_type' in filters:
@@ -179,7 +182,7 @@ def build_field_training_filter(query: str) -> Optional[dict]:
     }
     for hazard, keywords in hazard_patterns.items():
         for kw in keywords:
-            if kw in query:
+            if kw.lower() in query_lower:
                 filters['hazard_category'] = hazard
                 break
         if 'hazard_category' in filters:

@@ -25,55 +25,95 @@
         .top-nav {
             width: 100%;
             background: rgba(0, 0, 0, 0.3);
-            padding: 12px 30px;
+            padding: 15px 0;
+        }
+
+        .top-nav .nav-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
             display: flex;
-            justify-content: flex-end;
+            justify-content: space-between;
             align-items: center;
-            gap: 15px;
         }
 
         .top-nav a {
-            color: #aaa;
+            color: #fff;
             text-decoration: none;
             font-size: 0.9rem;
-            transition: color 0.2s;
+            transition: color 0.3s;
+            white-space: nowrap;
         }
 
         .top-nav a:hover {
             color: #00d4ff;
         }
 
+        .top-nav .home-link {
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+
+        .top-nav .nav-links {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .top-nav .user-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-left: 20px;
+            padding-left: 20px;
+            border-left: 1px solid rgba(255,255,255,0.15);
+        }
+
         .top-nav .user-name {
-            color: #e0e0e0;
+            color: #ccc;
             font-size: 0.9rem;
         }
 
         .top-nav .user-avatar {
-            width: 28px;
-            height: 28px;
+            width: 26px;
+            height: 26px;
             border-radius: 50%;
             object-fit: cover;
-            border: 1px solid rgba(255,255,255,0.2);
         }
 
-        .top-nav .btn-login {
-            background: rgba(0, 212, 255, 0.15);
-            color: #00d4ff;
-            border: 1px solid rgba(0, 212, 255, 0.3);
-            padding: 6px 16px;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            text-decoration: none;
-            transition: all 0.2s;
+        .top-nav .admin-link {
+            color: #00d4ff !important;
         }
 
-        .top-nav .btn-login:hover {
-            background: rgba(0, 212, 255, 0.25);
+        .top-nav .btn-login-sm {
+            background: rgba(255,255,255,0.1);
+            padding: 5px 14px;
+            border-radius: 6px;
+            color: #ccc;
+            font-size: 0.85rem;
+            margin-left: 20px;
+        }
+
+        .top-nav .btn-login-sm:hover {
+            background: rgba(255,255,255,0.2);
+            color: #fff;
         }
 
         .top-nav .btn-logout {
-            color: #888;
-            font-size: 0.85rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font: inherit;
+            color: #fff;
+            padding: 0;
+            font-size: 0.9rem;
+            transition: color 0.3s;
+        }
+
+        .top-nav .btn-logout:hover {
+            color: #00d4ff;
         }
 
         .container {
@@ -153,6 +193,15 @@
             box-shadow: 0 15px 40px rgba(233, 30, 99, 0.4);
         }
 
+        .domain-card.safeguide {
+            border-color: rgba(33, 150, 243, 0.3);
+        }
+
+        .domain-card.safeguide:hover {
+            border-color: #2196f3;
+            box-shadow: 0 15px 40px rgba(33, 150, 243, 0.4);
+        }
+
         .domain-card.msds {
             border-color: rgba(76, 175, 80, 0.3);
         }
@@ -183,6 +232,10 @@
 
         .domain-card.field-training .domain-title {
             color: #e91e63;
+        }
+
+        .domain-card.safeguide .domain-title {
+            color: #2196f3;
         }
 
         .domain-card.msds .domain-title {
@@ -226,46 +279,32 @@
             color: #e91e63;
         }
 
+        .domain-card.safeguide .feature-tag {
+            background: rgba(33, 150, 243, 0.2);
+            color: #2196f3;
+        }
+
         .domain-card.msds .feature-tag {
             background: rgba(76, 175, 80, 0.2);
             color: #4caf50;
         }
 
-        .stats-info {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 15px;
-            padding: 25px;
-            text-align: center;
+        .domain-card.community {
+            border-color: rgba(124, 77, 255, 0.3);
         }
 
-        .stats-info h3 {
-            color: #00d4ff;
-            margin-bottom: 15px;
+        .domain-card.community:hover {
+            border-color: #7c4dff;
+            box-shadow: 0 15px 40px rgba(124, 77, 255, 0.4);
         }
 
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 20px;
+        .domain-card.community .domain-title {
+            color: #7c4dff;
         }
 
-        .stat-item {
-            background: rgba(0, 0, 0, 0.3);
-            padding: 15px;
-            border-radius: 10px;
-        }
-
-        .stat-value {
-            font-size: 2rem;
-            font-weight: bold;
-            color: #00d4ff;
-        }
-
-        .stat-label {
-            color: #888;
-            font-size: 0.9rem;
-            margin-top: 5px;
+        .domain-card.community .feature-tag {
+            background: rgba(124, 77, 255, 0.2);
+            color: #7c4dff;
         }
 
         @media (max-width: 768px) {
@@ -276,21 +315,51 @@
             .domain-grid {
                 grid-template-columns: 1fr;
             }
+
+            .top-nav .nav-inner {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .top-nav .nav-links {
+                gap: 8px;
+                justify-content: center;
+            }
+
+            .top-nav a {
+                font-size: 0.8rem;
+            }
         }
     </style>
 </head>
 <body>
     <nav class="top-nav">
-        {% if current_user.is_authenticated %}
-            {% if current_user.profile_image %}
-            <img src="{{ current_user.profile_image }}" alt="" class="user-avatar">
-            {% endif %}
-            <span class="user-name">{{ current_user.name }}</span>
-            <a href="/mypage">마이페이지</a>
-            <form action="/logout" method="POST" style="display:inline;margin:0;"><button type="submit" class="btn-logout" style="background:none;border:none;cursor:pointer;font:inherit;color:inherit;padding:0;">로그아웃</button></form>
-        {% else %}
-            <a href="/login" class="btn-login">로그인</a>
-        {% endif %}
+        <div class="nav-inner">
+            <a href="/" class="home-link">🤖 Pinecone Agent</a>
+            <div class="nav-links">
+                <a href="/semiconductor">🔬 반도체</a>
+                <a href="/laborlaw">⚖️ 노동법</a>
+                <a href="/field-training">🏭 현장실습</a>
+                <a href="/safeguide">🛡️ 안전보건</a>
+                <a href="/msds">🧪 MSDS</a>
+                <a href="/community">💬 커뮤니티</a>
+                {% if current_user.is_authenticated %}
+                <div class="user-section">
+                    {% if current_user.profile_image %}
+                    <img src="{{ current_user.profile_image }}" alt="{{ current_user.name }}님의 프로필 사진" class="user-avatar">
+                    {% endif %}
+                    <span class="user-name">{{ current_user.name }}</span>
+                    {% if current_user.role == 'admin' %}
+                    <a href="/admin" class="admin-link">관리자</a>
+                    {% endif %}
+                    <a href="/mypage">마이페이지</a>
+                    <form action="/logout" method="POST" style="display:inline;margin:0;"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn-logout">로그아웃</button></form>
+                </div>
+                {% else %}
+                <a href="/login" class="btn-login-sm">로그인</a>
+                {% endif %}
+            </div>
+        </div>
     </nav>
 
     <div class="container">
@@ -345,6 +414,21 @@
                 </div>
             </a>
 
+            <a href="/safeguide" class="domain-card safeguide">
+                <div class="domain-icon">🛡️</div>
+                <div class="domain-title">안전보건 가이드</div>
+                <div class="domain-description">
+                    안전보건공단 공식 안전보건 교육자료<br>
+                    산업 현장 안전수칙 및 예방대책
+                </div>
+                <div class="domain-features">
+                    <span class="feature-tag">안전수칙</span>
+                    <span class="feature-tag">위험요인</span>
+                    <span class="feature-tag">보호구</span>
+                    <span class="feature-tag">예방대책</span>
+                </div>
+            </a>
+
             <a href="/msds" class="domain-card msds">
                 <div class="domain-icon">🧪</div>
                 <div class="domain-title">MSDS 화학물질</div>
@@ -359,51 +443,23 @@
                     <span class="feature-tag">CAS 번호</span>
                 </div>
             </a>
+
+            <a href="/community" class="domain-card community">
+                <div class="domain-icon">💬</div>
+                <div class="domain-title">커뮤니티</div>
+                <div class="domain-description">
+                    질문, 정보공유, 자유게시판<br>
+                    함께 소통하는 커뮤니티 공간
+                </div>
+                <div class="domain-features">
+                    <span class="feature-tag">질문/답변</span>
+                    <span class="feature-tag">정보공유</span>
+                    <span class="feature-tag">자유게시판</span>
+                    <span class="feature-tag">공지사항</span>
+                </div>
+            </a>
         </div>
 
-        <div class="stats-info">
-            <h3>📊 시스템 현황</h3>
-            <div class="stats-grid">
-                <div class="stat-item">
-                    <div class="stat-value" id="totalVectors">-</div>
-                    <div class="stat-label">총 문서</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value" id="namespaceCount">-</div>
-                    <div class="stat-label">도메인</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value" id="indexName">-</div>
-                    <div class="stat-label">인덱스</div>
-                </div>
-            </div>
-        </div>
     </div>
-
-    <script>
-        // Load stats
-        async function loadStats() {
-            try {
-                const response = await fetch('/api/stats');
-                const data = await response.json();
-
-                if (data.success) {
-                    document.getElementById('totalVectors').textContent =
-                        data.data.total_vectors.toLocaleString();
-                    document.getElementById('namespaceCount').textContent =
-                        data.data.namespaces.length;
-                    document.getElementById('indexName').textContent =
-                        data.data.index_name;
-                }
-            } catch (error) {
-                console.error('Failed to load stats:', error);
-                document.getElementById('totalVectors').textContent = 'N/A';
-                document.getElementById('namespaceCount').textContent = 'N/A';
-                document.getElementById('indexName').textContent = '연결 실패';
-            }
-        }
-
-        loadStats();
-    </script>
 </body>
 </html>

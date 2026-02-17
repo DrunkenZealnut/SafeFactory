@@ -25,7 +25,7 @@ def calculate_wage(
             children_8_to_20=children_8_to_20,
             company_size=company_size
         )
-    else:
+    elif salary_type == '월급':
         result = calc.calculate_from_monthly(
             monthly_salary=amount,
             tax_free_monthly=tax_free_monthly,
@@ -33,6 +33,8 @@ def calculate_wage(
             children_8_to_20=children_8_to_20,
             company_size=company_size
         )
+    else:
+        return {"error": f"잘못된 급여 유형: {salary_type}"}
 
     return result
 
@@ -54,7 +56,10 @@ def calculate_insurance(
     }
     company_size = size_map.get(company_size_code, CompanySize.UNDER_150)
 
-    industry = getattr(IndustryType, industry_code, IndustryType.OTHERS)
+    industry = getattr(IndustryType, industry_code, None)
+    if industry is None:
+        logging.warning("Unknown industry_code: %s, falling back to OTHERS", industry_code)
+        industry = IndustryType.OTHERS
 
     result = calc.calculate_all(
         monthly_income=monthly_income,
@@ -148,7 +153,10 @@ CALCULATOR_FUNCTIONS = [
 
 
 def handle_tool_calls(messages, response_message):
-    """Execute tool calls and return (calculation_results, updated_messages)."""
+    """Execute tool calls and return (calculation_results, updated_messages).
+
+    Note: Mutates ``messages`` in place by appending tool call/response entries.
+    """
     calculation_results = []
     messages.append(response_message)
 
@@ -157,7 +165,7 @@ def handle_tool_calls(messages, response_message):
         try:
             function_args = json.loads(tool_call.function.arguments)
         except json.JSONDecodeError as e:
-            logging.error(f"[Function Call] Invalid JSON args for {function_name}: {e}")
+            logging.error("[Function Call] Invalid JSON args for %s: %s", function_name, e)
             function_response = {"error": f"잘못된 함수 인자 형식: {str(e)}"}
             calculation_results.append({'function': function_name, 'args': {}, 'result': function_response})
             messages.append({
@@ -178,10 +186,10 @@ def handle_tool_calls(messages, response_message):
             else:
                 function_response = {"error": "Unknown function"}
         except Exception as e:
-            logging.error(f"[Function Call] Execution error in {function_name}: {e}")
+            logging.error("[Function Call] Execution error in %s: %s", function_name, e)
             function_response = {"error": f"함수 실행 오류: {str(e)}"}
 
-        calculation_results.append({'function': function_name, 'args': function_args, 'result': function_response})
+        calculation_results.append({'function': function_name, 'args': safe_args, 'result': function_response})
         messages.append({
             "role": "tool", "tool_call_id": tool_call.id,
             "name": function_name,

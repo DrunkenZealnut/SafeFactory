@@ -1,5 +1,6 @@
 """Index operations: stats, namespaces, sources, delete."""
 
+import logging
 import os
 from flask import request
 
@@ -21,7 +22,7 @@ def api_stats():
             for ns_name, ns_info in stats['namespaces'].items():
                 namespaces.append({
                     'name': ns_name if ns_name else '(기본)',
-                    'vector_count': ns_info['vector_count']
+                    'vector_count': ns_info.get('vector_count', 0)
                 })
 
         return success_response(data={
@@ -30,8 +31,9 @@ def api_stats():
             'total_vectors': stats.get('total_vector_count', 0),
             'namespaces': namespaces
         })
-    except Exception as e:
-        return error_response(str(e), 500)
+    except Exception:
+        logging.exception('Internal error')
+        return error_response('서버 내부 오류가 발생했습니다.', 500)
 
 
 @v1_bp.route('/namespaces')
@@ -47,8 +49,9 @@ def api_namespaces():
                 namespaces.append(ns_name if ns_name else '(기본)')
 
         return success_response(data=namespaces)
-    except Exception as e:
-        return error_response(str(e), 500)
+    except Exception:
+        logging.exception('Internal error')
+        return error_response('서버 내부 오류가 발생했습니다.', 500)
 
 
 @v1_bp.route('/sources')
@@ -101,15 +104,16 @@ def api_sources():
             'folders': sorted(folders),
             'files': sorted(files)
         })
-    except Exception as e:
-        return error_response(str(e), 500)
+    except Exception:
+        logging.exception('Internal error')
+        return error_response('서버 내부 오류가 발생했습니다.', 500)
 
 
 @v1_bp.route('/delete', methods=['POST'])
 def api_delete():
     """Delete vectors."""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return error_response('요청 데이터가 없습니다.', 400)
         namespace = data.get('namespace', '')
@@ -118,6 +122,8 @@ def api_delete():
         source_file = data.get('source_file', '')
 
         uploader = get_uploader()
+        if not getattr(uploader, 'index', None):
+            return error_response('인덱스에 연결할 수 없습니다.', 500)
 
         if delete_all:
             if not confirm:
@@ -136,5 +142,6 @@ def api_delete():
         else:
             return error_response('삭제할 대상을 지정해주세요.', 400)
 
-    except Exception as e:
-        return error_response(str(e), 500)
+    except Exception:
+        logging.exception('Internal error')
+        return error_response('서버 내부 오류가 발생했습니다.', 500)

@@ -3,16 +3,51 @@
 import json
 import logging
 import re
+import threading
+import time
 import unicodedata
 from urllib.parse import quote
 from flask import request, Response, stream_with_context
 
 from api.v1 import v1_bp
 from api.response import success_response, error_response
+from api import rate_limit
 from services.singletons import get_agent, get_hybrid_searcher_instance
 from services.rag_pipeline import run_rag_pipeline, build_llm_messages, find_related_images
-from services.calculator import CALCULATOR_FUNCTIONS, handle_tool_calls, calculate_wage, calculate_insurance
-from services.domain_config import DOCUMENTS_PATH, DOMAIN_PROMPTS, DEFAULT_SYSTEM_PROMPT
+from services.domain_config import DOCUMENTS_PATH
+
+# ---------------------------------------------------------------------------
+# PDF index cache – avoids repeated rglob over large directories
+# ---------------------------------------------------------------------------
+_pdf_index = {}          # lm_code -> Path
+_pdf_index_lock = threading.Lock()
+_pdf_index_ts = 0.0
+_PDF_INDEX_TTL = 300     # seconds
+
+
+def _get_pdf_index():
+    """Return a dict mapping LM codes to PDF paths, rebuilt every TTL seconds."""
+    global _pdf_index, _pdf_index_ts
+    now = time.monotonic()
+    if _pdf_index and (now - _pdf_index_ts) < _PDF_INDEX_TTL:
+        return _pdf_index
+    with _pdf_index_lock:
+        # Double-check after acquiring lock
+        if _pdf_index and (now - _pdf_index_ts) < _PDF_INDEX_TTL:
+            return _pdf_index
+        pdfs_dir = DOCUMENTS_PATH / 'ncs' / 'pdfs'
+        index = {}
+        if pdfs_dir.exists():
+            try:
+                for pdf_file in pdfs_dir.rglob('*.pdf'):
+                    m = re.search(r'(LM\d+)', pdf_file.name)
+                    if m:
+                        index[m.group(1)] = pdf_file
+            except PermissionError:
+                logging.warning("[PDF index] Permission denied: %s", pdfs_dir)
+        _pdf_index = index
+        _pdf_index_ts = time.monotonic()
+        return _pdf_index
 
 
 def _collect_related_images(sources, max_images=12):
@@ -30,10 +65,11 @@ def _collect_related_images(sources, max_images=12):
 
 
 @v1_bp.route('/search', methods=['POST'])
+@rate_limit("30 per minute")
 def api_search():
     """Search for similar content with optional hybrid/keyword modes."""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return error_response('요청 데이터가 없습니다.', 400)
         query = data.get('query', '').strip()
@@ -140,15 +176,17 @@ def api_search():
             'count': len(formatted_results),
             'results': formatted_results
         })
-    except Exception as e:
-        return error_response(str(e), 500)
+    except Exception:
+        logging.exception('Search failed')
+        return error_response('검색 중 오류가 발생했습니다.', 500)
 
 
 @v1_bp.route('/ask', methods=['POST'])
+@rate_limit("20 per minute")
 def api_ask():
     """RAG endpoint - search and generate comprehensive answer with enhanced retrieval."""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return error_response('요청 데이터가 없습니다.', 400)
         pipeline = run_rag_pipeline(data)
@@ -170,38 +208,14 @@ def api_ask():
         # ========================================
         messages = build_llm_messages(query, sources, context, namespace)
 
-        # Enable calculator functions only for laborlaw namespace
-        tools = CALCULATOR_FUNCTIONS if namespace == 'laborlaw' else None
-
-        # Initial GPT call (with function calling if tools available)
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=messages,
-            tools=tools,
-            tool_choice="auto" if tools else None,
             temperature=0.3,
             max_tokens=2500
         )
 
-        response_message = response.choices[0].message
-        tool_calls = response_message.tool_calls
-
-        # Handle function calls
-        calculation_results = []
-        if tool_calls:
-            calculation_results, messages = handle_tool_calls(messages, response_message)
-
-            # Get final response with function results
-            second_response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=messages,
-                temperature=0.3,
-                max_tokens=2500
-            )
-
-            answer = second_response.choices[0].message.content
-        else:
-            answer = response_message.content
+        answer = response.choices[0].message.content
 
         related_images = _collect_related_images(sources)
 
@@ -211,30 +225,30 @@ def api_ask():
             'sources': sources,
             'source_count': len(sources),
             'images': related_images,
-            'calculations': calculation_results if calculation_results else None,
             'enhancement_used': use_enhancement,
             'query_variations': enhanced_queries if use_enhancement else None,
             'keywords_extracted': keywords if use_enhancement else None
         })
 
-    except Exception as e:
-        logging.exception(f"[API/ask] Error: {str(e)}")
-        return error_response(str(e), 500)
+    except Exception:
+        logging.exception('[API/ask] Error')
+        return error_response('답변 생성 중 오류가 발생했습니다.', 500)
 
 
 @v1_bp.route('/ask/stream', methods=['POST'])
+@rate_limit("20 per minute")
 def api_ask_stream():
     """SSE streaming RAG endpoint - sends metadata first, then streams LLM answer token by token."""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return error_response('요청 데이터가 없습니다.', 400)
         pipeline = run_rag_pipeline(data)
     except ValueError as e:
         return error_response(str(e), 400)
-    except Exception as e:
-        logging.exception(f"[API/ask/stream] Pipeline error: {str(e)}")
-        return error_response(str(e), 500)
+    except Exception:
+        logging.exception('[API/ask/stream] Pipeline error')
+        return error_response('스트리밍 응답 생성 중 오류가 발생했습니다.', 500)
 
     if pipeline.get('early_response'):
         return success_response(data=pipeline['data'])
@@ -249,12 +263,9 @@ def api_ask_stream():
     client = pipeline['client']
 
     messages = build_llm_messages(query, sources, context, namespace)
-    tools = CALCULATOR_FUNCTIONS if namespace == 'laborlaw' else None
 
     def generate():
         try:
-            calculation_results = []
-
             related_images = _collect_related_images(sources)
 
             # Send metadata event first (sources, images, query info)
@@ -272,72 +283,29 @@ def api_ask_stream():
             }, ensure_ascii=False)
             yield f"data: {metadata_event}\n\n"
 
-            # If tools available, first call is non-streaming to check for tool_calls
-            if tools:
-                first_response = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=messages,
-                    tools=tools,
-                    tool_choice="auto",
-                    temperature=0.3,
-                    max_tokens=2500
-                )
-                response_message = first_response.choices[0].message
-
-                if response_message.tool_calls:
-                    calc_results, messages_updated = handle_tool_calls(messages, response_message)
-                    calculation_results = calc_results
-
-                    # Send calculation results event
-                    calc_event = json.dumps({
-                        'type': 'calculations',
-                        'data': calculation_results
-                    }, ensure_ascii=False)
-                    yield f"data: {calc_event}\n\n"
-
-                    # Stream the final response after tool calls
-                    stream = client.chat.completions.create(
-                        model="gpt-4o-mini",
-                        messages=messages_updated,
-                        temperature=0.3,
-                        max_tokens=2500,
-                        stream=True
-                    )
-                    for chunk in stream:
-                        if chunk.choices and chunk.choices[0].delta.content:
-                            token = chunk.choices[0].delta.content
-                            token_event = json.dumps({'type': 'token', 'data': token}, ensure_ascii=False)
-                            yield f"data: {token_event}\n\n"
-                else:
-                    # No tool calls - reuse the already-received response
-                    content = response_message.content or ""
-                    if content:
-                        token_event = json.dumps({'type': 'token', 'data': content}, ensure_ascii=False)
-                        yield f"data: {token_event}\n\n"
-            else:
-                # No tools - stream directly
-                stream = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=messages,
-                    temperature=0.3,
-                    max_tokens=2500,
-                    stream=True
-                )
-                for chunk in stream:
-                    if chunk.choices and chunk.choices[0].delta.content:
-                        token = chunk.choices[0].delta.content
-                        token_event = json.dumps({'type': 'token', 'data': token}, ensure_ascii=False)
-                        yield f"data: {token_event}\n\n"
+            # Stream LLM response
+            stream = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=messages,
+                temperature=0.3,
+                max_tokens=2500,
+                stream=True
+            )
+            for chunk in stream:
+                if chunk.choices and chunk.choices[0].delta.content:
+                    token = chunk.choices[0].delta.content
+                    token_event = json.dumps({'type': 'token', 'data': token}, ensure_ascii=False)
+                    yield f"data: {token_event}\n\n"
 
             # Send done event
             done_event = json.dumps({
                 'type': 'done',
-                'data': {'calculations': calculation_results if calculation_results else None}
+                'data': {}
             }, ensure_ascii=False)
             yield f"data: {done_event}\n\n"
 
         except Exception as e:
-            logging.exception(f"[API/ask/stream] Streaming error: {str(e)}")
+            logging.exception("[API/ask/stream] Streaming error: %s", e)
             error_event = json.dumps({'type': 'error', 'data': str(e)}, ensure_ascii=False)
             yield f"data: {error_event}\n\n"
 
@@ -360,7 +328,7 @@ def api_pdf_resolve():
     the ``documents/ncs/pdfs/`` directory tree for a matching PDF.
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return error_response('요청 데이터가 없습니다.', 400)
 
@@ -397,20 +365,15 @@ def api_pdf_resolve():
                                 found_pdf = pdf_file
                                 break
                 except PermissionError:
-                    logging.warning(f"[API/pdf/resolve] Permission denied: {category_dir}")
+                    logging.warning("[API/pdf/resolve] Permission denied: %s", category_dir)
                     continue
                 if found_pdf:
                     break
 
-        # Fallback: search all pdfs subdirectories
-        if not found_pdf and pdfs_dir.exists():
-            try:
-                for pdf_file in pdfs_dir.rglob('*.pdf'):
-                    if lm_code in pdf_file.name:
-                        found_pdf = pdf_file
-                        break
-            except PermissionError:
-                logging.warning(f"[API/pdf/resolve] Permission denied during rglob: {pdfs_dir}")
+        # Fallback: lookup from cached PDF index (avoids rglob on every request)
+        if not found_pdf:
+            pdf_index = _get_pdf_index()
+            found_pdf = pdf_index.get(lm_code)
 
         if found_pdf:
             relative_path = found_pdf.relative_to(DOCUMENTS_PATH)
@@ -425,6 +388,6 @@ def api_pdf_resolve():
 
         return success_response(data={'found': False, 'pdf_url': None})
 
-    except Exception as e:
-        logging.exception(f"[API/pdf/resolve] Error: {str(e)}")
-        return error_response(str(e), 500)
+    except Exception:
+        logging.exception('[API/pdf/resolve] Error')
+        return error_response('PDF 조회 중 오류가 발생했습니다.', 500)

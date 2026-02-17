@@ -63,7 +63,7 @@ def backfill_folder(
 
             # Check if already in database
             existing = metadata_manager.get_file_metadata(namespace, source_file)
-            if existing and existing['status'] == 'completed':
+            if existing and existing.get('status') == 'completed':
                 skipped_count += 1
                 if verbose and skipped_count % 100 == 0:
                     print(f"  Skipped {skipped_count} existing records...")

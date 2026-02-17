@@ -19,18 +19,26 @@
         }
 
         .top-nav {
+            width: 100%;
             background: rgba(0, 0, 0, 0.3);
-            padding: 12px 30px;
+            padding: 15px 0;
+        }
+
+        .top-nav .nav-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
             display: flex;
+            justify-content: space-between;
             align-items: center;
-            gap: 15px;
         }
 
         .top-nav a {
-            color: #aaa;
+            color: #fff;
             text-decoration: none;
-            font-size: 0.95rem;
-            transition: color 0.2s;
+            font-size: 0.9rem;
+            transition: color 0.3s;
+            white-space: nowrap;
         }
 
         .top-nav a:hover {
@@ -39,14 +47,69 @@
 
         .top-nav .home-link {
             font-size: 1.1rem;
-            color: #ccc;
+            flex-shrink: 0;
         }
 
-        .top-nav .spacer { flex: 1; }
+        .top-nav .nav-links {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .top-nav .user-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-left: 20px;
+            padding-left: 20px;
+            border-left: 1px solid rgba(255,255,255,0.15);
+        }
+
+        .top-nav .user-avatar {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .top-nav .user-name {
+            color: #ccc;
+            font-size: 0.9rem;
+        }
+
+        .top-nav .admin-link {
+            color: #00d4ff !important;
+        }
+
+        .top-nav .btn-login-sm {
+            background: rgba(255,255,255,0.1);
+            padding: 5px 14px;
+            border-radius: 6px;
+            color: #ccc;
+            font-size: 0.85rem;
+            margin-left: 20px;
+        }
+
+        .top-nav .btn-login-sm:hover {
+            background: rgba(255,255,255,0.2);
+            color: #fff;
+        }
 
         .top-nav .btn-logout {
-            color: #888;
-            font-size: 0.85rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font: inherit;
+            color: #fff;
+            padding: 0;
+            font-size: 0.9rem;
+            transition: color 0.3s;
+        }
+
+        .top-nav .btn-logout:hover {
+            color: #00d4ff;
         }
 
         .container {
@@ -233,10 +296,32 @@
 </head>
 <body>
     <nav class="top-nav">
-        <a href="/" class="home-link">Pinecone Agent</a>
-        <span class="spacer"></span>
-        <a href="/mypage" style="color: #00d4ff;">마이페이지</a>
-        <form action="/logout" method="POST" style="display:inline;margin:0;"><button type="submit" class="btn-logout" style="background:none;border:none;cursor:pointer;font:inherit;color:inherit;padding:0;">로그아웃</button></form>
+        <div class="nav-inner">
+            <a href="/" class="home-link">🏠 홈</a>
+            <div class="nav-links">
+                <a href="/semiconductor">🔬 반도체</a>
+                <a href="/laborlaw">⚖️ 노동법</a>
+                <a href="/field-training">🏭 현장실습</a>
+                <a href="/safeguide">🛡️ 안전보건</a>
+                <a href="/msds">🧪 MSDS</a>
+                <a href="/community">💬 커뮤니티</a>
+                {% if current_user.is_authenticated %}
+                <div class="user-section">
+                    {% if current_user.profile_image %}
+                    <img src="{{ current_user.profile_image }}" alt="{{ current_user.name }}님의 프로필 사진" class="user-avatar">
+                    {% endif %}
+                    <span class="user-name">{{ current_user.name }}</span>
+                    {% if current_user.role == 'admin' %}
+                    <a href="/admin" class="admin-link">관리자</a>
+                    {% endif %}
+                    <a href="/mypage" style="color: #00d4ff;">마이페이지</a>
+                    <form action="/logout" method="POST" style="display:inline;margin:0;"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn-logout">로그아웃</button></form>
+                </div>
+                {% else %}
+                <a href="/login" class="btn-login-sm">로그인</a>
+                {% endif %}
+            </div>
+        </div>
     </nav>
 
     <div class="container">
@@ -293,7 +378,7 @@
             </div>
         </div>
 
-        <form action="/logout" method="POST" style="display:inline;margin:0;"><button type="submit" class="btn-danger" style="cursor:pointer;font:inherit;">로그아웃</button></form>
+        <form action="/logout" method="POST" style="display:inline;margin:0;"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn-danger" style="cursor:pointer;font:inherit;">로그아웃</button></form>
     </div>
 </body>
 </html>

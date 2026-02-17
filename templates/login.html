@@ -189,7 +189,7 @@
             {% endwith %}
 
             <div class="social-buttons">
-                <a href="{{ url_for('login_google') }}" class="social-btn btn-google">
+                <a href="{{ url_for('login_google') }}" class="social-btn btn-google" aria-label="Google 계정으로 로그인">
                     <svg viewBox="0 0 24 24">
                         <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
                         <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -199,7 +199,7 @@
                     Google로 로그인
                 </a>
 
-                <a href="{{ url_for('login_kakao') }}" class="social-btn btn-kakao">
+                <a href="{{ url_for('login_kakao') }}" class="social-btn btn-kakao" aria-label="Kakao 계정으로 로그인">
                     <svg viewBox="0 0 24 24">
                         <path fill="#191919" d="M12 3C6.477 3 2 6.463 2 10.691c0 2.72 1.794 5.11 4.504 6.46-.199.744-.72 2.696-.826 3.114-.13.516.19.509.398.37.164-.109 2.612-1.775 3.672-2.497.733.104 1.49.16 2.252.16 5.523 0 10-3.463 10-7.607C22 6.463 17.523 3 12 3z"/>
                     </svg>

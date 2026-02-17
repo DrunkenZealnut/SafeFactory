@@ -4,6 +4,7 @@ Handles uploading vectors to Pinecone index.
 """
 
 import hashlib
+import logging
 import time
 from typing import List, Dict, Optional, Any
 from dataclasses import dataclass
@@ -181,7 +182,7 @@ class PineconeUploader:
             )
             return True
         except Exception as e:
-            print(f"Error uploading vector {vector.id}: {e}")
+            logging.error("Error uploading vector %s: %s", vector.id, e)
             return False
 
     def upload_batch(
@@ -217,7 +218,7 @@ class PineconeUploader:
                 )
                 results["success"] += len(batch)
             except Exception as e:
-                print(f"Error uploading batch {i//batch_size}: {e}")
+                logging.error("Error uploading batch %d: %s", i//batch_size, e)
                 results["failed"] += len(batch)
 
         return results
@@ -304,8 +305,7 @@ class PineconeUploader:
             return combined[:top_k]
 
         except Exception as e:
-            import logging
-            logging.error(f"Multi-namespace query failed: {e}")
+            logging.error("Multi-namespace query failed: %s", e)
             # Fallback: sequential queries
             all_results = []
             for ns in namespaces:
@@ -329,7 +329,7 @@ class PineconeUploader:
             self.index.delete(ids=ids, namespace=namespace)
             return True
         except Exception as e:
-            print(f"Error deleting vectors: {e}")
+            logging.error("Error deleting vectors: %s", e)
             return False
 
     def delete_by_filter(self, filter: Dict, namespace: str = "") -> bool:
@@ -338,7 +338,7 @@ class PineconeUploader:
             self.index.delete(filter=filter, namespace=namespace)
             return True
         except Exception as e:
-            print(f"Error deleting vectors: {e}")
+            logging.error("Error deleting vectors: %s", e)
             return False
 
     def get_stats(self) -> Dict:
