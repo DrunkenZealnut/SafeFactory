@@ -1,0 +1,1494 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Pinecone Agent</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #e0e0e0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Top Nav */
+        .top-nav {
+            width: 100%;
+            background: rgba(0,0,0,0.4);
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            z-index: 100;
+        }
+        .top-nav .back-link {
+            color: #888;
+            text-decoration: none;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .top-nav .back-link:hover { color: #00d4ff; }
+        .top-nav h1 {
+            font-size: 1.2rem;
+            color: #00d4ff;
+            flex: 1;
+        }
+        .top-nav .user-info {
+            color: #aaa;
+            font-size: 0.85rem;
+        }
+
+        /* Layout */
+        .admin-layout {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 220px;
+            background: rgba(0,0,0,0.3);
+            border-right: 1px solid rgba(255,255,255,0.08);
+            padding: 20px 0;
+            flex-shrink: 0;
+            overflow-y: auto;
+        }
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 24px;
+            color: #999;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.95rem;
+            border-left: 3px solid transparent;
+        }
+        .sidebar-item:hover {
+            color: #e0e0e0;
+            background: rgba(255,255,255,0.05);
+        }
+        .sidebar-item.active {
+            color: #00d4ff;
+            background: rgba(0,212,255,0.08);
+            border-left-color: #00d4ff;
+        }
+        .sidebar-icon { font-size: 1.1rem; width: 24px; text-align: center; }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+            min-width: 0;
+        }
+        .section { display: none; }
+        .section.active { display: block; }
+        .section-title {
+            font-size: 1.5rem;
+            color: #fff;
+            margin-bottom: 24px;
+        }
+
+        /* Cards Grid */
+        .stat-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+        .stat-card .stat-icon { font-size: 2rem; margin-bottom: 8px; }
+        .stat-card .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #00d4ff;
+        }
+        .stat-card .stat-label {
+            color: #888;
+            font-size: 0.85rem;
+            margin-top: 4px;
+        }
+
+        /* Tables */
+        .table-wrapper {
+            overflow-x: auto;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        th {
+            background: rgba(0,0,0,0.3);
+            padding: 12px 16px;
+            text-align: left;
+            color: #aaa;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        td {
+            padding: 12px 16px;
+            border-top: 1px solid rgba(255,255,255,0.06);
+            max-width: 250px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        tr:hover td { background: rgba(255,255,255,0.03); }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 8px;
+            background: rgba(255,255,255,0.08);
+            color: #e0e0e0;
+            font-size: 0.82rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn:hover { background: rgba(255,255,255,0.15); }
+        .btn-primary {
+            background: rgba(0,212,255,0.2);
+            border-color: rgba(0,212,255,0.4);
+            color: #00d4ff;
+        }
+        .btn-primary:hover { background: rgba(0,212,255,0.35); }
+        .btn-danger {
+            background: rgba(244,67,54,0.15);
+            border-color: rgba(244,67,54,0.3);
+            color: #f44336;
+        }
+        .btn-danger:hover { background: rgba(244,67,54,0.3); }
+        .btn-success {
+            background: rgba(76,175,80,0.15);
+            border-color: rgba(76,175,80,0.3);
+            color: #4caf50;
+        }
+        .btn-success:hover { background: rgba(76,175,80,0.3); }
+        .btn-warning {
+            background: rgba(255,152,0,0.15);
+            border-color: rgba(255,152,0,0.3);
+            color: #ff9800;
+        }
+        .btn-warning:hover { background: rgba(255,152,0,0.3); }
+        .btn-group { display: flex; gap: 6px; flex-wrap: wrap; }
+        .btn-sm { padding: 4px 10px; font-size: 0.78rem; }
+
+        /* Toolbar */
+        .toolbar {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .toolbar input, .toolbar select {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 8px;
+            padding: 8px 14px;
+            color: #e0e0e0;
+            font-size: 0.9rem;
+            outline: none;
+        }
+        .toolbar input::placeholder { color: #666; }
+        .toolbar input:focus, .toolbar select:focus {
+            border-color: rgba(0,212,255,0.5);
+        }
+        .toolbar select option { background: #1a1a2e; }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .pagination .btn.active {
+            background: rgba(0,212,255,0.3);
+            color: #00d4ff;
+        }
+        .page-info { color: #888; font-size: 0.85rem; }
+
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        .badge-admin { background: rgba(0,212,255,0.2); color: #00d4ff; }
+        .badge-user { background: rgba(255,255,255,0.1); color: #aaa; }
+        .badge-active { background: rgba(76,175,80,0.2); color: #4caf50; }
+        .badge-inactive { background: rgba(244,67,54,0.2); color: #f44336; }
+        .badge-deleted { background: rgba(244,67,54,0.15); color: #f44336; }
+        .badge-pinned { background: rgba(255,152,0,0.2); color: #ff9800; }
+        .badge-indexed { background: rgba(76,175,80,0.2); color: #4caf50; }
+        .badge-unindexed { background: rgba(33,150,243,0.2); color: #2196f3; }
+        .badge-orphaned { background: rgba(255,152,0,0.2); color: #ff9800; }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: rgba(0,0,0,0.85);
+            border: 1px solid rgba(0,212,255,0.3);
+            border-radius: 10px;
+            padding: 14px 24px;
+            color: #e0e0e0;
+            font-size: 0.9rem;
+            z-index: 9999;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s;
+        }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast.error { border-color: rgba(244,67,54,0.5); }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: #1e2a3a;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+        }
+        .modal h3 { color: #fff; margin-bottom: 20px; }
+        .modal .form-group { margin-bottom: 16px; }
+        .modal label { display: block; color: #aaa; margin-bottom: 6px; font-size: 0.85rem; }
+        .modal input, .modal select {
+            width: 100%;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: #e0e0e0;
+            font-size: 0.9rem;
+            outline: none;
+        }
+        .modal input:focus, .modal select:focus {
+            border-color: rgba(0,212,255,0.5);
+        }
+        .modal select option { background: #1a1a2e; }
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 24px;
+        }
+
+        /* File Tree */
+        .file-tree-container {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: 16px;
+            max-height: calc(100vh - 250px);
+            overflow-y: auto;
+        }
+        .tree-folder {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 8px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            color: #e0e0e0;
+            transition: background 0.15s;
+        }
+        .tree-folder:hover { background: rgba(255,255,255,0.06); }
+        .tree-folder .tree-arrow {
+            width: 16px;
+            text-align: center;
+            font-size: 0.7rem;
+            color: #888;
+            transition: transform 0.2s;
+            flex-shrink: 0;
+        }
+        .tree-folder.expanded .tree-arrow { transform: rotate(90deg); }
+        .tree-folder .tree-icon { font-size: 1rem; flex-shrink: 0; }
+        .tree-folder .tree-name {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .tree-folder .tree-count {
+            color: #666;
+            font-size: 0.78rem;
+            flex-shrink: 0;
+        }
+        .tree-children {
+            margin-left: 20px;
+            display: none;
+        }
+        .tree-children.expanded { display: block; }
+        .tree-file {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 8px 4px 28px;
+            font-size: 0.85rem;
+            color: #aaa;
+            border-radius: 6px;
+            transition: background 0.15s;
+        }
+        .tree-file:hover { background: rgba(255,255,255,0.04); color: #e0e0e0; }
+        .tree-file .file-icon { font-size: 0.9rem; flex-shrink: 0; }
+        .tree-file .file-name {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .tree-file .file-name a { color: inherit; text-decoration: none; }
+        .tree-file .file-name a:hover { color: #00d4ff; }
+        .tree-file .file-meta {
+            color: #666;
+            font-size: 0.75rem;
+            flex-shrink: 0;
+            display: flex;
+            gap: 10px;
+        }
+
+        /* Sortable Headers */
+        th.sortable {
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            padding-right: 24px;
+            transition: color 0.2s;
+        }
+        th.sortable:hover { color: #00d4ff; }
+        th.sortable::after {
+            content: '⇅';
+            position: absolute;
+            right: 6px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.75rem;
+            opacity: 0.4;
+        }
+        th.sortable.asc::after {
+            content: '▲';
+            opacity: 1;
+            color: #00d4ff;
+        }
+        th.sortable.desc::after {
+            content: '▼';
+            opacity: 1;
+            color: #00d4ff;
+        }
+        th.sortable.asc, th.sortable.desc { color: #00d4ff; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .admin-layout { flex-direction: column; }
+            .sidebar {
+                width: 100%;
+                display: flex;
+                overflow-x: auto;
+                padding: 0;
+                border-right: none;
+                border-bottom: 1px solid rgba(255,255,255,0.08);
+            }
+            .sidebar-item {
+                padding: 10px 16px;
+                border-left: none;
+                border-bottom: 3px solid transparent;
+                white-space: nowrap;
+                font-size: 0.85rem;
+            }
+            .sidebar-item.active { border-bottom-color: #00d4ff; border-left-color: transparent; }
+            .main-content { padding: 20px; }
+            .stat-cards { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Top Navigation -->
+    <nav class="top-nav">
+        <a href="/" class="back-link">← Home</a>
+        <h1>Admin Dashboard</h1>
+        <span class="user-info">{{ current_user.name }} (관리자)</span>
+    </nav>
+
+    <div class="admin-layout">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-item active" data-section="dashboard">
+                <span class="sidebar-icon">📊</span> 대시보드
+            </div>
+            <div class="sidebar-item" data-section="documents">
+                <span class="sidebar-icon">📚</span> 학습자료
+            </div>
+            <div class="sidebar-item" data-section="posts">
+                <span class="sidebar-icon">📝</span> 게시판
+            </div>
+            <div class="sidebar-item" data-section="users">
+                <span class="sidebar-icon">👥</span> 사용자
+            </div>
+            <div class="sidebar-item" data-section="stats">
+                <span class="sidebar-icon">📈</span> 통계
+            </div>
+            <div class="sidebar-item" data-section="logs">
+                <span class="sidebar-icon">📋</span> 활동로그
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+
+            <!-- ===== Dashboard ===== -->
+            <div id="section-dashboard" class="section active">
+                <h2 class="section-title">대시보드</h2>
+                <div class="stat-cards" id="overview-cards">
+                    <div class="stat-card">
+                        <div class="stat-icon">📄</div>
+                        <div class="stat-value" id="ov-documents">-</div>
+                        <div class="stat-label">학습자료</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🔢</div>
+                        <div class="stat-value" id="ov-vectors">-</div>
+                        <div class="stat-label">벡터 수</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-value" id="ov-users">-</div>
+                        <div class="stat-label">사용자</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📝</div>
+                        <div class="stat-value" id="ov-posts">-</div>
+                        <div class="stat-label">게시글</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">💬</div>
+                        <div class="stat-value" id="ov-comments">-</div>
+                        <div class="stat-label">댓글</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🗂️</div>
+                        <div class="stat-value" id="ov-namespaces">-</div>
+                        <div class="stat-label">네임스페이스</div>
+                    </div>
+                </div>
+
+                <h3 style="color:#fff;margin-bottom:16px;">최근 활동 로그</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th>시간</th><th>관리자</th><th>액션</th><th>대상</th><th>상세</th></tr></thead>
+                        <tbody id="dashboard-logs"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ===== Documents ===== -->
+            <div id="section-documents" class="section">
+                <h2 class="section-title">학습자료 관리</h2>
+                <div class="toolbar">
+                    <input type="text" id="doc-search" placeholder="파일명 검색..." style="flex:1;min-width:200px;">
+                    <select id="doc-ns-filter">
+                        <option value="">전체 네임스페이스</option>
+                    </select>
+                    <select id="doc-status-filter">
+                        <option value="">전체 상태</option>
+                        <option value="indexed">색인됨</option>
+                        <option value="unindexed">미색인</option>
+                        <option value="orphaned">고아</option>
+                    </select>
+                    <select id="doc-type-filter">
+                        <option value="">전체 파일</option>
+                        <option value="md,pdf" selected>문서 (md, pdf)</option>
+                        <option value="md">마크다운만</option>
+                        <option value="pdf">PDF만</option>
+                        <option value="jpeg,jpg,png,gif,webp">이미지만</option>
+                        <option value="json">JSON만</option>
+                    </select>
+                    <button class="btn btn-primary" id="sync-fs-btn" onclick="syncFilesystem()">📂 파일 동기화</button>
+                    <button class="btn" onclick="refreshFileTree()">🔄 새로고침</button>
+                    <span id="doc-tree-stats" style="color:#888;font-size:0.85rem;margin-left:auto;"></span>
+                </div>
+
+                <!-- Search Results (shown when searching) -->
+                <div id="doc-search-results" style="display:none;">
+                    <div class="table-wrapper">
+                        <table id="doc-result-table">
+                            <thead><tr>
+                                <th class="sortable" data-sort="filename" onclick="sortDocuments('filename')">파일명</th>
+                                <th class="sortable" data-sort="namespace" onclick="sortDocuments('namespace')">네임스페이스</th>
+                                <th class="sortable" data-sort="file_type" onclick="sortDocuments('file_type')">유형</th>
+                                <th class="sortable" data-sort="vector_count" onclick="sortDocuments('vector_count')">벡터</th>
+                                <th class="sortable" data-sort="status" onclick="sortDocuments('status')">상태</th>
+                                <th class="sortable desc" data-sort="created_at" onclick="sortDocuments('created_at')">등록일</th>
+                                <th>관리</th>
+                            </tr></thead>
+                            <tbody id="doc-search-table"></tbody>
+                        </table>
+                    </div>
+                    <div class="pagination" id="doc-search-pagination"></div>
+                </div>
+
+                <!-- File Tree (shown by default) -->
+                <div class="file-tree-container" id="file-tree">
+                    <div class="loading">파일 트리를 불러오는 중...</div>
+                </div>
+            </div>
+
+            <!-- ===== Posts ===== -->
+            <div id="section-posts" class="section">
+                <h2 class="section-title">게시판 관리</h2>
+
+                <!-- Sub tabs: posts / categories -->
+                <div style="display:flex;gap:12px;margin-bottom:20px;">
+                    <button class="btn btn-primary post-tab active" data-tab="posts-tab" onclick="switchPostTab('posts-tab',this)">게시글</button>
+                    <button class="btn post-tab" data-tab="categories-tab" onclick="switchPostTab('categories-tab',this)">카테고리</button>
+                </div>
+
+                <div id="posts-tab">
+                    <div class="toolbar">
+                        <input type="text" id="post-search" placeholder="게시글 검색..." style="flex:1;min-width:200px;">
+                        <select id="post-cat-filter">
+                            <option value="">전체 카테고리</option>
+                        </select>
+                        <label style="display:flex;align-items:center;gap:6px;color:#aaa;font-size:0.85rem;cursor:pointer;">
+                            <input type="checkbox" id="post-show-deleted" style="accent-color:#00d4ff;"> 삭제 포함
+                        </label>
+                    </div>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>ID</th><th>카테고리</th><th>제목</th><th>작성자</th><th>조회</th><th>좋아요</th><th>상태</th><th>작성일</th><th>관리</th></tr></thead>
+                            <tbody id="post-table"></tbody>
+                        </table>
+                    </div>
+                    <div class="pagination" id="post-pagination"></div>
+                </div>
+
+                <div id="categories-tab" style="display:none;">
+                    <div class="toolbar">
+                        <button class="btn btn-primary" onclick="openCategoryModal()">+ 카테고리 추가</button>
+                    </div>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>순서</th><th>아이콘</th><th>이름</th><th>슬러그</th><th>색상</th><th>게시글</th><th>상태</th><th>관리</th></tr></thead>
+                            <tbody id="cat-table"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== Users ===== -->
+            <div id="section-users" class="section">
+                <h2 class="section-title">사용자 관리</h2>
+                <div class="toolbar">
+                    <input type="text" id="user-search" placeholder="이름 또는 이메일 검색..." style="flex:1;min-width:200px;">
+                    <select id="user-sort">
+                        <option value="latest">최근 가입순</option>
+                        <option value="name">이름순</option>
+                        <option value="login">최근 로그인순</option>
+                    </select>
+                </div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th>ID</th><th>이름</th><th>이메일</th><th>역할</th><th>상태</th><th>소셜</th><th>게시글</th><th>가입일</th><th>관리</th></tr></thead>
+                        <tbody id="user-table"></tbody>
+                    </table>
+                </div>
+                <div class="pagination" id="user-pagination"></div>
+            </div>
+
+            <!-- ===== Stats ===== -->
+            <div id="section-stats" class="section">
+                <h2 class="section-title">통계</h2>
+
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+                    <h3 style="color:#fff;margin:0;">네임스페이스별 벡터 분포</h3>
+                    <button class="btn btn-primary btn-sm" id="sync-vectors-btn" onclick="syncVectors()">🔄 Pinecone 동기화</button>
+                    <button class="btn btn-success btn-sm" id="folder-status-btn" onclick="updateFolderStatus()">📊 폴더 상태 갱신</button>
+                    <span id="sync-status" style="color:#888;font-size:0.82rem;"></span>
+                </div>
+                <div class="table-wrapper" style="margin-bottom:30px;">
+                    <table>
+                        <thead><tr><th>네임스페이스</th><th>문서 수</th><th>벡터 수</th><th>비율</th></tr></thead>
+                        <tbody id="vector-table"></tbody>
+                    </table>
+                </div>
+
+                <h3 style="color:#fff;margin-bottom:16px;">카테고리별 게시글</h3>
+                <div class="table-wrapper" style="margin-bottom:30px;">
+                    <table>
+                        <thead><tr><th>카테고리</th><th>게시글 수</th><th>비율</th></tr></thead>
+                        <tbody id="cat-stats-table"></tbody>
+                    </table>
+                </div>
+
+                <h3 style="color:#fff;margin-bottom:16px;">소셜 로그인 현황</h3>
+                <div class="table-wrapper" style="margin-bottom:30px;">
+                    <table>
+                        <thead><tr><th>제공자</th><th>사용자 수</th></tr></thead>
+                        <tbody id="provider-table"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ===== Logs ===== -->
+            <div id="section-logs" class="section">
+                <h2 class="section-title">활동 로그</h2>
+                <div class="toolbar">
+                    <select id="log-action-filter">
+                        <option value="">전체 액션</option>
+                        <option value="sync_filesystem">파일 동기화</option>
+                        <option value="sync_documents">Pinecone 동기화</option>
+                        <option value="update_folder_status">폴더 상태 갱신</option>
+                        <option value="delete_document">문서 삭제</option>
+                        <option value="delete_namespace">NS 삭제</option>
+                        <option value="pin_post">글 고정</option>
+                        <option value="unpin_post">글 고정해제</option>
+                        <option value="restore_post">글 복원</option>
+                        <option value="hard_delete_post">글 완전삭제</option>
+                        <option value="hard_delete_comment">댓글 완전삭제</option>
+                        <option value="create_category">카테고리 생성</option>
+                        <option value="update_category">카테고리 수정</option>
+                        <option value="deactivate_category">카테고리 비활성화</option>
+                        <option value="change_role">역할 변경</option>
+                        <option value="activate_user">사용자 활성화</option>
+                        <option value="deactivate_user">사용자 비활성화</option>
+                    </select>
+                </div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th>시간</th><th>관리자</th><th>액션</th><th>대상 유형</th><th>대상 ID</th><th>상세</th></tr></thead>
+                        <tbody id="log-table"></tbody>
+                    </table>
+                </div>
+                <div class="pagination" id="log-pagination"></div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Category Modal -->
+    <div class="modal-overlay" id="category-modal">
+        <div class="modal">
+            <h3 id="cat-modal-title">카테고리 추가</h3>
+            <input type="hidden" id="cat-edit-id">
+            <div class="form-group">
+                <label>이름</label>
+                <input type="text" id="cat-name" placeholder="예: 질문">
+            </div>
+            <div class="form-group">
+                <label>슬러그 (URL용 영문)</label>
+                <input type="text" id="cat-slug" placeholder="예: qna">
+            </div>
+            <div class="form-group">
+                <label>설명</label>
+                <input type="text" id="cat-desc" placeholder="카테고리 설명">
+            </div>
+            <div style="display:flex;gap:12px;">
+                <div class="form-group" style="flex:1;">
+                    <label>색상</label>
+                    <input type="color" id="cat-color" value="#00d4ff" style="padding:4px;height:40px;">
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label>아이콘 (이모지)</label>
+                    <input type="text" id="cat-icon" placeholder="💬" maxlength="4">
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label>정렬 순서</label>
+                    <input type="number" id="cat-sort" value="0" min="0">
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn" onclick="closeCategoryModal()">취소</button>
+                <button class="btn btn-primary" onclick="saveCategory()">저장</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+    const API = '/api/v1/admin';
+
+    // ---------------------------------------------------------------------------
+    // Utility
+    // ---------------------------------------------------------------------------
+    async function apiFetch(path, opts = {}) {
+        const res = await fetch(`${API}${path}`, {
+            headers: { 'Content-Type': 'application/json', ...opts.headers },
+            ...opts,
+        });
+        const contentType = res.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            throw new Error(`서버 응답 오류 (${res.status})`);
+        }
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'API 오류');
+        return data;
+    }
+
+    function showToast(msg, isError = false) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.className = 'toast show' + (isError ? ' error' : '');
+        setTimeout(() => t.className = 'toast', 3000);
+    }
+
+    function fmtDate(iso) {
+        if (!iso) return '-';
+        const d = new Date(iso);
+        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    }
+
+    function fmtNumber(n) {
+        return (n || 0).toLocaleString();
+    }
+
+    function renderPagination(containerId, current, total, callback) {
+        const c = document.getElementById(containerId);
+        if (total <= 1) { c.innerHTML = ''; return; }
+        let html = '';
+        if (current > 1) html += `<button class="btn btn-sm" onclick="${callback}(${current-1})">← 이전</button>`;
+        const start = Math.max(1, current - 2);
+        const end = Math.min(total, current + 2);
+        for (let i = start; i <= end; i++) {
+            html += `<button class="btn btn-sm ${i===current?'active':''}" onclick="${callback}(${i})">${i}</button>`;
+        }
+        if (current < total) html += `<button class="btn btn-sm" onclick="${callback}(${current+1})">다음 →</button>`;
+        html += `<span class="page-info">${current} / ${total}</span>`;
+        c.innerHTML = html;
+    }
+
+    function escHtml(s) {
+        const d = document.createElement('div');
+        d.textContent = s || '';
+        return d.innerHTML;
+    }
+
+    // ---------------------------------------------------------------------------
+    // Section Navigation
+    // ---------------------------------------------------------------------------
+    document.querySelectorAll('.sidebar-item').forEach(item => {
+        item.addEventListener('click', () => {
+            document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+            item.classList.add('active');
+            const sec = item.dataset.section;
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.getElementById('section-' + sec).classList.add('active');
+            location.hash = sec;
+            loaders[sec]?.();
+        });
+    });
+
+    function switchPostTab(tab, btn) {
+        document.getElementById('posts-tab').style.display = tab === 'posts-tab' ? '' : 'none';
+        document.getElementById('categories-tab').style.display = tab === 'categories-tab' ? '' : 'none';
+        document.querySelectorAll('.post-tab').forEach(b => b.classList.remove('active', 'btn-primary'));
+        btn.classList.add('active', 'btn-primary');
+        if (tab === 'categories-tab') loadCategories();
+    }
+
+    // ---------------------------------------------------------------------------
+    // Dashboard
+    // ---------------------------------------------------------------------------
+    async function loadDashboard() {
+        try {
+            const { data } = await apiFetch('/stats/overview');
+            document.getElementById('ov-documents').textContent = fmtNumber(data.total_documents);
+            document.getElementById('ov-vectors').textContent = fmtNumber(data.total_vectors);
+            document.getElementById('ov-users').textContent = fmtNumber(data.total_users);
+            document.getElementById('ov-posts').textContent = fmtNumber(data.total_posts);
+            document.getElementById('ov-comments').textContent = fmtNumber(data.total_comments);
+            document.getElementById('ov-namespaces').textContent = fmtNumber(data.namespaces);
+        } catch (e) { console.error(e); }
+
+        try {
+            const { data } = await apiFetch('/logs?per_page=10');
+            const tb = document.getElementById('dashboard-logs');
+            if (!data.logs.length) { tb.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#666;">아직 활동 로그가 없습니다.</td></tr>'; return; }
+            tb.innerHTML = data.logs.map(l => `<tr>
+                <td>${fmtDate(l.created_at)}</td>
+                <td>${escHtml(l.admin?.name || '-')}</td>
+                <td>${escHtml(l.action)}</td>
+                <td>${escHtml(l.target_type || '-')} ${l.target_id || ''}</td>
+                <td title="${escHtml(JSON.stringify(l.details))}">${escHtml(l.details ? JSON.stringify(l.details).slice(0,60) : '-')}</td>
+            </tr>`).join('');
+        } catch (e) { console.error(e); }
+    }
+
+    // ---------------------------------------------------------------------------
+    // Documents – File Tree
+    // ---------------------------------------------------------------------------
+    const FILE_ICONS = {
+        md:'📄', pdf:'📕', json:'📋', jpeg:'🖼️', jpg:'🖼️',
+        png:'🖼️', gif:'🖼️', webp:'🖼️', xlsx:'📊', csv:'📊',
+        html:'🌐', default:'📎'
+    };
+    const FOLDER_ICONS = {
+        laborlaw:'⚖️', ncs:'🔬', '안전보건공단':'🏭', '현장실습':'🎓',
+        data:'💾', cases:'📁', laws:'📜', pdfs:'📕',
+        report:'📊', old_markdown:'📝', default:'📁'
+    };
+    function getFileIcon(ext) { return FILE_ICONS[ext] || FILE_ICONS.default; }
+    function getFolderIcon(name) { return FOLDER_ICONS[name] || FOLDER_ICONS.default; }
+    function formatFileSize(bytes) {
+        if (!bytes) return '';
+        if (bytes < 1024) return bytes + 'B';
+        if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + 'KB';
+        return (bytes/(1024*1024)).toFixed(1) + 'MB';
+    }
+    function getFileTypeFilter() {
+        return document.getElementById('doc-type-filter').value;
+    }
+
+    async function loadFileTree(path, container) {
+        const fileTypes = getFileTypeFilter();
+        const params = new URLSearchParams();
+        if (path) params.set('path', path);
+        if (fileTypes) params.set('file_types', fileTypes);
+        try {
+            const { data } = await apiFetch(`/filetree?${params}`);
+            if (!container) {
+                container = document.getElementById('file-tree');
+                container.innerHTML = '';
+                const totalDirs = data.directories.length;
+                const totalFiles = data.files.length;
+                document.getElementById('doc-tree-stats').textContent =
+                    `${totalDirs}개 폴더, ${totalFiles}개 파일`;
+            }
+            data.directories.forEach(dir => container.appendChild(createFolderNode(dir)));
+            data.files.forEach(file => container.appendChild(createFileNode(file)));
+            if (!data.directories.length && !data.files.length) {
+                const empty = document.createElement('div');
+                empty.style.cssText = 'color:#666;padding:8px 28px;font-size:0.85rem;';
+                empty.textContent = '(비어있음)';
+                container.appendChild(empty);
+            }
+        } catch (e) { showToast(e.message, true); }
+    }
+
+    function createFolderNode(dir) {
+        const wrapper = document.createElement('div');
+        const folder = document.createElement('div');
+        folder.className = 'tree-folder';
+        folder.dataset.path = dir.path;
+        folder.dataset.loaded = 'false';
+        const parts = [];
+        if (dir.dir_count > 0) parts.push(dir.dir_count + '폴더');
+        if (dir.file_count > 0) parts.push(dir.file_count + '파일');
+        folder.innerHTML = `
+            <span class="tree-arrow">▶</span>
+            <span class="tree-icon">${getFolderIcon(dir.name)}</span>
+            <span class="tree-name" title="${escHtml(dir.path)}">${escHtml(dir.name)}</span>
+            <span class="tree-count">${parts.join(', ')}</span>`;
+        const children = document.createElement('div');
+        children.className = 'tree-children';
+        folder.addEventListener('click', async () => {
+            const expanded = folder.classList.toggle('expanded');
+            children.classList.toggle('expanded', expanded);
+            if (expanded && folder.dataset.loaded === 'false') {
+                folder.dataset.loaded = 'true';
+                children.innerHTML = '<div style="color:#666;padding:4px 8px;font-size:0.85rem;">불러오는 중...</div>';
+                await loadFileTree(dir.path, children);
+            }
+        });
+        wrapper.appendChild(folder);
+        wrapper.appendChild(children);
+        return wrapper;
+    }
+
+    function createFileNode(file) {
+        const node = document.createElement('div');
+        node.className = 'tree-file';
+        const docUrl = '/documents/' + file.path.split('/').map(encodeURIComponent).join('/');
+        const viewable = ['pdf','md','jpeg','jpg','png','gif','webp'].includes(file.extension);
+        node.innerHTML = `
+            <span class="file-icon">${getFileIcon(file.extension)}</span>
+            <span class="file-name" title="${escHtml(file.path)}">
+                ${viewable ? `<a href="${docUrl}" target="_blank">${escHtml(file.name)}</a>` : escHtml(file.name)}
+            </span>
+            <span class="file-meta">
+                <span>${escHtml(file.extension.toUpperCase())}</span>
+                <span>${formatFileSize(file.size)}</span>
+            </span>`;
+        return node;
+    }
+
+    async function refreshFileTree() {
+        try {
+            await apiFetch('/filetree/refresh', { method: 'POST' });
+            showToast('파일 트리가 갱신되었습니다.');
+        } catch (e) { showToast(e.message, true); }
+        document.getElementById('file-tree').innerHTML = '<div class="loading">불러오는 중...</div>';
+        await loadFileTree();
+    }
+
+    document.getElementById('doc-type-filter').addEventListener('change', () => {
+        if (!document.getElementById('doc-search').value.trim()) {
+            document.getElementById('file-tree').innerHTML = '<div class="loading">불러오는 중...</div>';
+            loadFileTree();
+        }
+    });
+
+    // ---------------------------------------------------------------------------
+    // Documents – Search (DB-backed indexed documents)
+    // ---------------------------------------------------------------------------
+    let docSearchPage = 1;
+    let docSortBy = 'created_at';
+    let docSortOrder = 'desc';
+
+    function sortDocuments(column) {
+        if (docSortBy === column) {
+            docSortOrder = docSortOrder === 'asc' ? 'desc' : 'asc';
+        } else {
+            docSortBy = column;
+            docSortOrder = 'asc';
+        }
+        // Update header indicators
+        document.querySelectorAll('#doc-result-table th.sortable').forEach(th => {
+            th.classList.remove('asc', 'desc');
+            if (th.dataset.sort === docSortBy) {
+                th.classList.add(docSortOrder);
+            }
+        });
+        searchDocuments(1);
+    }
+
+    async function loadDocNamespaces() {
+        try {
+            const { data: vectors } = await apiFetch('/stats/vectors');
+            const sel = document.getElementById('doc-ns-filter');
+            sel.innerHTML = '<option value="">전체 네임스페이스</option>';
+            vectors.forEach(v => {
+                sel.innerHTML += `<option value="${escHtml(v.namespace)}">${escHtml(v.namespace)} (${fmtNumber(v.documents)})</option>`;
+            });
+        } catch (e) { /* ignore */ }
+    }
+
+    const STATUS_LABELS = { indexed: '색인됨', unindexed: '미색인', orphaned: '고아' };
+
+    function docStatusBadge(status) {
+        const label = STATUS_LABELS[status] || status;
+        return `<span class="badge badge-${status}">${escHtml(label)}</span>`;
+    }
+
+    function hasDocFilters() {
+        return document.getElementById('doc-search').value.trim()
+            || document.getElementById('doc-ns-filter').value
+            || document.getElementById('doc-status-filter').value;
+    }
+
+    async function searchDocuments(page = 1) {
+        docSearchPage = page;
+        const search = document.getElementById('doc-search').value.trim();
+        const ns = document.getElementById('doc-ns-filter').value;
+        const status = document.getElementById('doc-status-filter').value;
+
+        // If no filters active, show file tree
+        if (!search && !ns && !status) {
+            document.getElementById('doc-search-results').style.display = 'none';
+            document.getElementById('file-tree').style.display = '';
+            document.getElementById('doc-tree-stats').textContent = '';
+            return;
+        }
+
+        // Show search results, hide file tree
+        document.getElementById('doc-search-results').style.display = '';
+        document.getElementById('file-tree').style.display = 'none';
+
+        try {
+            const params = new URLSearchParams({ page, per_page: 20, sort_by: docSortBy, sort_order: docSortOrder });
+            if (search) params.set('search', search);
+            if (ns) params.set('namespace', ns);
+            if (status) params.set('status', status);
+
+            const { data } = await apiFetch(`/documents?${params}`);
+            const tb = document.getElementById('doc-search-table');
+            document.getElementById('doc-tree-stats').textContent = `검색 결과: ${fmtNumber(data.total)}건`;
+
+            if (!data.documents.length) {
+                tb.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#666;">검색 결과가 없습니다.</td></tr>';
+            } else {
+                tb.innerHTML = data.documents.map(d => {
+                    const ext = d.file_type || '-';
+                    const icon = FILE_ICONS[ext] || FILE_ICONS.default;
+                    return `<tr>
+                        <td title="${escHtml(d.source_file)}">${icon} ${escHtml(d.filename)}</td>
+                        <td>${escHtml(d.namespace || '(기본)')}</td>
+                        <td>${escHtml(ext.toUpperCase())}</td>
+                        <td>${fmtNumber(d.vector_count)}</td>
+                        <td>${docStatusBadge(d.status)}</td>
+                        <td>${fmtDate(d.created_at)}</td>
+                        <td>
+                            <button class="btn btn-danger btn-sm" onclick="deleteDocument(${d.id}, '${escHtml(d.filename)}')">삭제</button>
+                        </td>
+                    </tr>`;
+                }).join('');
+            }
+            renderPagination('doc-search-pagination', data.current_page, data.pages, 'searchDocuments');
+        } catch (e) { showToast(e.message, true); }
+    }
+
+    async function deleteDocument(id, name) {
+        if (!confirm(`"${name}" 문서를 삭제합니다. Pinecone 벡터도 함께 삭제됩니다. 계속하시겠습니까?`)) return;
+        try {
+            await apiFetch(`/documents/${id}`, { method: 'DELETE' });
+            showToast('문서가 삭제되었습니다.');
+            searchDocuments(docSearchPage);
+        } catch (e) { showToast(e.message, true); }
+    }
+
+    async function syncFilesystem() {
+        const btn = document.getElementById('sync-fs-btn');
+        btn.disabled = true;
+        btn.textContent = '⏳ 동기화 중...';
+        try {
+            const { message } = await apiFetch('/documents/sync-filesystem', { method: 'POST' });
+            showToast(message);
+            // Show unindexed documents in table after sync
+            document.getElementById('doc-status-filter').value = 'unindexed';
+            searchDocuments(1);
+        } catch (e) {
+            showToast('파일 동기화 실패: ' + e.message, true);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '📂 파일 동기화';
+        }
+    }
+
+    document.getElementById('doc-search').addEventListener('input', debounce(() => searchDocuments(1), 400));
+    document.getElementById('doc-status-filter').addEventListener('change', () => searchDocuments(1));
+    document.getElementById('doc-ns-filter').addEventListener('change', () => {
+        if (hasDocFilters()) {
+            searchDocuments(1);
+        } else {
+            document.getElementById('doc-search-results').style.display = 'none';
+            document.getElementById('file-tree').style.display = '';
+            document.getElementById('file-tree').innerHTML = '<div class="loading">불러오는 중...</div>';
+            loadFileTree();
+        }
+    });
+
+    // ---------------------------------------------------------------------------
+    // Posts
+    // ---------------------------------------------------------------------------
+    let postPage = 1;
+    async function loadPosts(page = 1) {
+        postPage = page;
+        const search = document.getElementById('post-search').value;
+        const cat = document.getElementById('post-cat-filter').value;
+        const deleted = document.getElementById('post-show-deleted').checked;
+        try {
+            const params = new URLSearchParams({ page, per_page: 20 });
+            if (search) params.set('search', search);
+            if (cat) params.set('category', cat);
+            if (deleted) params.set('deleted', 'true');
+
+            const { data } = await apiFetch(`/posts?${params}`);
+            const tb = document.getElementById('post-table');
+            if (!data.posts.length) {
+                tb.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#666;">게시글이 없습니다.</td></tr>';
+            } else {
+                tb.innerHTML = data.posts.map(p => {
+                    let statusBadges = '';
+                    if (p.is_deleted) statusBadges += '<span class="badge badge-deleted">삭제</span> ';
+                    if (p.is_pinned) statusBadges += '<span class="badge badge-pinned">고정</span>';
+                    if (!p.is_deleted && !p.is_pinned) statusBadges = '-';
+                    return `<tr>
+                        <td>${p.id}</td>
+                        <td>${escHtml(p.category?.name || '-')}</td>
+                        <td title="${escHtml(p.title)}">${escHtml(p.title)}</td>
+                        <td>${escHtml(p.author?.name || '-')}</td>
+                        <td>${fmtNumber(p.view_count)}</td>
+                        <td>${fmtNumber(p.like_count)}</td>
+                        <td>${statusBadges}</td>
+                        <td>${fmtDate(p.created_at)}</td>
+                        <td>
+                            <div class="btn-group">
+                                <button class="btn btn-sm ${p.is_pinned?'btn-warning':'btn'}" onclick="togglePin(${p.id})">${p.is_pinned?'고정해제':'고정'}</button>
+                                ${p.is_deleted ? `<button class="btn btn-success btn-sm" onclick="restorePost(${p.id})">복원</button>` : ''}
+                                <button class="btn btn-danger btn-sm" onclick="hardDeletePost(${p.id})">완전삭제</button>
+                            </div>
+                        </td>
+                    </tr>`;
+                }).join('');
+            }
+            renderPagination('post-pagination', data.current_page, data.pages, 'loadPosts');
+        } catch (e) { showToast(e.message, true); }
+    }
+
+    async function loadPostCategories() {
+        try {
+            const res = await fetch('/api/v1/community/categories');
+            const { data } = await res.json();
+            const sel = document.getElementById('post-cat-filter');
+            sel.innerHTML = '<option value="">전체 카테고리</option>';
+            data.forEach(c => sel.innerHTML += `<option value="${c.slug}">${c.name}</option>`);
+        } catch (e) { /* ignore */ }
+    }
+
+    async function togglePin(id) {
+        try {
+            const { message } = await apiFetch(`/posts/${id}/pin`, { method: 'PUT' });
+            showToast(message);
+            loadPosts(postPage);
+        } catch (e) { showToast(e.message, true); }
+    }
+
+    async function restorePost(id) {
+        try {
+            const { message } = await apiFetch(`/posts/${id}/restore`, { method: 'PUT' });
+            showToast(message);
+            loadPosts(postPage);
+        } catch (e) { showToast(e.message, true); }
+    }
+
+    async function hardDeletePost(id) {
+        if (!confirm('이 게시글을 완전히 삭제합니다. 복구할 수 없습니다. 계속하시겠습니까?')) return;
+        try {
+            await apiFetch(`/posts/${id}/hard`, { method: 'DELETE' });
+            showToast('게시글이 완전히 삭제되었습니다.');
+            loadPosts(postPage);
+        } catch (e) { showToast(e.message, true); }
+    }
+
+    document.getElementById('post-search').addEventListener('input', debounce(() => loadPosts(1), 400));
+    document.getElementById('post-cat-filter').addEventListener('change', () => loadPosts(1));
+    document.getElementById('post-show-deleted').addEventListener('change', () => loadPosts(1));
+
+    // ---------------------------------------------------------------------------
+    // Categories
+    // ---------------------------------------------------------------------------
+    async function loadCategories() {
+        try {
+            const { data } = await apiFetch('/categories');
+            const tb = document.getElementById('cat-table');
+            tb.innerHTML = data.map(c => `<tr>
+                <td>${c.sort_order}</td>
+                <td>${escHtml(c.icon || '-')}</td>
+                <td>${escHtml(c.name)}</td>
+                <td>${escHtml(c.slug)}</td>
+                <td><span style="display:inline-block;width:20px;height:20px;border-radius:4px;background:${c.color};vertical-align:middle;"></span> ${c.color}</td>
+                <td>${fmtNumber(c.post_count)}</td>
+                <td><span class="badge badge-${c.is_active?'active':'inactive'}">${c.is_active?'활성':'비활성'}</span></td>
+                <td>
+                    <div class="btn-group">
+                        <button class="btn btn-sm edit-cat-btn" data-category="${escHtml(JSON.stringify(c))}">수정</button>
+                        ${c.is_active ? `<button class="btn btn-danger btn-sm deactivate-cat-btn" data-id="${c.id}">비활성화</button>` : ''}
+                    </div>
+                </td>
+            </tr>`).join('');
+        } catch (e) { showToast(e.message, true); }
+    }
+
+    function openCategoryModal() {
+        document.getElementById('cat-modal-title').textContent = '카테고리 추가';
+        document.getElementById('cat-edit-id').value = '';
+        document.getElementById('cat-name').value = '';
+        document.getElementById('cat-slug').value = '';
+        document.getElementById('cat-desc').value = '';
+        document.getElementById('cat-color').value = '#00d4ff';
+        document.getElementById('cat-icon').value = '';
+        document.getElementById('cat-sort').value = '0';
+        document.getElementById('category-modal').classList.add('active');
+    }
+
+    // Event delegation for category buttons (prevents XSS from inline onclick)
+    document.addEventListener('click', e => {
+        const editBtn = e.target.closest('.edit-cat-btn');
+        if (editBtn) {
+            const c = JSON.parse(editBtn.dataset.category);
+            document.getElementById('cat-modal-title').textContent = '카테고리 수정';
+            document.getElementById('cat-edit-id').value = c.id;
+            document.getElementById('cat-name').value = c.name;
+            document.getElementById('cat-slug').value = c.slug;
+            document.getElementById('cat-slug').disabled = true;
+            document.getElementById('cat-desc').value = c.description || '';
+            document.getElementById('cat-color').value = c.color;
+            document.getElementById('cat-icon').value = c.icon || '';
+            document.getElementById('cat-sort').value = c.sort_order;
+            document.getElementById('category-modal').classList.add('active');
+            return;
+        }
+        const deactivateBtn = e.target.closest('.deactivate-cat-btn');
+        if (deactivateBtn) {
+            const id = deactivateBtn.dataset.id;
+            if (!confirm('이 카테고리를 비활성화하시겠습니까?')) return;
+            apiFetch(`/categories/${id}`, { method: 'DELETE' })
+                .then(() => { showToast('카테고리가 비활성화되었습니다.'); loadCategories(); })
+                .catch(e => showToast(e.message, true));
+        }
+    });
+
+    function closeCategoryModal() {
+        document.getElementById('category-modal').classList.remove('active');
+        document.getElementById('cat-slug').disabled = false;
+    }
+
+    async function saveCategory() {
+        const id = document.getElementById('cat-edit-id').value;
+        const body = {
+            name: document.getElementById('cat-name').value,
+            slug: document.getElementById('cat-slug').value,
+            description: document.getElementById('cat-desc').value,
+            color: document.getElementById('cat-color').value,
+            icon: document.getElementById('cat-icon').value,
+            sort_order: parseInt(document.getElementById('cat-sort').value) || 0,
+        };
+        try {
+            if (id) {
+                await apiFetch(`/categories/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+            } else {
+                await apiFetch('/categories', { method: 'POST', body: JSON.stringify(body) });
+            }
+            showToast('카테고리가 저장되었습니다.');
+            closeCategoryModal();
+            loadCategories();
+        } catch (e) { showToast(e.message, true); }
+    }
+
+    // ---------------------------------------------------------------------------
+    // Users
+    // ---------------------------------------------------------------------------
+    let userPage = 1;
+    async function loadUsers(page = 1) {
+        userPage = page;
+        const search = document.getElementById('user-search').value;
+        const sort = document.getElementById('user-sort').value;
+        try {
+            const params = new URLSearchParams({ page, per_page: 20, sort });
+            if (search) params.set('search', search);
+
+            const { data } = await apiFetch(`/users?${params}`);
+            const tb = document.getElementById('user-table');
+            if (!data.users.length) {
+                tb.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#666;">사용자가 없습니다.</td></tr>';
+            } else {
+                tb.innerHTML = data.users.map(u => `<tr>
+                    <td>${u.id}</td>
+                    <td>${escHtml(u.name)}</td>
+                    <td>${escHtml(u.email)}</td>
+                    <td><span class="badge badge-${u.role}">${u.role}</span></td>
+                    <td><span class="badge badge-${u.is_active?'active':'inactive'}">${u.is_active?'활성':'비활성'}</span></td>
+                    <td>${(u.providers||[]).join(', ') || '-'}</td>
+                    <td>${u.post_count || 0}</td>
+                    <td>${fmtDate(u.created_at)}</td>
+                    <td>
+                        <div class="btn-group">
+                            <button class="btn btn-sm" onclick="toggleRole(${u.id},'${u.role}')">${u.role==='admin'?'일반으로':'관리자로'}</button>
+                            <button class="btn btn-sm ${u.is_active?'btn-danger':'btn-success'}" onclick="toggleActive(${u.id})">${u.is_active?'비활성화':'활성화'}</button>
+                        </div>
+                    </td>
+                </tr>`).join('');
+            }
+            renderPagination('user-pagination', data.current_page, data.pages, 'loadUsers');
+        } catch (e) { showToast(e.message, true); }
+    }
+
+    async function toggleRole(id, currentRole) {
+        const newRole = currentRole === 'admin' ? 'user' : 'admin';
+        if (!confirm(`이 사용자의 역할을 '${newRole}'(으)로 변경하시겠습니까?`)) return;
+        try {
+            const { message } = await apiFetch(`/users/${id}/role`, {
+                method: 'PUT',
+                body: JSON.stringify({ role: newRole }),
+            });
+            showToast(message);
+            loadUsers(userPage);
+        } catch (e) { showToast(e.message, true); }
+    }
+
+    async function toggleActive(id) {
+        try {
+            const { message } = await apiFetch(`/users/${id}/active`, { method: 'PUT' });
+            showToast(message);
+            loadUsers(userPage);
+        } catch (e) { showToast(e.message, true); }
+    }
+
+    document.getElementById('user-search').addEventListener('input', debounce(() => loadUsers(1), 400));
+    document.getElementById('user-sort').addEventListener('change', () => loadUsers(1));
+
+    // ---------------------------------------------------------------------------
+    // Stats
+    // ---------------------------------------------------------------------------
+    async function loadStats() {
+        try {
+            const { data: vectors } = await apiFetch('/stats/vectors');
+            const totalVec = vectors.reduce((s, v) => s + v.vectors, 0);
+            document.getElementById('vector-table').innerHTML = vectors.map(v => `<tr>
+                <td>${escHtml(v.namespace)}</td>
+                <td>${fmtNumber(v.documents)}</td>
+                <td>${fmtNumber(v.vectors)}</td>
+                <td>${totalVec ? Math.round(v.vectors / totalVec * 100) : 0}%</td>
+            </tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:#666;">데이터 없음</td></tr>';
+        } catch (e) { /* ignore */ }
+
+        try {
+            const { data: comm } = await apiFetch('/stats/community');
+            const totalPosts = comm.category_distribution.reduce((s, c) => s + c.count, 0);
+            document.getElementById('cat-stats-table').innerHTML = comm.category_distribution.map(c => `<tr>
+                <td>${escHtml(c.category)}</td>
+                <td>${fmtNumber(c.count)}</td>
+                <td>${totalPosts ? Math.round(c.count / totalPosts * 100) : 0}%</td>
+            </tr>`).join('') || '<tr><td colspan="3" style="text-align:center;color:#666;">데이터 없음</td></tr>';
+        } catch (e) { /* ignore */ }
+
+        try {
+            const { data: users } = await apiFetch('/stats/users');
+            document.getElementById('provider-table').innerHTML = users.providers.map(p => `<tr>
+                <td>${escHtml(p.provider)}</td>
+                <td>${fmtNumber(p.count)}</td>
+            </tr>`).join('') || '<tr><td colspan="2" style="text-align:center;color:#666;">데이터 없음</td></tr>';
+        } catch (e) { /* ignore */ }
+    }
+
+    async function syncVectors() {
+        const btn = document.getElementById('sync-vectors-btn');
+        const status = document.getElementById('sync-status');
+        btn.disabled = true;
+        btn.textContent = '⏳ 동기화 중...';
+        status.textContent = 'Pinecone 통계를 가져오는 중...';
+        try {
+            const { data, message } = await apiFetch('/documents/sync', { method: 'POST' });
+            showToast(message);
+            status.textContent = `동기화 완료: 총 ${fmtNumber(data.total_vectors)}개 벡터, ${data.folder_updated}개 학습자료 갱신`;
+            loadStats();
+        } catch (e) {
+            showToast('동기화 실패: ' + e.message, true);
+            status.textContent = '동기화 실패';
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '🔄 Pinecone 동기화';
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    // Logs
+    // ---------------------------------------------------------------------------
+    let logPage = 1;
+    async function loadLogs(page = 1) {
+        logPage = page;
+        const action = document.getElementById('log-action-filter').value;
+        try {
+            const params = new URLSearchParams({ page, per_page: 30 });
+            if (action) params.set('action', action);
+
+            const { data } = await apiFetch(`/logs?${params}`);
+            const tb = document.getElementById('log-table');
+            if (!data.logs.length) {
+                tb.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#666;">활동 로그가 없습니다.</td></tr>';
+            } else {
+                tb.innerHTML = data.logs.map(l => `<tr>
+                    <td>${fmtDate(l.created_at)}</td>
+                    <td>${escHtml(l.admin?.name || '-')}</td>
+                    <td>${escHtml(l.action)}</td>
+                    <td>${escHtml(l.target_type || '-')}</td>
+                    <td>${l.target_id || '-'}</td>
+                    <td title="${escHtml(JSON.stringify(l.details))}">${escHtml(l.details ? JSON.stringify(l.details).slice(0,80) : '-')}</td>
+                </tr>`).join('');
+            }
+            renderPagination('log-pagination', data.current_page, data.pages, 'loadLogs');
+        } catch (e) { showToast(e.message, true); }
+    }
+
+    async function updateFolderStatus() {
+        const btn = document.getElementById('folder-status-btn');
+        const status = document.getElementById('sync-status');
+        btn.disabled = true;
+        btn.textContent = '⏳ 갱신 중...';
+        status.textContent = 'DB에서 폴더 상태를 계산하는 중...';
+        try {
+            const { data, message } = await apiFetch('/documents/update-folder-status', { method: 'POST' });
+            showToast(message);
+            status.textContent = `갱신 완료: ${data.updated}개 색인됨` + (data.duplicates ? `, ${data.duplicates}개 중복` : '') + `, ${data.still_unindexed}개 미색인`;
+            // Refresh vector stats table
+            loadStats();
+        } catch (e) {
+            showToast('폴더 상태 갱신 실패: ' + e.message, true);
+            status.textContent = '갱신 실패';
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '📊 폴더 상태 갱신';
+        }
+    }
+
+    document.getElementById('log-action-filter').addEventListener('change', () => loadLogs(1));
+
+    // ---------------------------------------------------------------------------
+    // Debounce helper
+    // ---------------------------------------------------------------------------
+    function debounce(fn, ms) {
+        let t;
+        return function(...args) { clearTimeout(t); t = setTimeout(() => fn.apply(this, args), ms); };
+    }
+
+    // ---------------------------------------------------------------------------
+    // Section loader map + init
+    // ---------------------------------------------------------------------------
+    const loaders = {
+        dashboard: loadDashboard,
+        documents: () => { loadDocNamespaces(); loadFileTree(); },
+        posts: () => { loadPostCategories(); loadPosts(); },
+        users: loadUsers,
+        stats: loadStats,
+        logs: loadLogs,
+    };
+
+    // Init: navigate from hash or default to dashboard
+    (function init() {
+        const hash = location.hash.replace('#', '') || 'dashboard';
+        const item = document.querySelector(`.sidebar-item[data-section="${hash}"]`);
+        if (item) item.click();
+        else loadDashboard();
+    })();
+    </script>
+</body>
+</html>

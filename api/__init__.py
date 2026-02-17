@@ -6,8 +6,39 @@ import uuid
 from flask import g, request
 from flask_cors import CORS
 
+# ------------------------------------------------------------------
+# Rate Limiter – standard init_app pattern
+# ------------------------------------------------------------------
+# flask-limiter is optional; provide a no-op helper when unavailable.
+try:
+    from flask_limiter import Limiter
+    from flask_limiter.util import get_remote_address
 
-def init_api(app):
+    limiter = Limiter(key_func=get_remote_address)
+    _has_limiter = True
+except ImportError:
+    limiter = None
+    _has_limiter = False
+
+
+def rate_limit(limit_string):
+    """Rate-limit decorator; no-op when flask-limiter is unavailable or disabled.
+
+    Usage in route modules::
+
+        from api import rate_limit
+
+        @v1_bp.route('/search', methods=['POST'])
+        @rate_limit("30 per minute")
+        def api_search():
+            ...
+    """
+    if limiter is not None:
+        return limiter.limit(limit_string)
+    return lambda f: f
+
+
+def init_api(app, csrf=None):
     """Register API blueprints, CORS, request-ID tracing, and rate limiting."""
 
     # ------------------------------------------------------------------
@@ -17,7 +48,7 @@ def init_api(app):
     origins = [o.strip() for o in cors_origins.split(',') if o.strip()] if cors_origins else '*'
 
     CORS(app, resources={
-        r"/api/.*": {
+        r"^/api/.+": {
             "origins": origins,
             "methods": ["GET", "POST", "OPTIONS"],
             "allow_headers": ["Content-Type", "Authorization", "X-Request-ID"]
@@ -39,36 +70,33 @@ def init_api(app):
         return response
 
     # ------------------------------------------------------------------
-    # Blueprint registration (must come before rate limiting)
+    # Blueprint registration
     # ------------------------------------------------------------------
     from api.v1 import v1_bp
     app.register_blueprint(v1_bp)
 
     from api.compat import register_compat_routes
-    register_compat_routes(app)
+    register_compat_routes(app, csrf=csrf)
 
     # ------------------------------------------------------------------
     # Rate Limiting (opt-in via RATE_LIMIT_ENABLED env var)
+    #
+    # NOTE: memory:// storage is per-worker — rate limits are NOT shared
+    # across Gunicorn workers. For production with multiple workers, use
+    # a shared backend such as Redis:
+    #   RATE_LIMIT_STORAGE_URI=redis://localhost:6379
     # ------------------------------------------------------------------
-    if os.environ.get('RATE_LIMIT_ENABLED', '').lower() in ('true', '1', 'yes'):
-        try:
-            from flask_limiter import Limiter
-            from flask_limiter.util import get_remote_address
-
-            limiter = Limiter(
-                get_remote_address,
-                app=app,
-                default_limits=["60 per minute"],
-                storage_uri=os.environ.get('RATE_LIMIT_STORAGE_URI', 'memory://'),
-            )
-            # Stricter limits for LLM-backed endpoints
-            for endpoint in ('v1.api_ask', 'v1.api_ask_stream'):
-                fn = app.view_functions.get(endpoint)
-                if fn:
-                    app.view_functions[endpoint] = limiter.limit("20 per minute")(fn)
-            fn = app.view_functions.get('v1.api_search')
-            if fn:
-                app.view_functions['v1.api_search'] = limiter.limit("30 per minute")(fn)
-        except ImportError:
-            import logging
-            logging.warning("[Rate Limit] flask-limiter not installed, skipping rate limiting")
+    if _has_limiter:
+        enabled = os.environ.get(
+            'RATE_LIMIT_ENABLED', ''
+        ).lower() in ('true', '1', 'yes')
+        app.config.setdefault('RATELIMIT_ENABLED', enabled)
+        app.config.setdefault(
+            'RATELIMIT_STORAGE_URI',
+            os.environ.get('RATE_LIMIT_STORAGE_URI', 'memory://'),
+        )
+        app.config.setdefault('RATELIMIT_DEFAULT', '60 per minute')
+        limiter.init_app(app)
+    elif os.environ.get('RATE_LIMIT_ENABLED', '').lower() in ('true', '1', 'yes'):
+        import logging
+        logging.warning("[Rate Limit] flask-limiter not installed, skipping rate limiting")

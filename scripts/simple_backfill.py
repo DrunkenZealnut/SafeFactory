@@ -52,7 +52,7 @@ def estimate_metadata(namespace: str, folder_path: str, metadata_manager: Metada
             file_path = str(Path(loaded_file.path).resolve())
 
             # Check if already exists
-            existing = metadata_manager.file_exists(namespace, source_file)
+            existing = metadata_manager.get_file_metadata(namespace, source_file)
             if existing and existing['status'] == 'completed':
                 skipped_count += 1
                 if skipped_count % 100 == 0:

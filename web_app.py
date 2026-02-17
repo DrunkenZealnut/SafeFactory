@@ -17,13 +17,25 @@ from urllib.parse import urlparse, urljoin
 
 from flask import Flask, flash, redirect, render_template, request, send_from_directory, url_for
 from flask_login import LoginManager, current_user, login_required, login_user, logout_user
+from flask_wtf.csrf import CSRFProtect
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', os.urandom(24).hex())
+secret_key = os.getenv('SECRET_KEY')
+if not secret_key:
+    if os.getenv('FLASK_ENV') == 'production':
+        raise ValueError('SECRET_KEY must be set in production')
+    secret_key = 'dev-only-insecure-key'
+    logging.warning('Using insecure development SECRET_KEY')
+app.config['SECRET_KEY'] = secret_key
+
+# ========================================
+# CSRF Protection
+# ========================================
+csrf = CSRFProtect(app)
 
 # ========================================
 # Database (SQLite via SQLAlchemy)
@@ -32,7 +44,7 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'instance', 'app.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-from models import db, User, SocialAccount
+from models import db, User, SocialAccount, seed_categories
 db.init_app(app)
 
 # ========================================
@@ -58,14 +70,19 @@ init_oauth(app)
 # Import shared configuration
 from services.domain_config import DOCUMENTS_PATH, DOMAIN_CONFIG
 
-# Register API blueprints and CORS
+# Register API blueprints and CORS (pass csrf so compat routes are exempted)
 from api import init_api
-init_api(app)
+init_api(app, csrf=csrf)
+
+# Exempt API blueprint from CSRF (JSON APIs, not form submissions)
+from api.v1 import v1_bp
+csrf.exempt(v1_bp)
 
 # Create database tables
 with app.app_context():
     os.makedirs(os.path.join(basedir, 'instance'), exist_ok=True)
     db.create_all()
+    seed_categories()
 
 
 # ========================================
@@ -79,6 +96,16 @@ def _is_safe_redirect(target):
     ref_url = urlparse(request.host_url)
     test_url = urlparse(urljoin(request.host_url, target))
     return test_url.scheme in ('http', 'https') and ref_url.netloc == test_url.netloc
+
+
+def _sanitize_image_url(url):
+    """Allow only http/https image URLs to prevent javascript: XSS."""
+    if not url:
+        return None
+    parsed = urlparse(url)
+    if parsed.scheme in ('http', 'https'):
+        return url
+    return None
 
 
 def _handle_oauth_callback(provider, user_info):
@@ -109,7 +136,7 @@ def _handle_oauth_callback(provider, user_info):
             user = User(
                 email=email,
                 name=user_info.get('name') or email.split('@')[0],
-                profile_image=user_info.get('picture'),
+                profile_image=_sanitize_image_url(user_info.get('picture')),
             )
             db.session.add(user)
             db.session.flush()
@@ -127,8 +154,9 @@ def _handle_oauth_callback(provider, user_info):
     # Update user profile if newer info available
     if user_info.get('name'):
         user.name = user_info['name']
-    if user_info.get('picture'):
-        user.profile_image = user_info['picture']
+    sanitized_picture = _sanitize_image_url(user_info.get('picture'))
+    if sanitized_picture:
+        user.profile_image = sanitized_picture
     user.last_login = datetime.now(timezone.utc)
 
     db.session.commit()
@@ -154,6 +182,9 @@ def login():
 @app.route('/login/google')
 def login_google():
     """Start Google OAuth flow."""
+    if not hasattr(oauth, 'google'):
+        flash('Google 로그인이 설정되지 않았습니다.')
+        return redirect(url_for('login'))
     redirect_uri = url_for('callback_google', _external=True)
     return oauth.google.authorize_redirect(redirect_uri)
 
@@ -186,6 +217,9 @@ def callback_google():
 @app.route('/login/kakao')
 def login_kakao():
     """Start Kakao OAuth flow."""
+    if not hasattr(oauth, 'kakao'):
+        flash('Kakao 로그인이 설정되지 않았습니다.')
+        return redirect(url_for('login'))
     redirect_uri = url_for('callback_kakao', _external=True)
     return oauth.kakao.authorize_redirect(redirect_uri)
 
@@ -263,11 +297,34 @@ def field_training():
     return render_template('domain.html', domain='field-training', config=config)
 
 
+@app.route('/safeguide')
+def safeguide():
+    """Safety guide (안전보건공단) domain page."""
+    config = DOMAIN_CONFIG['safeguide']
+    return render_template('domain.html', domain='safeguide', config=config)
+
+
 @app.route('/msds')
 def msds():
     """MSDS chemical information page."""
     config = DOMAIN_CONFIG['msds']
     return render_template('msds.html', domain='msds', config=config)
+
+
+@app.route('/community')
+def community():
+    """Community bulletin board page."""
+    return render_template('community.html')
+
+
+@app.route('/admin')
+@login_required
+def admin_page():
+    """Admin dashboard (admin role required, checked via JS + API)."""
+    if current_user.role != 'admin':
+        flash('접근 권한이 없습니다.')
+        return redirect(url_for('home'))
+    return render_template('admin.html')
 
 
 @app.route('/documents/<path:filepath>')

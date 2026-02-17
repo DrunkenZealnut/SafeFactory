@@ -62,7 +62,7 @@ def backfill_folder(
             file_path = str(Path(loaded_file.path).resolve())
 
             # Check if already in database
-            existing = metadata_manager.file_exists(namespace, source_file)
+            existing = metadata_manager.get_file_metadata(namespace, source_file)
             if existing and existing['status'] == 'completed':
                 skipped_count += 1
                 if verbose and skipped_count % 100 == 0:
