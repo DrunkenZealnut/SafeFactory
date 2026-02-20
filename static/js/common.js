@@ -1,6 +1,7 @@
 /**
  * Common JavaScript functions shared across templates
  * - XSS prevention with escapeHtml
+ * - Markdown rendering with renderMarkdown
  * - Image lightbox functionality
  * - Chart rendering with Chart.js
  * - Image gallery rendering
@@ -20,6 +21,27 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// ============================================================================
+// Markdown Rendering
+// ============================================================================
+
+/**
+ * Render Markdown to sanitized HTML with fallback to escaped text.
+ * Requires marked.js and DOMPurify to be loaded for Markdown rendering.
+ * @param {string} text - Raw Markdown text
+ * @returns {string} - Sanitized HTML string
+ */
+function renderMarkdown(text) {
+    if (typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
+        var html = marked.parse(text || '');
+        return DOMPurify.sanitize(html, { ADD_ATTR: ['target'] });
+    }
+    if (typeof marked !== 'undefined') {
+        console.warn('DOMPurify not loaded, markdown disabled for security');
+    }
+    return escapeHtml(text || '').replace(/\n/g, '<br>');
 }
 
 // ============================================================================

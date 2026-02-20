@@ -1,4 +1,4 @@
-# Pinecone Agent
+# SafeFactory
 
 폴더 내 파일(이미지, 마크다운, JSON)을 처리하여 Pinecone 벡터 데이터베이스에 저장하는 에이전트입니다.
 
@@ -122,7 +122,7 @@ for r in results:
 ## 프로젝트 구조
 
 ```
-pinecone_agent/
+SafeFactory/
 ├── main.py              # CLI 인터페이스
 ├── requirements.txt     # 의존성
 ├── .env.example         # 환경변수 예시

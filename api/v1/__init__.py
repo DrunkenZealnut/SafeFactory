@@ -13,3 +13,4 @@ from api.v1 import calculator  # noqa: E402, F401
 from api.v1 import auth        # noqa: E402, F401
 from api.v1 import community   # noqa: E402, F401
 from api.v1 import admin       # noqa: E402, F401
+from api.v1 import news        # noqa: E402, F401

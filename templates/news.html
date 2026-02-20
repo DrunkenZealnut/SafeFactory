@@ -1,0 +1,715 @@
+{% extends "base.html" %}
+{% block title %}노동안전 뉴스 - SafeFactory{% endblock %}
+{% block nav_news %}active{% endblock %}
+{% block mobile_nav_news %}active{% endblock %}
+
+{% block head_scripts %}
+<script defer src="https://cdn.jsdelivr.net/npm/marked@17.0.2/lib/marked.umd.js"
+        integrity="sha384-HQ7B/VBz5B0fo8GBiEFD/BZsAVXM9iDzC+hpeY1M1cpYezmRrwJSQh5MkTEI8G/H"
+        crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/dompurify@3.3.1/dist/purify.min.js"
+        integrity="sha384-80VlBZnyAwkkqtSfg5NhPyZff6nU4K/qniLBL8Jnm4KDv6jZhLiYtJbhglg/i9ww"
+        crossorigin="anonymous"></script>
+<script defer src="/static/js/common.js"></script>
+{% endblock %}
+
+{% block head_extra %}
+<style>
+    body {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        color: #e0e0e0;
+    }
+
+    /* ===== Container ===== */
+    .container { max-width: 1200px; width: 100%; margin: 0 auto; padding: 20px; }
+
+    /* ===== Main Panel ===== */
+    .main-panel {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        overflow: hidden;
+        margin-bottom: 30px;
+        padding: 30px;
+    }
+
+    /* ===== Page Header ===== */
+    .page-header { text-align: center; padding: 40px 0; }
+    .page-header h1 { font-size: 2.5rem; color: #ff6b35; margin-bottom: 10px; }
+    .page-header p { color: #888; font-size: 1.1rem; }
+
+    /* ===== Category Tabs ===== */
+    .category-tabs {
+        display: flex; gap: 8px; margin-bottom: 16px;
+        overflow-x: auto; padding-bottom: 4px;
+    }
+    .category-tabs::-webkit-scrollbar { height: 3px; }
+    .category-tabs::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
+    .tab-btn {
+        padding: 8px 18px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.15);
+        background: rgba(255,255,255,0.05); color: #aaa; font-size: 0.9rem;
+        cursor: pointer; white-space: nowrap; transition: all 0.2s;
+    }
+    .tab-btn:hover { background: rgba(255,255,255,0.1); color: #e0e0e0; }
+    .tab-btn.active { background: rgba(255, 107, 53, 0.2); color: #ff6b35; border-color: rgba(255, 107, 53, 0.4); }
+
+    /* ===== Toolbar ===== */
+    .toolbar {
+        display: flex; gap: 10px; margin-bottom: 16px; align-items: center; flex-wrap: wrap;
+    }
+    .toolbar input[type="text"] {
+        flex: 1; min-width: 180px; padding: 10px 14px; border-radius: 10px;
+        border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.3);
+        color: #e0e0e0; font-size: 0.9rem; outline: none; transition: border-color 0.2s;
+    }
+    .toolbar input[type="text"]:focus { border-color: #ff6b35; }
+    .toolbar input[type="text"]::placeholder { color: #666; }
+    .btn-primary {
+        padding: 10px 20px; border-radius: 10px; border: none;
+        background: #ff6b35; color: #fff; font-size: 0.9rem; font-weight: 500;
+        cursor: pointer; transition: all 0.2s; text-decoration: none; display: inline-block;
+    }
+    .btn-primary:hover { background: #e55a2b; }
+
+    /* ===== News List ===== */
+    .news-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .news-card {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        padding: 16px 20px;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    .news-card:hover {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: rgba(255, 107, 53, 0.25);
+    }
+    .news-card-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .news-card-title { font-size: 1rem; font-weight: 500; color: #e0e0e0; flex: 1; }
+    .news-card-bottom {
+        display: flex; align-items: center; gap: 12px; font-size: 0.82rem; color: #888;
+    }
+
+    /* ===== Category Badges ===== */
+    .cat-badge {
+        display: inline-block; padding: 2px 10px; border-radius: 10px;
+        font-size: 0.78rem; font-weight: 500;
+    }
+    .cat-accident { background: rgba(239,68,68,0.15); color: #f87171; }
+    .cat-regulation { background: rgba(234,179,8,0.15); color: #fbbf24; }
+    .cat-policy { background: rgba(59,130,246,0.15); color: #60a5fa; }
+    .cat-technology { background: rgba(34,197,94,0.15); color: #4ade80; }
+    .cat-general { background: rgba(167,139,250,0.15); color: #a78bfa; }
+
+    /* ===== Empty State ===== */
+    .empty-state {
+        text-align: center; padding: 60px 20px; color: #666;
+    }
+    .empty-state .empty-icon { font-size: 3rem; margin-bottom: 12px; }
+
+    /* ===== Pagination ===== */
+    .pagination {
+        display: flex; justify-content: center; gap: 6px;
+        margin-top: 20px; flex-wrap: wrap;
+    }
+    .page-btn {
+        padding: 8px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);
+        background: rgba(0,0,0,0.2); color: #aaa; cursor: pointer;
+        font-size: 0.85rem; transition: all 0.2s;
+    }
+    .page-btn:hover { background: rgba(255, 107, 53, 0.15); color: #ff6b35; }
+    .page-btn.active { background: #ff6b35; color: #fff; border-color: #ff6b35; }
+    .page-btn:disabled { opacity: 0.3; cursor: default; }
+
+    /* ===== Detail View ===== */
+    .btn-back {
+        background: none; border: none; color: #ff6b35; cursor: pointer;
+        font-size: 0.95rem; padding: 8px 0; margin-bottom: 16px;
+        display: inline-flex; align-items: center; gap: 4px;
+    }
+    .btn-back:hover { text-decoration: underline; }
+    .detail-card {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        padding: 30px;
+        margin-bottom: 20px;
+    }
+    .detail-title { font-size: 1.5rem; font-weight: 600; color: #e0e0e0; margin-bottom: 12px; }
+    .detail-meta {
+        display: flex; align-items: center; gap: 15px; font-size: 0.85rem; color: #888;
+        flex-wrap: wrap; padding-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .detail-summary {
+        margin: 16px 0; padding: 12px 16px;
+        background: rgba(255, 107, 53, 0.05);
+        border-left: 3px solid #ff6b35;
+        border-radius: 0 8px 8px 0;
+        color: #ccc; font-size: 0.95rem; line-height: 1.6;
+    }
+    .detail-content {
+        line-height: 1.8; margin: 20px 0; color: #d0d0d0;
+        word-break: break-word;
+    }
+    .detail-content p { margin-bottom: 12px; }
+    .detail-content h1, .detail-content h2, .detail-content h3 { color: #e0e0e0; margin: 20px 0 10px; }
+    .detail-content code {
+        background: rgba(0,0,0,0.4); padding: 2px 6px; border-radius: 4px; font-size: 0.9em;
+    }
+    .detail-content pre {
+        background: rgba(0,0,0,0.4); padding: 16px; border-radius: 8px;
+        overflow-x: auto; margin: 12px 0;
+    }
+    .detail-content pre code { background: none; padding: 0; }
+    .detail-content a { color: #ff6b35; }
+    .detail-content table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+    .detail-content th, .detail-content td {
+        border: 1px solid rgba(255,255,255,0.1); padding: 8px 12px; text-align: left;
+    }
+    .detail-content th { background: rgba(255,255,255,0.05); }
+    .detail-content img { max-width: 100%; border-radius: 8px; margin: 8px 0; }
+
+    .source-link {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 10px 20px; border-radius: 10px;
+        background: rgba(255, 107, 53, 0.1); border: 1px solid rgba(255, 107, 53, 0.2);
+        color: #ff6b35; text-decoration: none; font-size: 0.9rem;
+        transition: all 0.2s; margin-top: 16px;
+    }
+    .source-link:hover { background: rgba(255, 107, 53, 0.2); }
+
+    .admin-actions {
+        margin-top: 20px; padding-top: 16px;
+        border-top: 1px solid rgba(255,255,255,0.08);
+        display: flex; gap: 10px;
+    }
+    .btn-cancel {
+        padding: 10px 20px; border-radius: 10px;
+        border: 1px solid rgba(255,255,255,0.15); background: transparent;
+        color: #aaa; cursor: pointer; font-size: 0.9rem;
+    }
+    .btn-cancel:hover { background: rgba(255,255,255,0.05); }
+
+    /* ===== Modal ===== */
+    .modal {
+        position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+        display: flex; align-items: center; justify-content: center;
+        z-index: 1000; padding: 20px;
+    }
+    .modal-content {
+        background: #1e2a3a; border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 16px; width: 100%; max-width: 680px;
+        max-height: 90vh; overflow-y: auto;
+    }
+    .modal-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 20px 24px; border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .modal-header h2 { font-size: 1.2rem; color: #e0e0e0; }
+    .modal-close {
+        background: none; border: none; color: #888; cursor: pointer;
+        font-size: 1.5rem; line-height: 1; padding: 4px;
+    }
+    .modal-close:hover { color: #e0e0e0; }
+    .modal-body { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+    .modal-body label { color: #aaa; font-size: 0.85rem; margin-bottom: 4px; display: block; }
+    .modal-body select,
+    .modal-body input[type="text"] {
+        width: 100%; padding: 10px 14px; border-radius: 10px;
+        border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.3);
+        color: #e0e0e0; font-size: 0.95rem; outline: none;
+    }
+    .modal-body select:focus,
+    .modal-body input[type="text"]:focus { border-color: #ff6b35; }
+    .modal-body textarea {
+        width: 100%; padding: 14px; border-radius: 10px;
+        border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.3);
+        color: #e0e0e0; font-size: 0.95rem; outline: none;
+        font-family: inherit; resize: vertical; min-height: 200px;
+    }
+    .modal-body textarea:focus { border-color: #ff6b35; }
+    .modal-body textarea::placeholder { color: #555; }
+    .modal-footer {
+        display: flex; justify-content: flex-end; gap: 10px;
+        padding: 16px 24px; border-top: 1px solid rgba(255,255,255,0.08);
+    }
+
+    /* ===== Loading ===== */
+    .loading {
+        display: flex; align-items: center; justify-content: center; padding: 40px;
+        color: #888;
+    }
+    .spinner {
+        width: 24px; height: 24px; border: 3px solid rgba(255, 107, 53, 0.2);
+        border-top-color: #ff6b35; border-radius: 50%;
+        animation: spin 0.6s linear infinite; margin-right: 10px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ===== Toast ===== */
+    .toast {
+        position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+        background: #333; color: #e0e0e0; padding: 12px 24px; border-radius: 10px;
+        font-size: 0.9rem; z-index: 2000; opacity: 0; transition: opacity 0.3s;
+        pointer-events: none;
+    }
+    .toast.show { opacity: 1; }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 768px) {
+        .container { padding: 12px; }
+        .page-header h1 { font-size: 1.5rem; }
+        .toolbar { flex-direction: column; }
+        .toolbar input[type="text"] { min-width: unset; }
+        .detail-card { padding: 20px; }
+        .modal-content { max-width: 100%; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+    <div class="container">
+        <div class="page-header">
+            <h1>노동안전 뉴스</h1>
+            <p>산업안전 관련 최신 뉴스와 법령 동향</p>
+        </div>
+
+        <div class="main-panel">
+            <!-- ===== LIST VIEW ===== -->
+            <div id="listView">
+                <div class="category-tabs" id="categoryTabs">
+                    <button class="tab-btn active" data-category="">전체</button>
+                </div>
+
+                <div class="toolbar">
+                    <input type="text" id="searchInput" placeholder="뉴스 검색..." />
+                    {% if current_user.is_authenticated and current_user.role == 'admin' %}
+                    <button class="btn-primary" onclick="openWriteModal()">뉴스 등록</button>
+                    {% elif not current_user.is_authenticated %}
+                    <span style="font-size:0.82rem;color:#888;">뉴스 등록은 <a href="/login" style="color:#ff6b35;">로그인</a> 후 관리자만 가능합니다</span>
+                    {% else %}
+                    <span style="font-size:0.82rem;color:#888;">뉴스 등록은 관리자만 가능합니다</span>
+                    {% endif %}
+                </div>
+
+                <div id="newsList" class="news-list">
+                    <div class="loading"><div class="spinner"></div>로딩 중...</div>
+                </div>
+
+                <div id="pagination" class="pagination"></div>
+            </div>
+
+            <!-- ===== DETAIL VIEW ===== -->
+            <div id="detailView" style="display:none;">
+                <button class="btn-back" onclick="showListView()">&#8592; 목록으로</button>
+                <div id="articleDetail" class="detail-card"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MODAL: Write / Edit ===== -->
+    {% if current_user.is_authenticated and current_user.role == 'admin' %}
+    <div id="writeModal" class="modal" style="display:none;" onclick="if(event.target===this)closeWriteModal()">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">뉴스 등록</h2>
+                <button class="modal-close" onclick="closeWriteModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div>
+                    <label for="formCategory">카테고리</label>
+                    <select id="formCategory"></select>
+                </div>
+                <div>
+                    <label for="formTitle">제목</label>
+                    <input type="text" id="formTitle" maxlength="300" placeholder="뉴스 제목" />
+                </div>
+                <div>
+                    <label for="formContent">내용</label>
+                    <textarea id="formContent" placeholder="뉴스 내용... (마크다운 지원, URL 붙여넣기 시 미리보기 자동 생성)"></textarea>
+                    <div id="formLinkPreviews" style="margin-top:8px;display:flex;flex-direction:column;gap:8px;"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeWriteModal()">취소</button>
+                <button class="btn-primary" id="submitBtn" onclick="submitArticle()">등록</button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="toast" id="toast"></div>
+{% endblock %}
+
+{% block scripts %}
+{% include 'partials/link_preview.html' %}
+<script>
+// ===== State =====
+const API = '/api/v1/news';
+const isAdmin = {{ 'true' if current_user.is_authenticated and current_user.role == 'admin' else 'false' }};
+const CSRF_TOKEN = '{{ csrf_token() }}';
+
+const NEWS_CATEGORIES = {
+    'accident': '산재사고',
+    'regulation': '법령개정',
+    'policy': '정책동향',
+    'technology': '안전기술',
+    'general': '일반',
+};
+const CAT_CLASSES = {
+    'accident': 'cat-accident',
+    'regulation': 'cat-regulation',
+    'policy': 'cat-policy',
+    'technology': 'cat-technology',
+    'general': 'cat-general',
+};
+
+let currentPage = 1;
+let currentCategory = '';
+let searchTimeout = null;
+let editingId = null;
+let _currentArticle = null;
+
+// ===== Helpers =====
+// escapeHtml and renderMarkdown provided by common.js
+
+function formatDate(iso) {
+    if (!iso) return '';
+    var hasTz = /Z$|[+-]\d{2}:\d{2}$/.test(iso);
+    var d = new Date(hasTz ? iso : iso + 'Z');
+    var now = new Date();
+    var diff = (now - d) / 1000;
+    if (diff < 60) return '방금 전';
+    if (diff < 3600) return Math.floor(diff / 60) + '분 전';
+    if (diff < 86400) return Math.floor(diff / 3600) + '시간 전';
+    if (diff < 604800) return Math.floor(diff / 86400) + '일 전';
+    return d.toLocaleDateString('ko-KR');
+}
+
+function showToast(msg) {
+    var el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    setTimeout(function() { el.classList.remove('show'); }, 2500);
+}
+
+async function apiFetch(url, options) {
+    options = options || {};
+    try {
+        if (options.method && options.method.toUpperCase() !== 'GET') {
+            options.headers = Object.assign({}, options.headers, { 'X-CSRFToken': CSRF_TOKEN });
+        }
+        var resp = await fetch(url, options);
+        var data = await resp.json();
+        if (!resp.ok || !data.success) {
+            showToast(data.error || '오류가 발생했습니다.');
+            return null;
+        }
+        return data;
+    } catch (e) {
+        showToast('네트워크 오류가 발생했습니다.');
+        return null;
+    }
+}
+
+// ===== View Management =====
+function showListView() {
+    document.getElementById('listView').style.display = '';
+    document.getElementById('detailView').style.display = 'none';
+    window.location.hash = '';
+    loadArticles();
+}
+
+function showDetailView(id, skipHash) {
+    document.getElementById('listView').style.display = 'none';
+    document.getElementById('detailView').style.display = '';
+    if (!skipHash) window.location.hash = 'article/' + id;
+    loadArticleDetail(id);
+}
+
+// ===== Category Tabs =====
+function initCategoryTabs() {
+    var tabs = document.getElementById('categoryTabs');
+    var html = '<button class="tab-btn active" data-category="">전체</button>';
+    for (var slug in NEWS_CATEGORIES) {
+        html += '<button class="tab-btn" data-category="' + escapeHtml(slug) + '">' + escapeHtml(NEWS_CATEGORIES[slug]) + '</button>';
+    }
+    tabs.innerHTML = html;
+    tabs.querySelectorAll('.tab-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() { setCategory(btn.dataset.category); });
+    });
+
+    // Populate admin form select
+    if (isAdmin) {
+        var sel = document.getElementById('formCategory');
+        if (sel) {
+            var optHtml = '';
+            for (var k in NEWS_CATEGORIES) {
+                optHtml += '<option value="' + k + '">' + escapeHtml(NEWS_CATEGORIES[k]) + '</option>';
+            }
+            sel.innerHTML = optHtml;
+        }
+    }
+}
+
+function setCategory(slug) {
+    currentCategory = slug;
+    currentPage = 1;
+    document.querySelectorAll('.tab-btn').forEach(function(btn) {
+        btn.classList.toggle('active', btn.dataset.category === slug);
+    });
+    loadArticles();
+}
+
+// ===== Article List =====
+async function loadArticles() {
+    var list = document.getElementById('newsList');
+    list.innerHTML = '<div class="loading"><div class="spinner"></div>로딩 중...</div>';
+
+    var search = document.getElementById('searchInput').value.trim();
+    var params = new URLSearchParams({ page: currentPage, per_page: 20 });
+    if (currentCategory) params.set('category', currentCategory);
+    if (search) params.set('search', search);
+
+    var data = await apiFetch(API + '/articles?' + params);
+    if (!data) { list.innerHTML = '<div class="empty-state">로딩에 실패했습니다.</div>'; return; }
+
+    var articles = data.data.articles;
+    var total = data.data.total;
+    var pages = data.data.pages;
+    var current_page = data.data.current_page;
+
+    if (!articles.length) {
+        list.innerHTML = '<div class="empty-state"><div class="empty-icon">📰</div>등록된 뉴스가 없습니다.</div>';
+        document.getElementById('pagination').innerHTML = '';
+        return;
+    }
+
+    list.innerHTML = articles.map(function(a) {
+        var catClass = CAT_CLASSES[a.category] || 'cat-general';
+        var catLabel = a.category_label || '일반';
+        return '<div class="news-card" onclick="showDetailView(' + a.id + ')">' +
+            '<div class="news-card-top">' +
+            '<span class="cat-badge ' + catClass + '">' + escapeHtml(catLabel) + '</span>' +
+            '<span class="news-card-title">' + escapeHtml(a.title) + '</span>' +
+            '</div>' +
+            '<div class="news-card-bottom">' +
+            (a.source_name ? '<span>📌 ' + escapeHtml(a.source_name) + '</span>' : '') +
+            '<span>' + formatDate(a.published_at) + '</span>' +
+            '<span>👁 ' + a.view_count + '</span>' +
+            '</div></div>';
+    }).join('');
+
+    renderPagination(total, pages, current_page);
+}
+
+// ===== Pagination =====
+function renderPagination(total, pages, current) {
+    var el = document.getElementById('pagination');
+    if (pages <= 1) { el.innerHTML = ''; return; }
+
+    var html = '';
+    html += '<button class="page-btn" onclick="goPage(' + (current - 1) + ')" ' + (current <= 1 ? 'disabled' : '') + '>&#8249;</button>';
+
+    var start = Math.max(1, current - 2);
+    var end = Math.min(pages, start + 4);
+    start = Math.max(1, end - 4);
+
+    for (var i = start; i <= end; i++) {
+        html += '<button class="page-btn ' + (i === current ? 'active' : '') + '" onclick="goPage(' + i + ')">' + i + '</button>';
+    }
+    html += '<button class="page-btn" onclick="goPage(' + (current + 1) + ')" ' + (current >= pages ? 'disabled' : '') + '>&#8250;</button>';
+    el.innerHTML = html;
+}
+
+function goPage(p) {
+    currentPage = p;
+    loadArticles();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ===== Article Detail =====
+async function loadArticleDetail(id) {
+    var detail = document.getElementById('articleDetail');
+    detail.innerHTML = '<div class="loading"><div class="spinner"></div>로딩 중...</div>';
+
+    var data = await apiFetch(API + '/articles/' + id);
+    if (!data) { detail.innerHTML = '<div class="empty-state">뉴스를 찾을 수 없습니다.</div>'; return; }
+
+    var a = data.data;
+    _currentArticle = a;
+    var catClass = CAT_CLASSES[a.category] || 'cat-general';
+
+    var adminHtml = '';
+    if (isAdmin) {
+        adminHtml = '<div class="admin-actions">' +
+            '<button class="btn-primary" onclick="openEditModal(' + a.id + ')">수정</button>' +
+            '<button class="btn-cancel" onclick="deleteArticle(' + a.id + ')">삭제</button>' +
+            '</div>';
+    }
+
+    var previewCardHtml = '';
+    if (a.source_url) {
+        previewCardHtml = '<div style="margin:16px 0">' + LinkPreview.renderReadonlyCard({
+            url: a.source_url,
+            title: a.title,
+            description: a.summary,
+            image: a.source_image,
+            site_name: a.source_name,
+        }) + '</div>';
+    }
+
+    detail.innerHTML =
+        '<div><span class="cat-badge ' + catClass + '">' + escapeHtml(a.category_label || '') + '</span></div>' +
+        '<div class="detail-title">' + escapeHtml(a.title) + '</div>' +
+        '<div class="detail-meta">' +
+        (a.source_name ? '<span>📌 ' + escapeHtml(a.source_name) + '</span>' : '') +
+        (a.author ? '<span>✍️ ' + escapeHtml(a.author.name) + '</span>' : '') +
+        '<span>' + formatDate(a.published_at) + '</span>' +
+        '<span>조회 ' + a.view_count + '</span>' +
+        '</div>' +
+        '<div class="detail-content">' + renderMarkdown(a.content) + '</div>' +
+        previewCardHtml +
+        adminHtml;
+}
+
+// ===== Link Preview Instance =====
+var newsLP = isAdmin ? new LinkPreview({
+    containerId: 'formLinkPreviews',
+    textareaId:  'formContent',
+    apiUrl:      API + '/link-preview',
+    csrfToken:   CSRF_TOKEN,
+}) : null;
+
+// ===== Admin: Write / Edit / Delete =====
+function openWriteModal() {
+    editingId = null;
+    document.getElementById('modalTitle').textContent = '뉴스 등록';
+    document.getElementById('submitBtn').textContent = '등록';
+    document.getElementById('formTitle').value = '';
+    document.getElementById('formContent').value = '';
+    document.getElementById('formCategory').selectedIndex = 0;
+    if (newsLP) newsLP.clear();
+    document.getElementById('writeModal').style.display = '';
+    document.getElementById('formTitle').focus();
+}
+
+function openEditModal(id) {
+    var a = _currentArticle || {};
+    editingId = id;
+    document.getElementById('modalTitle').textContent = '뉴스 수정';
+    document.getElementById('submitBtn').textContent = '수정';
+    document.getElementById('formTitle').value = a.title || '';
+    document.getElementById('formContent').value = a.content || '';
+    var sel = document.getElementById('formCategory');
+    for (var i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].value === a.category) {
+            sel.selectedIndex = i; break;
+        }
+    }
+    if (newsLP) newsLP.clear();
+    document.getElementById('writeModal').style.display = '';
+    if (newsLP) newsLP.update();
+}
+
+function closeWriteModal() {
+    document.getElementById('writeModal').style.display = 'none';
+    if (newsLP) newsLP.clear();
+}
+
+async function submitArticle() {
+    var title = document.getElementById('formTitle').value.trim();
+    var content = document.getElementById('formContent').value.trim();
+    var category = document.getElementById('formCategory').value;
+
+    if (!title || title.length < 2) { showToast('제목은 2자 이상이어야 합니다.'); return; }
+    if (!content) { showToast('내용을 입력해주세요.'); return; }
+
+    var src = newsLP ? newsLP.getSourceData(content) || {} : {};
+
+    var body = {
+        title: title,
+        content: content,
+        category: category,
+        summary: src.summary || null,
+        source_name: src.source_name || null,
+        source_url: src.source_url || null,
+        source_image: src.source_image || null,
+    };
+
+    var data;
+    if (editingId) {
+        data = await apiFetch(API + '/articles/' + editingId, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+    } else {
+        data = await apiFetch(API + '/articles', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+    }
+
+    if (!data) return;
+
+    closeWriteModal();
+    showToast(editingId ? '뉴스가 수정되었습니다.' : '뉴스가 등록되었습니다.');
+
+    if (editingId) {
+        loadArticleDetail(data.data.id);
+    } else {
+        showDetailView(data.data.id);
+    }
+}
+
+async function deleteArticle(id) {
+    if (!confirm('뉴스를 삭제하시겠습니까?')) return;
+    var data = await apiFetch(API + '/articles/' + id, { method: 'DELETE' });
+    if (data) {
+        showToast('뉴스가 삭제되었습니다.');
+        showListView();
+    }
+}
+
+// ===== Search =====
+document.getElementById('searchInput').addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(function() { currentPage = 1; loadArticles(); }, 400);
+});
+
+document.getElementById('searchInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { clearTimeout(searchTimeout); currentPage = 1; loadArticles(); }
+});
+
+// ===== Hash Routing =====
+function handleHashChange() {
+    var hash = window.location.hash.slice(1);
+    if (hash.startsWith('article/')) {
+        var id = parseInt(hash.split('/')[1]);
+        if (id) { showDetailView(id, true); return; }
+    }
+    document.getElementById('listView').style.display = '';
+    document.getElementById('detailView').style.display = 'none';
+}
+
+window.addEventListener('hashchange', handleHashChange);
+
+// ===== Init =====
+document.addEventListener('DOMContentLoaded', function() {
+    initCategoryTabs();
+    var hash = window.location.hash.slice(1);
+    if (hash.startsWith('article/')) {
+        var id = parseInt(hash.split('/')[1]);
+        if (id) { showDetailView(id, true); return; }
+    }
+    loadArticles();
+});
+</script>
+{% endblock %}

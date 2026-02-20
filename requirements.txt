@@ -23,6 +23,12 @@ flask-login>=0.6.0
 authlib>=1.3.0
 cryptography>=42.0.0
 
+# Google Gemini (RAG answer generation)
+google-genai>=1.0.0
+
+# Anthropic Claude (RAG answer generation)
+anthropic>=0.39.0
+
 # RAG Enhancement Dependencies
 rank-bm25>=0.2.2
 

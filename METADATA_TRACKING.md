@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Pinecone Agent now includes a comprehensive metadata tracking system that stores information about all uploaded files in a MySQL database. This enables:
+SafeFactory now includes a comprehensive metadata tracking system that stores information about all uploaded files in a MySQL database. This enables:
 
 - **Change Detection**: Skip unchanged files during re-processing
 - **Upload History**: Track when files were uploaded and modified
@@ -12,10 +12,10 @@ The Pinecone Agent now includes a comprehensive metadata tracking system that st
 
 ## Database Schema
 
-### Table: `pinecone_agent`
+### Table: `safe_factory`
 
 ```sql
-CREATE TABLE pinecone_agent (
+CREATE TABLE safe_factory (
     id INT AUTO_INCREMENT PRIMARY KEY,
     namespace VARCHAR(255) NOT NULL,
     source_file VARCHAR(500) NOT NULL,
@@ -78,7 +78,7 @@ python main.py process ./documents --namespace my-docs
 Output will show:
 ```
 ✓ Connected to MySQL database: kcsvictory
-✓ Table 'pinecone_agent' is ready
+✓ Table 'safe_factory' is ready
 ...
 💾 메타데이터 저장 중...
 ✓ 134개 파일의 메타데이터 저장 완료

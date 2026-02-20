@@ -1,465 +1,900 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pinecone Agent - 도메인 선택</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+{% extends "base.html" %}
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            min-height: 100vh;
-            color: #e0e0e0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 0;
-        }
+{% block title %}SafeFactory - AI 기반 산업안전 지식 플랫폼{% endblock %}
+{% block nav_home %}active{% endblock %}
+{% block mobile_nav_home %}active{% endblock %}
 
-        .top-nav {
-            width: 100%;
-            background: rgba(0, 0, 0, 0.3);
-            padding: 15px 0;
-        }
+{% block head_extra %}
+<style>
+    /* ===== Hero Section ===== */
+    .hero {
+        text-align: center;
+        padding: 56px 24px 32px;
+        position: relative;
+    }
+    .hero::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 600px;
+        height: 400px;
+        background: radial-gradient(ellipse, rgba(124,58,237,0.12) 0%, transparent 70%);
+        pointer-events: none;
+    }
+    .hero-badge {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        background: rgba(167,139,250,0.1);
+        border: 1px solid rgba(167,139,250,0.2);
+        border-radius: 20px;
+        padding: 6px 16px;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--sf-purple-lighter);
+        margin: 0 auto 20px;
+        width: fit-content;
+    }
+    .hero-badge .pulse {
+        width: 6px;
+        height: 6px;
+        background: #22c55e;
+        border-radius: 50%;
+        animation: pulse-glow 2s infinite;
+    }
+    @keyframes pulse-glow {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.4); }
+        50% { box-shadow: 0 0 0 6px rgba(34,197,94,0); }
+    }
+    .hero-title {
+        font-size: 42px;
+        font-weight: 900;
+        background: linear-gradient(135deg, var(--sf-purple-lighter), var(--sf-purple-light), var(--sf-purple));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin: 0 auto 14px;
+        line-height: 1.25;
+        text-align: center;
+    }
+    .hero-subtitle {
+        font-size: 16px;
+        color: var(--sf-text-3);
+        font-weight: 400;
+        line-height: 1.7;
+        margin-bottom: 32px;
+        text-align: center;
+    }
+    .hero-subtitle strong {
+        color: var(--sf-text-2);
+        font-weight: 600;
+    }
 
-        .top-nav .nav-inner {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+    /* ===== Unified Search Bar ===== */
+    .search-container {
+        max-width: 720px;
+        margin: 0 auto 16px;
+    }
+    .unified-search {
+        display: flex;
+        align-items: center;
+        background: var(--sf-card-bg);
+        border: 2px solid var(--sf-border-light);
+        border-radius: 18px;
+        padding: 6px 6px 6px 18px;
+        transition: border-color 0.3s, box-shadow 0.3s;
+        gap: 8px;
+    }
+    .unified-search:focus-within {
+        border-color: var(--sf-purple);
+        box-shadow: 0 0 30px rgba(124,58,237,0.15);
+    }
+    .search-icon { font-size: 20px; flex-shrink: 0; }
+    .search-input {
+        flex: 1;
+        background: transparent;
+        border: none;
+        outline: none;
+        font-size: 15px;
+        color: var(--sf-text-1);
+        padding: 12px 0;
+        font-family: inherit;
+        min-width: 0;
+    }
+    .search-input::placeholder { color: var(--sf-text-4); }
 
-        .top-nav a {
-            color: #fff;
-            text-decoration: none;
-            font-size: 0.9rem;
-            transition: color 0.3s;
-            white-space: nowrap;
-        }
+    .search-domain-select {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        background: rgba(167,139,250,0.1);
+        border: 1px solid rgba(167,139,250,0.2);
+        border-radius: 8px;
+        padding: 6px 10px;
+        font-size: 12px;
+        color: var(--sf-purple-lighter);
+        font-weight: 500;
+        flex-shrink: 0;
+        cursor: pointer;
+        transition: background 0.2s;
+        font-family: inherit;
+        position: relative;
+    }
+    .search-domain-select:hover { background: rgba(167,139,250,0.2); }
+    .search-domain-select select {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        cursor: pointer;
+        font-size: 14px;
+    }
 
-        .top-nav a:hover {
-            color: #00d4ff;
-        }
+    .search-submit {
+        width: 44px;
+        height: 44px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, var(--sf-purple), var(--sf-purple-dark));
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        cursor: pointer;
+        flex-shrink: 0;
+        transition: transform 0.2s;
+        color: #fff;
+    }
+    .search-submit:hover { transform: scale(1.05); }
 
-        .top-nav .home-link {
-            font-size: 1.1rem;
-            flex-shrink: 0;
-        }
+    .search-hints {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 12px;
+    }
+    .search-hint {
+        font-size: 12px;
+        color: var(--sf-text-4);
+        background: rgba(255,255,255,0.03);
+        border: 1px solid var(--sf-border-light);
+        padding: 5px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .search-hint:hover {
+        border-color: rgba(124,58,237,0.3);
+        color: var(--sf-purple-light);
+        background: rgba(124,58,237,0.05);
+    }
 
-        .top-nav .nav-links {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-            flex-wrap: wrap;
-            justify-content: flex-end;
-        }
+    /* ===== Stats Bar ===== */
+    .stats-bar {
+        display: flex;
+        justify-content: center;
+        gap: 40px;
+        padding: 24px 0 0;
+        margin-bottom: 48px;
+    }
+    .stat-item { text-align: center; }
+    .stat-value {
+        font-size: 24px;
+        font-weight: 800;
+        background: linear-gradient(135deg, var(--sf-purple-lighter), var(--sf-purple-light));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    .stat-label { font-size: 12px; color: var(--sf-text-4); margin-top: 2px; }
 
-        .top-nav .user-section {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-left: 20px;
-            padding-left: 20px;
-            border-left: 1px solid rgba(255,255,255,0.15);
-        }
+    /* ===== Domain Cards ===== */
+    .domains-section {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 0 24px 48px;
+    }
+    .section-title {
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--sf-text-1);
+        margin-bottom: 20px;
+    }
+    .domain-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+    }
+    .domain-card {
+        background: var(--sf-card-bg);
+        border: 1px solid var(--sf-border);
+        border-radius: 20px;
+        padding: 0;
+        cursor: pointer;
+        transition: all 0.3s;
+        position: relative;
+        overflow: hidden;
+        text-decoration: none;
+        color: inherit;
+        display: block;
+    }
+    .domain-card-bar {
+        height: 3px;
+        border-radius: 20px 20px 0 0;
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+    .domain-card:hover {
+        border-color: transparent;
+        transform: translateY(-4px);
+        box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+    }
+    .domain-card:hover .domain-card-bar { opacity: 1; }
 
-        .top-nav .user-name {
-            color: #ccc;
-            font-size: 0.9rem;
-        }
+    .domain-card-body { padding: 26px 22px; }
 
-        .top-nav .user-avatar {
-            width: 26px;
-            height: 26px;
-            border-radius: 50%;
-            object-fit: cover;
-        }
+    .card-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 14px;
+    }
+    .card-icon-wrap {
+        width: 50px;
+        height: 50px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+    }
+    .card-doc-count {
+        font-size: 11px;
+        color: var(--sf-text-4);
+        background: rgba(255,255,255,0.03);
+        border: 1px solid var(--sf-border);
+        border-radius: 8px;
+        padding: 4px 10px;
+    }
+    .card-doc-count .num {
+        color: var(--sf-purple-light);
+        font-weight: 700;
+    }
 
-        .top-nav .admin-link {
-            color: #00d4ff !important;
-        }
+    .card-title {
+        font-size: 18px;
+        font-weight: 700;
+        margin-bottom: 6px;
+    }
+    .card-desc {
+        font-size: 13px;
+        color: var(--sf-text-3);
+        line-height: 1.6;
+        margin-bottom: 14px;
+        min-height: 42px;
+    }
+    .card-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 16px;
+    }
+    .card-tag {
+        font-size: 11px;
+        font-weight: 500;
+        padding: 4px 11px;
+        border-radius: 8px;
+        transition: filter 0.2s;
+    }
+    .card-tag:hover { filter: brightness(1.3); }
 
-        .top-nav .btn-login-sm {
-            background: rgba(255,255,255,0.1);
-            padding: 5px 14px;
-            border-radius: 6px;
-            color: #ccc;
-            font-size: 0.85rem;
-            margin-left: 20px;
-        }
+    .card-action {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-top: 14px;
+        border-top: 1px solid var(--sf-border);
+    }
+    .card-action-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--sf-text-2);
+    }
+    .card-action-arrow {
+        font-size: 16px;
+        color: var(--sf-text-4);
+        transition: transform 0.2s, color 0.2s;
+    }
+    .domain-card:hover .card-action-arrow {
+        transform: translateX(4px);
+        color: var(--sf-purple-light);
+    }
 
-        .top-nav .btn-login-sm:hover {
-            background: rgba(255,255,255,0.2);
-            color: #fff;
-        }
+    /* Domain color variants */
+    .dc-semi .domain-card-bar { background: linear-gradient(90deg, var(--sf-blue), #60a5fa); }
+    .dc-semi:hover { box-shadow: 0 12px 40px rgba(59,130,246,0.1); }
+    .dc-semi .card-icon-wrap { background: rgba(59,130,246,0.12); }
+    .dc-semi .card-title { color: #60a5fa; }
+    .dc-semi .card-tag { background: rgba(59,130,246,0.1); color: #93c5fd; border: 1px solid rgba(59,130,246,0.15); }
 
-        .top-nav .btn-logout {
-            background: none;
-            border: none;
-            cursor: pointer;
-            font: inherit;
-            color: #fff;
-            padding: 0;
-            font-size: 0.9rem;
-            transition: color 0.3s;
-        }
+    .dc-labor .domain-card-bar { background: linear-gradient(90deg, var(--sf-amber), #fbbf24); }
+    .dc-labor:hover { box-shadow: 0 12px 40px rgba(245,158,11,0.1); }
+    .dc-labor .card-icon-wrap { background: rgba(245,158,11,0.12); }
+    .dc-labor .card-title { color: #fbbf24; }
+    .dc-labor .card-tag { background: rgba(245,158,11,0.1); color: #fde68a; border: 1px solid rgba(245,158,11,0.15); }
 
-        .top-nav .btn-logout:hover {
-            color: #00d4ff;
-        }
+    .dc-field .domain-card-bar { background: linear-gradient(90deg, var(--sf-red), #f87171); }
+    .dc-field:hover { box-shadow: 0 12px 40px rgba(239,68,68,0.1); }
+    .dc-field .card-icon-wrap { background: rgba(239,68,68,0.12); }
+    .dc-field .card-title { color: #f87171; }
+    .dc-field .card-tag { background: rgba(239,68,68,0.1); color: #fca5a5; border: 1px solid rgba(239,68,68,0.15); }
 
-        .container {
-            max-width: 1000px;
-            width: 100%;
-            padding: 20px;
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
+    .dc-safe .domain-card-bar { background: linear-gradient(90deg, var(--sf-violet), #a78bfa); }
+    .dc-safe:hover { box-shadow: 0 12px 40px rgba(139,92,246,0.1); }
+    .dc-safe .card-icon-wrap { background: rgba(139,92,246,0.12); }
+    .dc-safe .card-title { color: var(--sf-purple-lighter); }
+    .dc-safe .card-tag { background: rgba(139,92,246,0.1); color: var(--sf-purple-lighter); border: 1px solid rgba(139,92,246,0.15); }
 
-        header {
-            text-align: center;
-            margin-bottom: 60px;
-        }
+    .dc-msds .domain-card-bar { background: linear-gradient(90deg, var(--sf-green), #34d399); }
+    .dc-msds:hover { box-shadow: 0 12px 40px rgba(16,185,129,0.1); }
+    .dc-msds .card-icon-wrap { background: rgba(16,185,129,0.12); }
+    .dc-msds .card-title { color: #34d399; }
+    .dc-msds .card-tag { background: rgba(16,185,129,0.1); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.15); }
 
-        header h1 {
-            font-size: 3rem;
-            color: #00d4ff;
-            margin-bottom: 15px;
-        }
+    .dc-comm .domain-card-bar { background: linear-gradient(90deg, var(--sf-cyan), #22d3ee); }
+    .dc-comm:hover { box-shadow: 0 12px 40px rgba(6,182,212,0.1); }
+    .dc-comm .card-icon-wrap { background: rgba(6,182,212,0.12); }
+    .dc-comm .card-title { color: #22d3ee; }
+    .dc-comm .card-tag { background: rgba(6,182,212,0.1); color: #67e8f9; border: 1px solid rgba(6,182,212,0.15); }
 
-        header p {
-            color: #888;
-            font-size: 1.2rem;
-        }
+    /* ===== Bottom Row ===== */
+    .bottom-row {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 0 24px 48px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+    .bottom-card {
+        background: var(--sf-card-bg);
+        border: 1px solid var(--sf-border);
+        border-radius: 20px;
+        padding: 26px 22px;
+    }
+    .bottom-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+    .bottom-card-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--sf-text-1);
+    }
+    .view-all {
+        font-size: 12px;
+        color: var(--sf-purple);
+        font-weight: 500;
+        text-decoration: none;
+        transition: color 0.2s;
+    }
+    .view-all:hover { color: var(--sf-purple-light); }
 
-        .domain-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 30px;
-            margin-bottom: 40px;
-        }
+    /* Community Preview */
+    .comm-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--sf-border);
+        text-decoration: none;
+        color: inherit;
+        transition: background 0.2s;
+    }
+    .comm-item:last-child { border-bottom: none; }
+    .comm-badge {
+        font-size: 10px;
+        font-weight: 600;
+        padding: 3px 10px;
+        border-radius: 6px;
+        flex-shrink: 0;
+        white-space: nowrap;
+    }
+    .cb-q { background: rgba(34,197,94,0.1); color: #4ade80; }
+    .cb-i { background: rgba(234,179,8,0.1); color: #fbbf24; }
+    .cb-f { background: rgba(59,130,246,0.1); color: #60a5fa; }
+    .cb-n { background: rgba(239,68,68,0.1); color: #f87171; }
+    .comm-text {
+        flex: 1;
+        font-size: 13px;
+        color: #d4d4d8;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .comm-meta {
+        font-size: 11px;
+        color: var(--sf-text-4);
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .comm-empty {
+        text-align: center;
+        padding: 24px 0;
+        font-size: 13px;
+        color: var(--sf-text-4);
+    }
 
-        .domain-card {
-            background: rgba(255, 255, 255, 0.05);
-            border: 2px solid rgba(255, 255, 255, 0.1);
-            border-radius: 20px;
-            padding: 40px 30px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-            text-decoration: none;
-            color: inherit;
-        }
+    /* News Preview */
+    .news-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--sf-border);
+        text-decoration: none;
+        color: inherit;
+        transition: background 0.2s;
+    }
+    .news-item:last-child { border-bottom: none; }
+    .news-cat {
+        font-size: 10px;
+        font-weight: 600;
+        padding: 3px 10px;
+        border-radius: 6px;
+        flex-shrink: 0;
+        white-space: nowrap;
+    }
+    .nc-accident { background: rgba(239,68,68,0.1); color: #f87171; }
+    .nc-regulation { background: rgba(234,179,8,0.1); color: #fbbf24; }
+    .nc-policy { background: rgba(59,130,246,0.1); color: #60a5fa; }
+    .nc-technology { background: rgba(34,197,94,0.1); color: #4ade80; }
+    .nc-general { background: rgba(167,139,250,0.1); color: #a78bfa; }
+    .news-text {
+        flex: 1;
+        font-size: 13px;
+        color: #d4d4d8;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .news-meta {
+        font-size: 11px;
+        color: var(--sf-text-4);
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
 
-        .domain-card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 15px 40px rgba(0, 212, 255, 0.3);
-        }
+    /* ===== Footer ===== */
+    .sf-footer {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 0 24px;
+    }
+    .sf-footer-inner {
+        border-top: 1px solid var(--sf-border);
+        padding: 28px 0;
+        text-align: center;
+    }
+    .sf-footer-links {
+        margin-bottom: 10px;
+    }
+    .sf-footer-links a {
+        font-size: 12px;
+        color: var(--sf-text-4);
+        text-decoration: none;
+        margin: 0 12px;
+        transition: color 0.2s;
+    }
+    .sf-footer-links a:hover { color: var(--sf-purple-light); }
+    .sf-footer-copy {
+        font-size: 12px;
+        color: #3f3f46;
+    }
 
-        .domain-card.semiconductor {
-            border-color: rgba(0, 212, 255, 0.3);
-        }
+    /* ===== Responsive ===== */
+    @media (max-width: 900px) {
+        .hero-title { font-size: 30px; }
+        .domain-grid { grid-template-columns: repeat(2, 1fr); }
+        .bottom-row { grid-template-columns: 1fr; }
+        .stats-bar { gap: 24px; flex-wrap: wrap; }
+    }
+    @media (max-width: 600px) {
+        .hero { padding: 36px 16px 20px; }
+        .hero-title { font-size: 24px; }
+        .hero-subtitle { font-size: 14px; }
+        .domain-grid { grid-template-columns: 1fr; }
+        .stats-bar { gap: 16px; }
+        .stat-value { font-size: 20px; }
+        .search-domain-select { display: none; }
+    }
+</style>
+{% endblock %}
 
-        .domain-card.semiconductor:hover {
-            border-color: #00d4ff;
-            box-shadow: 0 15px 40px rgba(0, 212, 255, 0.4);
-        }
+{% block content %}
+<!-- Hero Section -->
+<section class="hero">
+    <div class="hero-badge"><span class="pulse"></span> {{ domains|length + 1 }}개 전문 분야 &middot; AI 실시간 검색</div>
+    <h1 class="hero-title">무엇이든 물어보세요<br>AI가 전문 문서에서 찾아드립니다</h1>
+    <p class="hero-subtitle">
+        반도체 기술부터 노동법, 산업안전까지 &mdash;<br>
+        <strong>SafeFactory</strong>가 즉시 답변을 드립니다
+    </p>
 
-        .domain-card.laborlaw {
-            border-color: rgba(255, 152, 0, 0.3);
-        }
-
-        .domain-card.laborlaw:hover {
-            border-color: #ff9800;
-            box-shadow: 0 15px 40px rgba(255, 152, 0, 0.4);
-        }
-
-        .domain-card.field-training {
-            border-color: rgba(233, 30, 99, 0.3);
-        }
-
-        .domain-card.field-training:hover {
-            border-color: #e91e63;
-            box-shadow: 0 15px 40px rgba(233, 30, 99, 0.4);
-        }
-
-        .domain-card.safeguide {
-            border-color: rgba(33, 150, 243, 0.3);
-        }
-
-        .domain-card.safeguide:hover {
-            border-color: #2196f3;
-            box-shadow: 0 15px 40px rgba(33, 150, 243, 0.4);
-        }
-
-        .domain-card.msds {
-            border-color: rgba(76, 175, 80, 0.3);
-        }
-
-        .domain-card.msds:hover {
-            border-color: #4caf50;
-            box-shadow: 0 15px 40px rgba(76, 175, 80, 0.4);
-        }
-
-        .domain-icon {
-            font-size: 4rem;
-            margin-bottom: 20px;
-        }
-
-        .domain-title {
-            font-size: 1.8rem;
-            font-weight: 600;
-            margin-bottom: 15px;
-        }
-
-        .domain-card.semiconductor .domain-title {
-            color: #00d4ff;
-        }
-
-        .domain-card.laborlaw .domain-title {
-            color: #ff9800;
-        }
-
-        .domain-card.field-training .domain-title {
-            color: #e91e63;
-        }
-
-        .domain-card.safeguide .domain-title {
-            color: #2196f3;
-        }
-
-        .domain-card.msds .domain-title {
-            color: #4caf50;
-        }
-
-        .domain-description {
-            color: #aaa;
-            line-height: 1.6;
-            margin-bottom: 20px;
-        }
-
-        .domain-features {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            justify-content: center;
-            margin-top: 20px;
-        }
-
-        .feature-tag {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 5px 12px;
-            border-radius: 15px;
-            font-size: 0.85rem;
-            color: #ccc;
-        }
-
-        .domain-card.semiconductor .feature-tag {
-            background: rgba(0, 212, 255, 0.2);
-            color: #00d4ff;
-        }
-
-        .domain-card.laborlaw .feature-tag {
-            background: rgba(255, 152, 0, 0.2);
-            color: #ff9800;
-        }
-
-        .domain-card.field-training .feature-tag {
-            background: rgba(233, 30, 99, 0.2);
-            color: #e91e63;
-        }
-
-        .domain-card.safeguide .feature-tag {
-            background: rgba(33, 150, 243, 0.2);
-            color: #2196f3;
-        }
-
-        .domain-card.msds .feature-tag {
-            background: rgba(76, 175, 80, 0.2);
-            color: #4caf50;
-        }
-
-        .domain-card.community {
-            border-color: rgba(124, 77, 255, 0.3);
-        }
-
-        .domain-card.community:hover {
-            border-color: #7c4dff;
-            box-shadow: 0 15px 40px rgba(124, 77, 255, 0.4);
-        }
-
-        .domain-card.community .domain-title {
-            color: #7c4dff;
-        }
-
-        .domain-card.community .feature-tag {
-            background: rgba(124, 77, 255, 0.2);
-            color: #7c4dff;
-        }
-
-        @media (max-width: 768px) {
-            header h1 {
-                font-size: 2rem;
-            }
-
-            .domain-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .top-nav .nav-inner {
-                flex-direction: column;
-                gap: 10px;
-            }
-
-            .top-nav .nav-links {
-                gap: 8px;
-                justify-content: center;
-            }
-
-            .top-nav a {
-                font-size: 0.8rem;
-            }
-        }
-    </style>
-</head>
-<body>
-    <nav class="top-nav">
-        <div class="nav-inner">
-            <a href="/" class="home-link">🤖 Pinecone Agent</a>
-            <div class="nav-links">
-                <a href="/semiconductor">🔬 반도체</a>
-                <a href="/laborlaw">⚖️ 노동법</a>
-                <a href="/field-training">🏭 현장실습</a>
-                <a href="/safeguide">🛡️ 안전보건</a>
-                <a href="/msds">🧪 MSDS</a>
-                <a href="/community">💬 커뮤니티</a>
-                {% if current_user.is_authenticated %}
-                <div class="user-section">
-                    {% if current_user.profile_image %}
-                    <img src="{{ current_user.profile_image }}" alt="{{ current_user.name }}님의 프로필 사진" class="user-avatar">
-                    {% endif %}
-                    <span class="user-name">{{ current_user.name }}</span>
-                    {% if current_user.role == 'admin' %}
-                    <a href="/admin" class="admin-link">관리자</a>
-                    {% endif %}
-                    <a href="/mypage">마이페이지</a>
-                    <form action="/logout" method="POST" style="display:inline;margin:0;"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn-logout">로그아웃</button></form>
-                </div>
-                {% else %}
-                <a href="/login" class="btn-login-sm">로그인</a>
-                {% endif %}
+    <!-- Unified Search -->
+    <div class="search-container">
+        <form class="unified-search" id="searchForm" onsubmit="return handleSearch(event)">
+            <span class="search-icon">🔍</span>
+            <input type="text" class="search-input" id="searchQuery" placeholder="AI에게 질문하세요... (예: CVD와 PVD 공정의 차이점은?)" autocomplete="off">
+            <div class="search-domain-select" id="domainSelectWrap">
+                <span id="domainSelectLabel">전체 분야</span> ▾
+                <select id="domainSelect" onchange="document.getElementById('domainSelectLabel').textContent=this.options[this.selectedIndex].text">
+                    <option value="">전체 분야</option>
+                    {% for key, cfg in domains.items() %}
+                    <option value="{{ key }}">{{ cfg.icon }} {{ cfg.title.split(' ')[0] if ' ' in cfg.title else cfg.title }}</option>
+                    {% endfor %}
+                </select>
             </div>
+            <button type="submit" class="search-submit" aria-label="검색">→</button>
+        </form>
+        <div class="search-hints">
+            <span class="search-hint" onclick="fillSearch('CVD와 PVD 공정의 차이점은?')">💡 CVD와 PVD 차이점</span>
+            <span class="search-hint" onclick="fillSearch('주휴수당 계산 방법')">💡 주휴수당 계산</span>
+            <span class="search-hint" onclick="fillSearch('아세톤 MSDS 정보')">💡 아세톤 MSDS</span>
+            <span class="search-hint" onclick="fillSearch('현장실습 장비 안전수칙')">💡 장비 안전수칙</span>
         </div>
-    </nav>
-
-    <div class="container">
-        <header>
-            <h1>🤖 Pinecone Agent</h1>
-            <p>AI 기반 문서 검색 및 질의응답 시스템</p>
-        </header>
-
-        <div class="domain-grid">
-            <a href="/semiconductor" class="domain-card semiconductor">
-                <div class="domain-icon">🔬</div>
-                <div class="domain-title">반도체 기술</div>
-                <div class="domain-description">
-                    반도체 공정, 아키텍처, 제조 기술 관련<br>
-                    전문 문서 검색 및 AI 질의응답
-                </div>
-                <div class="domain-features">
-                    <span class="feature-tag">CVD/PVD 공정</span>
-                    <span class="feature-tag">패키징</span>
-                    <span class="feature-tag">아키텍처</span>
-                    <span class="feature-tag">제조 기술</span>
-                </div>
-            </a>
-
-            <a href="/laborlaw" class="domain-card laborlaw">
-                <div class="domain-icon">⚖️</div>
-                <div class="domain-title">노동법</div>
-                <div class="domain-description">
-                    근로기준법, 판례, 임금 및 보험료 계산<br>
-                    노동법 관련 AI 법률 상담
-                </div>
-                <div class="domain-features">
-                    <span class="feature-tag">임금계산</span>
-                    <span class="feature-tag">4대보험</span>
-                    <span class="feature-tag">근로기준법</span>
-                    <span class="feature-tag">판례 검색</span>
-                </div>
-            </a>
-
-            <a href="/field-training" class="domain-card field-training">
-                <div class="domain-icon">🏭</div>
-                <div class="domain-title">현장실습 안전교육</div>
-                <div class="domain-description">
-                    직업계고 현장실습 안전보건 가이드<br>
-                    장비별 위험요인 및 안전수칙
-                </div>
-                <div class="domain-features">
-                    <span class="feature-tag">장비 안전</span>
-                    <span class="feature-tag">유해요인</span>
-                    <span class="feature-tag">안전수칙</span>
-                    <span class="feature-tag">건강관리</span>
-                </div>
-            </a>
-
-            <a href="/safeguide" class="domain-card safeguide">
-                <div class="domain-icon">🛡️</div>
-                <div class="domain-title">안전보건 가이드</div>
-                <div class="domain-description">
-                    안전보건공단 공식 안전보건 교육자료<br>
-                    산업 현장 안전수칙 및 예방대책
-                </div>
-                <div class="domain-features">
-                    <span class="feature-tag">안전수칙</span>
-                    <span class="feature-tag">위험요인</span>
-                    <span class="feature-tag">보호구</span>
-                    <span class="feature-tag">예방대책</span>
-                </div>
-            </a>
-
-            <a href="/msds" class="domain-card msds">
-                <div class="domain-icon">🧪</div>
-                <div class="domain-title">MSDS 화학물질</div>
-                <div class="domain-description">
-                    산업안전보건공단 물질안전보건자료<br>
-                    화학물질 안전정보 검색
-                </div>
-                <div class="domain-features">
-                    <span class="feature-tag">화학물질 검색</span>
-                    <span class="feature-tag">MSDS 정보</span>
-                    <span class="feature-tag">안전 데이터</span>
-                    <span class="feature-tag">CAS 번호</span>
-                </div>
-            </a>
-
-            <a href="/community" class="domain-card community">
-                <div class="domain-icon">💬</div>
-                <div class="domain-title">커뮤니티</div>
-                <div class="domain-description">
-                    질문, 정보공유, 자유게시판<br>
-                    함께 소통하는 커뮤니티 공간
-                </div>
-                <div class="domain-features">
-                    <span class="feature-tag">질문/답변</span>
-                    <span class="feature-tag">정보공유</span>
-                    <span class="feature-tag">자유게시판</span>
-                    <span class="feature-tag">공지사항</span>
-                </div>
-            </a>
-        </div>
-
     </div>
-</body>
-</html>
+
+    <!-- Stats Bar -->
+    <div class="stats-bar">
+        <div class="stat-item">
+            <div class="stat-value" id="statDocs">--</div>
+            <div class="stat-label">전체 문서</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value">{{ domains|length + 1 }}</div>
+            <div class="stat-label">전문 분야</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value">24/7</div>
+            <div class="stat-label">AI 서비스</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value">&lt; 3초</div>
+            <div class="stat-label">평균 응답</div>
+        </div>
+    </div>
+</section>
+
+<!-- Domain Cards -->
+<section class="domains-section">
+    <h2 class="section-title">📚 전문 분야</h2>
+    <div class="domain-grid">
+        <!-- 반도체 -->
+        <a href="/semiconductor" class="domain-card dc-semi">
+            <div class="domain-card-bar"></div>
+            <div class="domain-card-body">
+                <div class="card-top">
+                    <div class="card-icon-wrap">🔬</div>
+                    <div class="card-doc-count">📄 <span class="num" id="docCount-semiconductor">--</span>개 문서</div>
+                </div>
+                <div class="card-title">반도체 기술</div>
+                <div class="card-desc">반도체 공정, 아키텍처, 제조 기술 관련 전문 문서 검색 및 AI 질의응답</div>
+                <div class="card-tags">
+                    {% for f in domains.semiconductor.features %}
+                    <span class="card-tag">{{ f }}</span>
+                    {% endfor %}
+                </div>
+                <div class="card-action">
+                    <span class="card-action-label">🤖 AI 질문하기</span>
+                    <span class="card-action-arrow">→</span>
+                </div>
+            </div>
+        </a>
+
+        <!-- 노동법 -->
+        <a href="/laborlaw" class="domain-card dc-labor">
+            <div class="domain-card-bar"></div>
+            <div class="domain-card-body">
+                <div class="card-top">
+                    <div class="card-icon-wrap">⚖️</div>
+                    <div class="card-doc-count">📄 <span class="num" id="docCount-laborlaw">--</span>개 문서</div>
+                </div>
+                <div class="card-title">노동법</div>
+                <div class="card-desc">근로기준법, 판례, 임금 및 보험료 계산 · 노동법 관련 AI 법률 상담</div>
+                <div class="card-tags">
+                    {% for f in domains.laborlaw.features %}
+                    <span class="card-tag">{{ f }}</span>
+                    {% endfor %}
+                </div>
+                <div class="card-action">
+                    <span class="card-action-label">🤖 AI 질문하기</span>
+                    <span class="card-action-arrow">→</span>
+                </div>
+            </div>
+        </a>
+
+        <!-- 현장실습 -->
+        <a href="/field-training" class="domain-card dc-field">
+            <div class="domain-card-bar"></div>
+            <div class="domain-card-body">
+                <div class="card-top">
+                    <div class="card-icon-wrap">🏭</div>
+                    <div class="card-doc-count">📄 <span class="num" id="docCount-field-training">--</span>개 문서</div>
+                </div>
+                <div class="card-title">현장실습 안전교육</div>
+                <div class="card-desc">직업계고 현장실습 안전보건 가이드 · 장비별 위험요인 및 안전수칙</div>
+                <div class="card-tags">
+                    {% for f in domains['field-training'].features %}
+                    <span class="card-tag">{{ f }}</span>
+                    {% endfor %}
+                </div>
+                <div class="card-action">
+                    <span class="card-action-label">🤖 AI 질문하기</span>
+                    <span class="card-action-arrow">→</span>
+                </div>
+            </div>
+        </a>
+
+        <!-- 안전보건 -->
+        <a href="/safeguide" class="domain-card dc-safe">
+            <div class="domain-card-bar"></div>
+            <div class="domain-card-body">
+                <div class="card-top">
+                    <div class="card-icon-wrap">🛡️</div>
+                    <div class="card-doc-count">📄 <span class="num" id="docCount-safeguide">--</span>개 문서</div>
+                </div>
+                <div class="card-title">안전보건 가이드</div>
+                <div class="card-desc">안전보건공단 공식 안전보건 교육자료 · 산업 현장 안전수칙 및 예방대책</div>
+                <div class="card-tags">
+                    {% for f in domains.safeguide.features %}
+                    <span class="card-tag">{{ f }}</span>
+                    {% endfor %}
+                </div>
+                <div class="card-action">
+                    <span class="card-action-label">🤖 AI 질문하기</span>
+                    <span class="card-action-arrow">→</span>
+                </div>
+            </div>
+        </a>
+
+        <!-- MSDS -->
+        <a href="/msds" class="domain-card dc-msds">
+            <div class="domain-card-bar"></div>
+            <div class="domain-card-body">
+                <div class="card-top">
+                    <div class="card-icon-wrap">🧪</div>
+                    <div class="card-doc-count">📄 <span class="num" id="docCount-msds">--</span>개 문서</div>
+                </div>
+                <div class="card-title">MSDS 화학물질</div>
+                <div class="card-desc">산업안전보건공단 물질안전보건자료 · 화학물질 안전정보 검색</div>
+                <div class="card-tags">
+                    {% for f in domains.msds.features %}
+                    <span class="card-tag">{{ f }}</span>
+                    {% endfor %}
+                </div>
+                <div class="card-action">
+                    <span class="card-action-label">🤖 AI 질문하기</span>
+                    <span class="card-action-arrow">→</span>
+                </div>
+            </div>
+        </a>
+
+        <!-- 커뮤니티 -->
+        <a href="/community" class="domain-card dc-comm">
+            <div class="domain-card-bar"></div>
+            <div class="domain-card-body">
+                <div class="card-top">
+                    <div class="card-icon-wrap">💬</div>
+                    <div class="card-doc-count">🧑‍🤝‍🧑 커뮤니티</div>
+                </div>
+                <div class="card-title">커뮤니티</div>
+                <div class="card-desc">질문, 정보공유, 자유게시판 · 함께 소통하는 커뮤니티 공간</div>
+                <div class="card-tags">
+                    <span class="card-tag">질문/답변</span>
+                    <span class="card-tag">정보공유</span>
+                    <span class="card-tag">자유게시판</span>
+                    <span class="card-tag">공지사항</span>
+                </div>
+                <div class="card-action">
+                    <span class="card-action-label">💬 커뮤니티 입장</span>
+                    <span class="card-action-arrow">→</span>
+                </div>
+            </div>
+        </a>
+    </div>
+</section>
+
+<!-- Bottom Row -->
+<section class="bottom-row">
+    <!-- Community Preview -->
+    <div class="bottom-card">
+        <div class="bottom-card-header">
+            <div class="bottom-card-title">💬 커뮤니티 최신글</div>
+            <a href="/community" class="view-all">전체보기 →</a>
+        </div>
+        <div id="communityPreview">
+            <div class="comm-empty">로딩 중...</div>
+        </div>
+    </div>
+
+    <!-- News Preview -->
+    <div class="bottom-card">
+        <div class="bottom-card-header">
+            <div class="bottom-card-title">📰 노동안전 뉴스</div>
+            <a href="/news" class="view-all">전체보기 →</a>
+        </div>
+        <div id="newsPreview">
+            <div class="comm-empty">로딩 중...</div>
+        </div>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer class="sf-footer">
+    <div class="sf-footer-inner">
+        <div class="sf-footer-links">
+            <a href="#">이용약관</a>
+            <a href="#">개인정보처리방침</a>
+            <a href="#">고객센터</a>
+        </div>
+        <p class="sf-footer-copy">&copy; 2025 SafeFactory. AI 기반 산업안전 지식 플랫폼</p>
+    </div>
+</footer>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/common.js"></script>
+<script>
+// Namespace → domain key mapping
+const NAMESPACE_MAP = {
+    '': 'semiconductor',
+    'laborlaw': 'laborlaw',
+    'field-training': 'field-training',
+    'safeguide': 'safeguide',
+    'msds': 'msds'
+};
+
+// Domain key → default route mapping
+const DOMAIN_ROUTES = {
+    '': '/semiconductor',
+    'semiconductor': '/semiconductor',
+    'laborlaw': '/laborlaw',
+    'field-training': '/field-training',
+    'safeguide': '/safeguide',
+    'msds': '/msds'
+};
+
+// Fill search input from hint chips
+function fillSearch(text) {
+    document.getElementById('searchQuery').value = text;
+    document.getElementById('searchQuery').focus();
+}
+
+// Handle search form submit
+function handleSearch(e) {
+    e.preventDefault();
+    const query = document.getElementById('searchQuery').value.trim();
+    if (!query) return false;
+    const domain = document.getElementById('domainSelect').value;
+    const route = DOMAIN_ROUTES[domain] || '/semiconductor';
+    window.location.href = route + '?q=' + encodeURIComponent(query);
+    return false;
+}
+
+// Load stats from API
+async function loadStats() {
+    try {
+        const resp = await fetch('/api/stats');
+        const data = await resp.json();
+        if (data.success && data.data) {
+            // Total documents
+            const total = data.data.total_vectors || 0;
+            document.getElementById('statDocs').textContent = total.toLocaleString();
+
+            // Per-namespace counts
+            const namespaces = data.data.namespaces;
+            const entries = Array.isArray(namespaces)
+                ? namespaces.map(ns => [ns.name || ns.namespace || '', ns])
+                : Object.entries(namespaces || {});
+            for (const [ns, info] of entries) {
+                const norm = (ns === '(기본)') ? '' : ns;
+                const domainKey = NAMESPACE_MAP[norm];
+                if (domainKey) {
+                    const el = document.getElementById('docCount-' + domainKey);
+                    if (el) el.textContent = (info.vector_count || 0).toLocaleString();
+                }
+            }
+        }
+    } catch (e) {
+        console.error('Stats load error:', e);
+    }
+}
+
+// Load news preview
+async function loadNewsPreview() {
+    try {
+        const resp = await fetch('/api/v1/news/articles?per_page=4');
+        const data = await resp.json();
+        const container = document.getElementById('newsPreview');
+
+        if (data.success && data.data && data.data.articles && data.data.articles.length > 0) {
+            const catClasses = {
+                'accident': 'nc-accident',
+                'regulation': 'nc-regulation',
+                'policy': 'nc-policy',
+                'technology': 'nc-technology',
+                'general': 'nc-general',
+            };
+            container.innerHTML = data.data.articles.map(function(a) {
+                const catClass = catClasses[a.category] || 'nc-general';
+                const catLabel = escapeHtml(a.category_label || '일반');
+                const title = escapeHtml(a.title);
+                const source = a.source_name ? escapeHtml(a.source_name) : '';
+                return '<a href="/news#article/' + a.id + '" class="news-item">' +
+                    '<span class="news-cat ' + catClass + '">' + catLabel + '</span>' +
+                    '<span class="news-text">' + title + '</span>' +
+                    '<span class="news-meta">' + source + '</span>' +
+                    '</a>';
+            }).join('');
+        } else {
+            container.innerHTML = '<div class="comm-empty">아직 등록된 뉴스가 없습니다.</div>';
+        }
+    } catch (e) {
+        console.error('News preview error:', e);
+        document.getElementById('newsPreview').innerHTML =
+            '<div class="comm-empty">뉴스를 불러올 수 없습니다.</div>';
+    }
+}
+
+// Load community preview
+async function loadCommunityPreview() {
+    try {
+        const resp = await fetch('/api/v1/community/posts?per_page=4&sort=latest');
+        const data = await resp.json();
+        const container = document.getElementById('communityPreview');
+
+        if (data.success && data.data && data.data.posts && data.data.posts.length > 0) {
+            const badgeMap = {
+                '질문': 'cb-q', '정보': 'cb-i', '자유': 'cb-f', '공지': 'cb-n',
+                '질문/답변': 'cb-q', '정보공유': 'cb-i', '자유게시판': 'cb-f', '공지사항': 'cb-n'
+            };
+            container.innerHTML = data.data.posts.map(function(p) {
+                const catName = (p.category && p.category.name) || '자유';
+                const badgeClass = badgeMap[catName] || 'cb-f';
+                const title = escapeHtml(p.title);
+                const safeCatName = escapeHtml(catName);
+                const comments = p.comment_count || 0;
+                return '<a href="/community#post/' + p.id + '" class="comm-item">' +
+                    '<span class="comm-badge ' + badgeClass + '">' + safeCatName + '</span>' +
+                    '<span class="comm-text">' + title + '</span>' +
+                    '<span class="comm-meta"><span>💬 ' + comments + '</span></span>' +
+                    '</a>';
+            }).join('');
+        } else {
+            container.innerHTML = '<div class="comm-empty">아직 게시글이 없습니다.</div>';
+        }
+    } catch (e) {
+        console.error('Community preview error:', e);
+        document.getElementById('communityPreview').innerHTML =
+            '<div class="comm-empty">커뮤니티를 불러올 수 없습니다.</div>';
+    }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadStats();
+    loadCommunityPreview();
+    loadNewsPreview();
+});
+</script>
+{% endblock %}

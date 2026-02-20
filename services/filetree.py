@@ -162,6 +162,7 @@ def invalidate_cache():
         _cache.clear()
 
 
+# Lowercase only – callers must compare via ext.lower()
 _IMAGE_EXTENSIONS = {'.jpeg', '.jpg', '.png', '.gif', '.webp', '.bmp'}
 
 

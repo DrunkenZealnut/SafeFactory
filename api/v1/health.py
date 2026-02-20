@@ -5,7 +5,7 @@ import sys
 import time
 
 from api.v1 import v1_bp
-from api.response import success_response
+from api.response import success_response, API_VERSION
 from services.domain_config import DOMAIN_CONFIG
 
 _start_time = time.time()
@@ -34,6 +34,13 @@ def api_health():
     # Check OpenAI API key
     services['openai'] = 'configured' if os.getenv('OPENAI_API_KEY') else 'not_configured'
 
+    # Check Gemini API key (used for RAG answer generation)
+    services['gemini'] = 'configured' if os.getenv('GEMINI_API_KEY') else 'not_configured'
+
+    # Check Anthropic API key (optional)
+    if os.getenv('ANTHROPIC_API_KEY'):
+        services['anthropic'] = 'configured'
+
     overall = 'healthy' if all(
         v in ('connected', 'configured') for v in services.values()
     ) else 'degraded'
@@ -43,7 +50,20 @@ def api_health():
         'services': services,
         'uptime': round(time.time() - _start_time),
         'python_version': sys.version.split()[0],
-        'version': 'v1',
+        'version': API_VERSION,
+    })
+
+
+@v1_bp.route('/llm-info', methods=['GET'])
+def api_llm_info():
+    """Return current LLM model configuration (public, no auth required)."""
+    from services.settings import get_setting
+    return success_response(data={
+        'answer_model': get_setting('llm_answer_model'),
+        'answer_provider': get_setting('llm_answer_provider'),
+        'answer_temperature': get_setting('llm_answer_temperature'),
+        'embedding_model': get_setting('embedding_model'),
+        'reranker_type': get_setting('reranker_type'),
     })
 
 

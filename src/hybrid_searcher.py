@@ -96,8 +96,9 @@ class HybridSearcher:
 
         self.corpus = []
         self.doc_map = {}
+        corpus_idx = 0
 
-        for i, doc in enumerate(documents):
+        for doc in documents:
             content = doc.get('metadata', {}).get('content', '')
             if not content:
                 content = doc.get('content', '')
@@ -105,11 +106,12 @@ class HybridSearcher:
             if content:
                 tokens = self._tokenize(content)
                 self.corpus.append(tokens)
-                self.doc_map[i] = doc
+                self.doc_map[corpus_idx] = doc
+                corpus_idx += 1
 
         if self.corpus:
             self.bm25_index = BM25Okapi(self.corpus)
-            logging.info(f"Built BM25 index with {len(self.corpus)} documents")
+            logging.info("Built BM25 index with %d documents", len(self.corpus))
         else:
             logging.warning("No documents to index")
 
@@ -180,7 +182,7 @@ class HybridSearcher:
         for rank, doc in enumerate(vector_results, start=1):
             # Create unique identifier from content hash
             content = doc.get('metadata', {}).get('content', '')
-            doc_id = hashlib.md5(content[:200].encode()).hexdigest()  # Use first 200 chars for ID
+            doc_id = hashlib.sha256(content[:5000].encode()).hexdigest()
 
             if doc_id not in rrf_scores:
                 rrf_scores[doc_id] = {
@@ -199,7 +201,7 @@ class HybridSearcher:
                 continue
 
             content = doc.get('metadata', {}).get('content', '')
-            doc_id = hashlib.md5(content[:200].encode()).hexdigest()
+            doc_id = hashlib.sha256(content[:5000].encode()).hexdigest()
 
             if doc_id not in rrf_scores:
                 rrf_scores[doc_id] = {
@@ -261,12 +263,15 @@ class HybridSearcher:
         bm25_results = self.bm25_search(query, top_k=len(vector_results))
 
         if not bm25_results:
-            # If BM25 not available, return vector results with added metadata
-            for i, doc in enumerate(vector_results):
-                doc['rrf_score'] = doc.get('score', 0)
-                doc['vector_rank'] = i + 1
-                doc['bm25_rank'] = None
-            return vector_results[:top_k]
+            # If BM25 not available, return copies with added metadata
+            result = []
+            for i, doc in enumerate(vector_results[:top_k]):
+                d = doc.copy()
+                d['rrf_score'] = d.get('score', 0)
+                d['vector_rank'] = i + 1
+                d['bm25_rank'] = None
+                result.append(d)
+            return result
 
         # Merge using RRF
         merged = self._reciprocal_rank_fusion(vector_results, bm25_results)

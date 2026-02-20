@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SafeFactory{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        /* ===== Design System ===== */
+        :root {
+            --sf-bg: #08090d;
+            --sf-card-bg: #0f1017;
+            --sf-nav-bg: #0c0d12;
+            --sf-border: #1a1b25;
+            --sf-border-light: #1f2029;
+            --sf-purple: #7c3aed;
+            --sf-purple-light: #a78bfa;
+            --sf-purple-lighter: #c4b5fd;
+            --sf-purple-dark: #6d28d9;
+            --sf-text-1: #e4e4e7;
+            --sf-text-2: #a1a1aa;
+            --sf-text-3: #71717a;
+            --sf-text-4: #52525b;
+            --sf-blue: #3b82f6;
+            --sf-amber: #f59e0b;
+            --sf-red: #ef4444;
+            --sf-violet: #8b5cf6;
+            --sf-green: #10b981;
+            --sf-cyan: #06b6d4;
+            --sf-community: #7c4dff;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--sf-bg);
+            color: var(--sf-text-1);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        /* ===== Navbar ===== */
+        .sf-nav {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(8, 9, 13, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--sf-border);
+        }
+
+        .sf-nav-inner {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+        }
+
+        /* Logo */
+        .sf-nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            flex-shrink: 0;
+        }
+        .sf-nav-logo-icon { font-size: 24px; }
+        .sf-nav-logo-text {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--sf-purple-lighter);
+        }
+
+        /* Center Tabs */
+        .sf-nav-tabs {
+            display: flex;
+            gap: 4px;
+            background: var(--sf-card-bg);
+            border: 1px solid var(--sf-border);
+            border-radius: 14px;
+            padding: 4px;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .sf-nav-tabs::-webkit-scrollbar { display: none; }
+
+        .sf-nav-tab {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--sf-text-3);
+            padding: 8px 14px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .sf-nav-tab:hover {
+            color: var(--sf-text-2);
+            background: rgba(167, 139, 250, 0.06);
+        }
+        .sf-nav-tab.active {
+            background: linear-gradient(135deg, var(--sf-purple), var(--sf-purple-dark));
+            color: #fff;
+            font-weight: 600;
+        }
+
+        /* Right Actions */
+        .sf-nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        .sf-nav-bell {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            background: var(--sf-card-bg);
+            border: 1px solid var(--sf-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            cursor: pointer;
+            position: relative;
+            transition: border-color 0.2s;
+            color: var(--sf-text-1);
+        }
+        .sf-nav-bell:hover { border-color: var(--sf-purple); }
+
+        .sf-nav-login-btn {
+            font-size: 13px;
+            font-weight: 600;
+            color: #fff;
+            background: linear-gradient(135deg, var(--sf-purple), var(--sf-purple-dark));
+            padding: 9px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            border: none;
+            text-decoration: none;
+            transition: opacity 0.2s;
+            white-space: nowrap;
+        }
+        .sf-nav-login-btn:hover { opacity: 0.85; }
+
+        .sf-nav-user {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .sf-nav-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--sf-border);
+        }
+        .sf-nav-username {
+            font-size: 13px;
+            color: var(--sf-text-2);
+            font-weight: 500;
+        }
+        .sf-nav-link {
+            font-size: 12px;
+            color: var(--sf-text-3);
+            text-decoration: none;
+            padding: 5px 10px;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        .sf-nav-link:hover {
+            color: var(--sf-text-1);
+            background: rgba(255,255,255,0.05);
+        }
+        .sf-nav-admin {
+            font-size: 12px;
+            color: var(--sf-purple-light);
+            text-decoration: none;
+            padding: 5px 10px;
+            border-radius: 6px;
+            background: rgba(167, 139, 250, 0.1);
+            transition: all 0.2s;
+        }
+        .sf-nav-admin:hover { background: rgba(167, 139, 250, 0.2); }
+
+        .logout-form {
+            display: inline;
+            margin: 0;
+        }
+
+        .sf-nav-logout-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font: inherit;
+            font-size: 12px;
+            color: var(--sf-text-4);
+            padding: 5px 10px;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        .sf-nav-logout-btn:hover {
+            color: var(--sf-text-1);
+            background: rgba(255,255,255,0.05);
+        }
+
+        .sf-nav-divider {
+            width: 1px;
+            height: 24px;
+            background: var(--sf-border);
+            margin: 0 4px;
+        }
+
+        /* ===== Mobile Menu ===== */
+        .sf-nav-hamburger {
+            display: none;
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            background: var(--sf-card-bg);
+            border: 1px solid var(--sf-border);
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            cursor: pointer;
+            color: var(--sf-text-1);
+        }
+
+        .sf-mobile-menu {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(8, 9, 13, 0.95);
+            backdrop-filter: blur(20px);
+            z-index: 200;
+            padding: 20px;
+            flex-direction: column;
+        }
+        .sf-mobile-menu.open { display: flex; }
+
+        .sf-mobile-menu-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .sf-mobile-menu-close {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            background: var(--sf-card-bg);
+            border: 1px solid var(--sf-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            cursor: pointer;
+            color: var(--sf-text-1);
+        }
+
+        .sf-mobile-menu-links {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .sf-mobile-menu-links a {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--sf-text-2);
+            text-decoration: none;
+            padding: 14px 16px;
+            border-radius: 12px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .sf-mobile-menu-links a:hover,
+        .sf-mobile-menu-links a.active {
+            background: rgba(167, 139, 250, 0.1);
+            color: var(--sf-text-1);
+        }
+        .sf-mobile-menu-links a.active {
+            background: linear-gradient(135deg, var(--sf-purple), var(--sf-purple-dark));
+            color: #fff;
+        }
+
+        .sf-mobile-auth {
+            margin-top: auto;
+            padding-top: 20px;
+            border-top: 1px solid var(--sf-border);
+        }
+
+        .sf-mobile-auth-link {
+            display: block;
+            text-align: center;
+            color: var(--sf-text-2);
+            text-decoration: none;
+            padding: 12px;
+            border-radius: 10px;
+            background: var(--sf-card-bg);
+            border: 1px solid var(--sf-border);
+        }
+
+        .sf-mobile-login-btn {
+            display: block;
+            text-align: center;
+            width: 100%;
+        }
+
+        /* ===== Responsive ===== */
+        @media (max-width: 900px) {
+            .sf-nav-tabs { display: none; }
+            .sf-nav-hamburger { display: flex; }
+            .sf-nav-inner { padding: 10px 16px; }
+        }
+
+        @media (max-width: 600px) {
+            .sf-nav-username { display: none; }
+            .sf-nav-link, .sf-nav-admin { display: none; }
+        }
+
+        /* ===== Page Content Area ===== */
+        .sf-page-content {
+            min-height: calc(100vh - 65px);
+        }
+
+        {% block head_extra %}{% endblock %}
+    </style>
+    {% block head_scripts %}{% endblock %}
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="sf-nav">
+        <div class="sf-nav-inner">
+            <a href="/" class="sf-nav-logo">
+                <span class="sf-nav-logo-icon">🏭</span>
+                <span class="sf-nav-logo-text">SafeFactory</span>
+            </a>
+
+            <div class="sf-nav-tabs">
+                <a href="/" class="sf-nav-tab {% block nav_home %}{% endblock %}">🏠 홈</a>
+                <a href="/semiconductor" class="sf-nav-tab {% block nav_semiconductor %}{% endblock %}">🔬 반도체</a>
+                <a href="/laborlaw" class="sf-nav-tab {% block nav_laborlaw %}{% endblock %}">⚖️ 노동법</a>
+                <a href="/field-training" class="sf-nav-tab {% block nav_field_training %}{% endblock %}">🏭 현장실습</a>
+                <a href="/safeguide" class="sf-nav-tab {% block nav_safeguide %}{% endblock %}">🛡️ 안전보건</a>
+                <a href="/msds" class="sf-nav-tab {% block nav_msds %}{% endblock %}">🧪 MSDS</a>
+                <a href="/community" class="sf-nav-tab {% block nav_community %}{% endblock %}">💬 커뮤니티</a>
+                <a href="/news" class="sf-nav-tab {% block nav_news %}{% endblock %}">📰 뉴스</a>
+            </div>
+
+            <div class="sf-nav-actions">
+                {% if current_user.is_authenticated %}
+                <button class="sf-nav-bell" title="알림">🔔</button>
+                <span class="sf-nav-divider"></span>
+                <div class="sf-nav-user">
+                    {% if current_user.profile_image and current_user.profile_image.startswith(('http://', 'https://')) %}
+                    <img src="{{ current_user.profile_image }}" alt="" class="sf-nav-avatar">
+                    {% endif %}
+                    <span class="sf-nav-username">{{ current_user.name }}</span>
+                    {% if current_user.role == 'admin' %}
+                    <a href="/admin" class="sf-nav-admin">관리자</a>
+                    {% endif %}
+                    <a href="/mypage" class="sf-nav-link">마이페이지</a>
+                    <form action="/logout" method="POST" class="logout-form">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="sf-nav-logout-btn">로그아웃</button>
+                    </form>
+                </div>
+                {% else %}
+                <a href="/login" class="sf-nav-login-btn">로그인</a>
+                {% endif %}
+
+                <button class="sf-nav-hamburger" onclick="sfMobileMenuOpen()" aria-label="메뉴 열기" aria-expanded="false" aria-controls="sfMobileMenu">☰</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Mobile Menu -->
+    <div id="sfMobileMenu" class="sf-mobile-menu" role="dialog" aria-modal="true" aria-label="내비게이션 메뉴">
+        <div class="sf-mobile-menu-header">
+            <a href="/" class="sf-nav-logo">
+                <span class="sf-nav-logo-icon">🏭</span>
+                <span class="sf-nav-logo-text">SafeFactory</span>
+            </a>
+            <button class="sf-mobile-menu-close" onclick="sfMobileMenuClose()" aria-label="메뉴 닫기">✕</button>
+        </div>
+        <div class="sf-mobile-menu-links">
+            <a href="/" class="{% block mobile_nav_home %}{% endblock %}">🏠 홈</a>
+            <a href="/semiconductor" class="{% block mobile_nav_semiconductor %}{% endblock %}">🔬 반도체</a>
+            <a href="/laborlaw" class="{% block mobile_nav_laborlaw %}{% endblock %}">⚖️ 노동법</a>
+            <a href="/field-training" class="{% block mobile_nav_field_training %}{% endblock %}">🏭 현장실습</a>
+            <a href="/safeguide" class="{% block mobile_nav_safeguide %}{% endblock %}">🛡️ 안전보건</a>
+            <a href="/msds" class="{% block mobile_nav_msds %}{% endblock %}">🧪 MSDS</a>
+            <a href="/community" class="{% block mobile_nav_community %}{% endblock %}">💬 커뮤니티</a>
+            <a href="/news" class="{% block mobile_nav_news %}{% endblock %}">📰 뉴스</a>
+        </div>
+        <div class="sf-mobile-auth">
+            {% if current_user.is_authenticated %}
+            <a href="/mypage" class="sf-mobile-auth-link">
+                마이페이지
+            </a>
+            {% else %}
+            <a href="/login" class="sf-nav-login-btn sf-mobile-login-btn">로그인</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Page Content -->
+    <main class="sf-page-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <script>
+    (function() {
+        var menu = document.getElementById('sfMobileMenu');
+        var hamburger = document.querySelector('.sf-nav-hamburger');
+        var closeBtn = menu.querySelector('.sf-mobile-menu-close');
+
+        function getFocusable() {
+            return menu.querySelectorAll('a[href], button, [tabindex]:not([tabindex="-1"])');
+        }
+
+        window.sfMobileMenuOpen = function() {
+            menu.classList.add('open');
+            hamburger.setAttribute('aria-expanded', 'true');
+            closeBtn.focus();
+            document.body.style.overflow = 'hidden';
+        };
+
+        window.sfMobileMenuClose = function() {
+            menu.classList.remove('open');
+            hamburger.setAttribute('aria-expanded', 'false');
+            document.body.style.overflow = '';
+            hamburger.focus();
+        };
+
+        menu.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                sfMobileMenuClose();
+                return;
+            }
+            if (e.key !== 'Tab') return;
+
+            var focusable = getFocusable();
+            if (!focusable.length) return;
+            var first = focusable[0];
+            var last = focusable[focusable.length - 1];
+
+            if (e.shiftKey) {
+                if (document.activeElement === first) {
+                    e.preventDefault();
+                    last.focus();
+                }
+            } else {
+                if (document.activeElement === last) {
+                    e.preventDefault();
+                    first.focus();
+                }
+            }
+        });
+    })();
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

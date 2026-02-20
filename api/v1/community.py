@@ -8,10 +8,11 @@ from datetime import datetime, timedelta, timezone
 from flask import request
 from flask_login import current_user, login_required
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import joinedload
 
-from api.response import error_response, success_response
+from api.response import error_response, escape_like, success_response
 from api.v1 import v1_bp
-from models import Category, Comment, Post, PostAttachment, PostLike, _safe_image_url, db
+from models import Category, Comment, Post, PostAttachment, PostLike, _safe_url, db
 
 # ---------------------------------------------------------------------------
 # File upload configuration
@@ -23,7 +24,12 @@ MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
 
 def _allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    if '.' not in filename:
+        return False
+    # Reject double extensions (e.g. malicious.php.jpg)
+    parts = filename.rsplit('/', 1)[-1].split('.')
+    extensions = [p.lower() for p in parts[1:]]
+    return len(extensions) == 1 and extensions[0] in ALLOWED_EXTENSIONS
 
 
 # ---------------------------------------------------------------------------
@@ -45,22 +51,49 @@ def api_community_categories():
 def api_community_posts():
     """List posts with pagination, search, category filter, and sort."""
     try:
-        page = max(1, request.args.get('page', 1, type=int))
+        page = min(10000, max(1, request.args.get('page', 1, type=int)))
         per_page = min(50, max(1, request.args.get('per_page', 20, type=int)))
         category_slug = request.args.get('category', '').strip()
         search_query = request.args.get('search', '').strip()
         sort = request.args.get('sort', 'latest')
 
-        query = Post.query.filter_by(is_deleted=False)
+        # Subqueries to avoid N+1 per-post count queries
+        like_counts = (
+            db.session.query(
+                PostLike.post_id,
+                db.func.count(PostLike.id).label('cnt'),
+            )
+            .group_by(PostLike.post_id)
+            .subquery()
+        )
+        comment_counts = (
+            db.session.query(
+                Comment.post_id,
+                db.func.count(Comment.id).label('cnt'),
+            )
+            .filter(Comment.is_deleted.is_(False))
+            .group_by(Comment.post_id)
+            .subquery()
+        )
+
+        query = (
+            db.session.query(
+                Post,
+                db.func.coalesce(like_counts.c.cnt, 0).label('like_count'),
+                db.func.coalesce(comment_counts.c.cnt, 0).label('comment_count'),
+            )
+            .outerjoin(like_counts, Post.id == like_counts.c.post_id)
+            .outerjoin(comment_counts, Post.id == comment_counts.c.post_id)
+            .filter(Post.is_deleted.is_(False))  # noqa: E712
+        )
 
         if category_slug:
             cat = Category.query.filter_by(slug=category_slug, is_active=True).first()
             if cat:
-                query = query.filter_by(category_id=cat.id)
+                query = query.filter(Post.category_id == cat.id)
 
         if search_query:
-            escaped = search_query.replace('%', r'\%').replace('_', r'\_')
-            like_pattern = f'%{escaped}%'
+            like_pattern = f'%{escape_like(search_query)}%'
             query = query.filter(
                 db.or_(
                     Post.title.ilike(like_pattern, escape='\\'),
@@ -70,18 +103,9 @@ def api_community_posts():
 
         # Pinned first, then sort
         if sort == 'popular':
-            like_sub = (
-                db.session.query(
-                    PostLike.post_id,
-                    db.func.count(PostLike.id).label('cnt'),
-                )
-                .group_by(PostLike.post_id)
-                .subquery()
-            )
-            query = query.outerjoin(like_sub, Post.id == like_sub.c.post_id)
             query = query.order_by(
                 Post.is_pinned.desc(),
-                like_sub.c.cnt.desc().nullslast(),
+                like_counts.c.cnt.desc().nullslast(),
                 Post.created_at.desc(),
             )
         elif sort == 'views':
@@ -94,7 +118,10 @@ def api_community_posts():
         pagination = query.paginate(page=page, per_page=per_page, error_out=False)
 
         return success_response(data={
-            'posts': [p.to_dict() for p in pagination.items],
+            'posts': [
+                p.to_dict(_like_count=lc, _comment_count=cc)
+                for p, lc, cc in pagination.items
+            ],
             'total': pagination.total,
             'pages': pagination.pages,
             'current_page': page,
@@ -119,15 +146,44 @@ def api_community_popular_posts():
         .subquery()
     )
 
-    posts = (
-        Post.query.filter_by(is_deleted=False)
+    # Total like counts (all-time) for to_dict display
+    all_likes = (
+        db.session.query(
+            PostLike.post_id,
+            db.func.count(PostLike.id).label('cnt'),
+        )
+        .group_by(PostLike.post_id)
+        .subquery()
+    )
+
+    comment_counts = (
+        db.session.query(
+            Comment.post_id,
+            db.func.count(Comment.id).label('cnt'),
+        )
+        .filter(Comment.is_deleted.is_(False))
+        .group_by(Comment.post_id)
+        .subquery()
+    )
+
+    rows = (
+        db.session.query(
+            Post,
+            db.func.coalesce(all_likes.c.cnt, 0).label('like_count'),
+            db.func.coalesce(comment_counts.c.cnt, 0).label('comment_count'),
+        )
         .join(like_sub, Post.id == like_sub.c.post_id)
+        .outerjoin(all_likes, Post.id == all_likes.c.post_id)
+        .outerjoin(comment_counts, Post.id == comment_counts.c.post_id)
+        .filter(Post.is_deleted.is_(False))
         .order_by(like_sub.c.cnt.desc())
         .limit(10)
         .all()
     )
 
-    return success_response(data=[p.to_dict() for p in posts])
+    return success_response(data=[
+        p.to_dict(_like_count=lc, _comment_count=cc) for p, lc, cc in rows
+    ])
 
 
 @v1_bp.route('/community/posts/<int:post_id>', methods=['GET'])
@@ -137,10 +193,13 @@ def api_community_post_detail(post_id):
     if not post:
         return error_response('게시글을 찾을 수 없습니다.', 404)
 
-    # Atomic view-count increment
-    Post.query.filter_by(id=post_id).update({Post.view_count: Post.view_count + 1})
-    db.session.commit()
-    db.session.refresh(post)
+    # Atomic view-count increment (non-critical, suppress errors)
+    try:
+        Post.query.filter_by(id=post_id).update({Post.view_count: Post.view_count + 1})
+        db.session.commit()
+        db.session.refresh(post)
+    except Exception:
+        db.session.rollback()
 
     data = post.to_dict(include_content=True)
 
@@ -148,6 +207,7 @@ def api_community_post_detail(post_id):
     all_comments = (
         Comment.query
         .filter_by(post_id=post_id, is_deleted=False)
+        .options(joinedload(Comment.author))
         .order_by(Comment.created_at.asc())
         .all()
     )
@@ -159,7 +219,7 @@ def api_community_post_detail(post_id):
             'author': {
                 'id': c.author.id,
                 'name': c.author.name,
-                'profile_image': _safe_image_url(c.author.profile_image),
+                'profile_image': _safe_url(c.author.profile_image),
             } if c.author else None,
             'parent_id': c.parent_id,
             'content': c.content,
@@ -208,6 +268,8 @@ def api_community_create_post():
             return error_response('제목은 200자 이하여야 합니다.', 400)
         if not content:
             return error_response('내용을 입력해주세요.', 400)
+        if len(content) > 50000:
+            return error_response('내용은 50,000자 이하여야 합니다.', 400)
 
         category = db.session.get(Category, category_id)
         if not category or not category.is_active:
@@ -256,13 +318,16 @@ def api_community_update_post(post_id):
             return error_response('제목은 2~200자여야 합니다.', 400)
         post.title = title
     if content:
+        if len(content) > 50000:
+            return error_response('내용은 50,000자 이하여야 합니다.', 400)
         post.content = content
     if 'category_id' in data:
         cat = db.session.get(Category, data['category_id'])
-        if cat and cat.is_active:
-            if cat.slug == 'notice' and current_user.role != 'admin':
-                return error_response('공지사항은 관리자만 작성할 수 있습니다.', 403)
-            post.category_id = data['category_id']
+        if not cat or not cat.is_active:
+            return error_response('유효하지 않은 카테고리입니다.', 400)
+        if cat.slug == 'notice' and current_user.role != 'admin':
+            return error_response('공지사항은 관리자만 작성할 수 있습니다.', 403)
+        post.category_id = data['category_id']
 
     db.session.commit()
     return success_response(
@@ -322,7 +387,7 @@ def api_community_create_comment(post_id):
     )
     db.session.add(comment)
     db.session.commit()
-    return success_response(data=comment.to_dict(), message='댓글이 작성되었습니다.')
+    return success_response(data=comment.to_dict(include_replies=False), message='댓글이 작성되었습니다.')
 
 
 @v1_bp.route('/community/comments/<int:comment_id>', methods=['DELETE'])

@@ -1,0 +1,327 @@
+{#
+  Link Preview Component (reusable)
+  ─────────────────────────────────
+  Usage:
+    1. Include this partial in your template:
+         {% include 'partials/link_preview.html' %}
+
+    2. Add a container element in your form:
+         <div id="my-previews"></div>
+
+    3. Create an instance in JS:
+         var lp = new LinkPreview({
+             containerId: 'my-previews',       // preview cards container
+             textareaId:  'my-textarea',        // textarea to watch for URLs
+             apiUrl:      '/api/v1/news/link-preview',
+             csrfToken:   '{{ csrf_token() }}',
+         });
+
+    4. Call lp.clear() when opening/closing modals.
+    5. Call lp.update() to force a scan (e.g. after loading existing content).
+    6. Call lp.getSourceData(text) to extract first-link metadata for saving.
+
+  Requires: escapeHtml() global (from common.js)
+#}
+
+{# ── CSS ── #}
+<style>
+.lp-card {
+    display: flex; gap: 12px; padding: 12px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px; position: relative; overflow: hidden;
+    transition: border-color 0.2s;
+}
+.lp-card:hover { border-color: rgba(255,255,255,0.25); }
+.lp-card-link { text-decoration: none; color: inherit; display: block; }
+.lp-img {
+    width: 120px; min-width: 120px; height: 80px;
+    border-radius: 8px; object-fit: cover;
+    background: rgba(255,255,255,0.06); flex-shrink: 0;
+}
+.lp-body { flex: 1; min-width: 0; overflow: hidden; }
+.lp-site {
+    font-size: 0.75rem; color: #888; margin-bottom: 2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    text-transform: uppercase; letter-spacing: 0.3px;
+}
+.lp-title {
+    font-size: 0.9rem; color: #e0e0e0; font-weight: 500; margin-bottom: 4px;
+    display: -webkit-box; -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical; overflow: hidden;
+}
+.lp-desc {
+    font-size: 0.8rem; color: #888;
+    display: -webkit-box; -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical; overflow: hidden;
+}
+.lp-remove {
+    position: absolute; top: 6px; right: 8px;
+    background: rgba(0,0,0,0.5); border: none; color: #aaa;
+    font-size: 1rem; cursor: pointer; border-radius: 50%;
+    width: 22px; height: 22px; display: flex;
+    align-items: center; justify-content: center; line-height: 1;
+    transition: all 0.2s;
+}
+.lp-remove:hover { color: #f44336; background: rgba(244,67,54,0.2); }
+.lp-loading {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px; color: #888; font-size: 0.82rem;
+}
+.lp-loading::before {
+    content: ''; width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,0.15);
+    border-top-color: currentColor;
+    border-radius: 50%; animation: lp-spin 0.6s linear infinite;
+}
+@keyframes lp-spin { to { transform: rotate(360deg); } }
+</style>
+
+{# ── JS ── #}
+<script>
+(function() {
+    'use strict';
+
+    var URL_RE = /https?:\/\/[^\s<>"')\]]+/gi;
+    var _esc = (typeof escapeHtml === 'function') ? escapeHtml : function(s) {
+        var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML;
+    };
+
+    // Registry for onclick delegation
+    window._lpInstances = window._lpInstances || {};
+
+    /**
+     * LinkPreview constructor.
+     * @param {Object} opts
+     * @param {string} opts.containerId  - ID of the preview cards container
+     * @param {string} opts.textareaId   - ID of the textarea to watch
+     * @param {string} opts.apiUrl       - Link preview API endpoint
+     * @param {string} [opts.csrfToken]  - CSRF token for POST requests
+     * @param {number} [opts.debounce]   - Debounce delay in ms (default 800)
+     */
+    function LinkPreview(opts) {
+        this.containerId = opts.containerId;
+        this.textareaId  = opts.textareaId;
+        this.apiUrl      = opts.apiUrl;
+        this.csrfToken   = opts.csrfToken || '';
+        this.debounceMs  = opts.debounce || 800;
+        this._cache      = {};
+        this._urls       = new Set();
+        this._timer      = null;
+
+        // Register for onclick delegation
+        window._lpInstances[this.containerId] = this;
+
+        // Auto-attach listeners
+        this._attach();
+    }
+
+    // ── Static helpers ──
+
+    LinkPreview.extractUrls = function(text) {
+        var matches = (text || '').match(URL_RE) || [];
+        var cleaned = matches.map(function(u) { return u.replace(/[.,;:!?)]+$/, ''); });
+        // Deduplicate
+        var seen = {};
+        return cleaned.filter(function(u) {
+            if (seen[u]) return false;
+            seen[u] = true;
+            return true;
+        });
+    };
+
+    /**
+     * Render a read-only preview card (for detail views, no remove button).
+     */
+    LinkPreview.renderReadonlyCard = function(data) {
+        if (!data || (!data.title && !data.description)) return '';
+        var img = (data.image && /^https?:\/\//i.test(data.image))
+            ? '<img class="lp-img" src="' + _esc(data.image) + '" alt="" onerror="this.style.display=\'none\'">'
+            : '';
+        var href = (data.url && /^https?:\/\//i.test(data.url)) ? data.url : '';
+        var open = href
+            ? '<a href="' + _esc(href) + '" target="_blank" rel="noopener" class="lp-card-link">'
+            : '<div>';
+        var close = href ? '</a>' : '</div>';
+        return open
+            + '<div class="lp-card" style="cursor:' + (href ? 'pointer' : 'default') + '">'
+            + img
+            + '<div class="lp-body">'
+            + '<div class="lp-site">' + _esc(data.site_name || '') + '</div>'
+            + '<div class="lp-title">' + _esc(data.title || '') + '</div>'
+            + '<div class="lp-desc">' + _esc(data.description || '') + '</div>'
+            + '</div></div>'
+            + close;
+    };
+
+    // ── Prototype methods ──
+
+    LinkPreview.prototype._attach = function() {
+        var self = this;
+        var ta = document.getElementById(this.textareaId);
+        if (!ta) return;
+        ta.addEventListener('input', function() { self._onChange(); });
+        ta.addEventListener('paste', function() {
+            setTimeout(function() { self._onChange(); }, 100);
+        });
+
+        // Event delegation for remove buttons (avoids inline onclick XSS risk)
+        var container = document.getElementById(this.containerId);
+        if (container) {
+            container.addEventListener('click', function(e) {
+                var btn = e.target.closest('.lp-remove');
+                if (!btn) return;
+                var cid = btn.dataset.container;
+                var url = btn.dataset.url;
+                if (cid && url) LinkPreview.removeByContainer(cid, url);
+            });
+        }
+    };
+
+    LinkPreview.prototype._onChange = function() {
+        var self = this;
+        clearTimeout(this._timer);
+        this._timer = setTimeout(function() { self.update(); }, this.debounceMs);
+    };
+
+    LinkPreview.prototype._renderCard = function(data) {
+        var img = data.image
+            ? '<img class="lp-img" src="' + _esc(data.image) + '" alt="" onerror="this.style.display=\'none\'">'
+            : '';
+        var cid = _esc(this.containerId);
+        var url = _esc(data.url);
+        return '<div class="lp-card" data-preview-url="' + url + '">'
+            + img
+            + '<div class="lp-body">'
+            + '<div class="lp-site">' + _esc(data.site_name || '') + '</div>'
+            + '<div class="lp-title">' + _esc(data.title || '') + '</div>'
+            + '<div class="lp-desc">' + _esc(data.description || '') + '</div>'
+            + '</div>'
+            + '<button class="lp-remove" data-container="' + cid + '" data-url="' + url + '" title="미리보기 제거">&times;</button>'
+            + '</div>';
+    };
+
+    LinkPreview.prototype._fetch = async function(url) {
+        if (this._cache[url]) return this._cache[url];
+        try {
+            var headers = { 'Content-Type': 'application/json' };
+            if (this.csrfToken) headers['X-CSRFToken'] = this.csrfToken;
+            var resp = await fetch(this.apiUrl, {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({ url: url }),
+            });
+            var json = await resp.json();
+            if (json.success && json.data) {
+                this._cache[url] = json.data;
+                return json.data;
+            }
+            this._cache[url] = null;
+            return null;
+        } catch (e) {
+            this._cache[url] = null;
+            return null;
+        }
+    };
+
+    /**
+     * Scan textarea content and update preview cards.
+     */
+    LinkPreview.prototype.update = async function() {
+        var container = document.getElementById(this.containerId);
+        var textarea  = document.getElementById(this.textareaId);
+        if (!container || !textarea) return;
+
+        var text = textarea.value;
+        var urls = LinkPreview.extractUrls(text);
+        var self = this;
+
+        // Remove cards for URLs no longer in text
+        this._urls.forEach(function(u) {
+            if (urls.indexOf(u) === -1) {
+                self._urls.delete(u);
+                var el = container.querySelector('[data-preview-url="' + CSS.escape(u) + '"]');
+                if (el) el.remove();
+                container.querySelectorAll('.lp-loading').forEach(function(l) {
+                    if (l.dataset.url === u) l.remove();
+                });
+            }
+        });
+
+        // Fetch new URLs
+        for (var i = 0; i < urls.length; i++) {
+            var url = urls[i];
+            if (this._urls.has(url)) continue;
+            if (this._cache[url] === null) continue;
+            this._urls.add(url);
+
+            var loadEl = document.createElement('div');
+            loadEl.className = 'lp-loading';
+            loadEl.dataset.url = url;
+            loadEl.textContent = '링크 미리보기 로딩 중...';
+            container.appendChild(loadEl);
+
+            var data = await this._fetch(url);
+            loadEl.remove();
+            if (data) {
+                container.insertAdjacentHTML('beforeend', this._renderCard(data));
+            } else {
+                this._urls.delete(url);
+            }
+        }
+    };
+
+    /**
+     * Remove a specific preview card.
+     */
+    LinkPreview.prototype.remove = function(url) {
+        this._urls.delete(url);
+        this._cache[url] = null;
+        var container = document.getElementById(this.containerId);
+        if (!container) return;
+        var el = container.querySelector('[data-preview-url="' + CSS.escape(url) + '"]');
+        if (el) el.remove();
+    };
+
+    /**
+     * Clear all preview state (call when opening/closing modals).
+     */
+    LinkPreview.prototype.clear = function() {
+        this._urls.clear();
+        this._cache = {};
+        var container = document.getElementById(this.containerId);
+        if (container) container.innerHTML = '';
+    };
+
+    /**
+     * Extract source metadata from the first detected link preview.
+     * Returns { summary, source_name, source_url, source_image } or null.
+     */
+    LinkPreview.prototype.getSourceData = function(text) {
+        var urls = LinkPreview.extractUrls(text);
+        for (var i = 0; i < urls.length; i++) {
+            var preview = this._cache[urls[i]];
+            if (preview) {
+                return {
+                    summary:      preview.description || null,
+                    source_name:  preview.site_name || null,
+                    source_url:   preview.url || null,
+                    source_image: preview.image || null,
+                };
+            }
+        }
+        return null;
+    };
+
+    // ── Static delegation for onclick ──
+    LinkPreview.removeByContainer = function(containerId, url) {
+        var inst = window._lpInstances[containerId];
+        if (inst) inst.remove(url);
+    };
+
+    window.LinkPreview = LinkPreview;
+})();
+</script>

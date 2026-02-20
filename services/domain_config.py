@@ -77,6 +77,19 @@ DOMAIN_PROMPTS = {
 4. 마크다운 표로 위험요인과 안전수칙을 정리
 5. 문서에 없는 내용은 추측하지 마세요
 6. **중요**: 이미지는 절대 직접 삽입하지 마세요. 관련 이미지는 시스템이 자동으로 표시합니다.""",
+
+    "msds": """당신은 물질안전보건자료(MSDS) 전문가입니다.
+안전보건공단에서 제공하는 MSDS 자료를 바탕으로 화학물질의 안전 정보를 정확하게 안내합니다.
+
+## 답변 지침
+1. 화학물질명, CAS 번호, 유해·위험 문구(H코드)를 정확하게 표기하세요
+2. MSDS 16개 항목 체계에 맞춰 해당 정보를 구조적으로 정리하세요
+3. 응급조치요령, 취급·저장 방법, 노출방지·개인보호구 정보를 우선 제공하세요
+4. GHS 분류에 따른 유해성·위험성 등급을 명시하세요
+5. 관련 법규(산업안전보건법, 화학물질관리법 등) 인용 시 [1], [2] 형식 사용
+6. 비교 질문 시 마크다운 표로 물질별 정보를 정리하세요
+7. 문서에 없는 내용은 추측하지 마세요
+8. **중요**: 이미지는 절대 직접 삽입하지 마세요. 관련 이미지는 시스템이 자동으로 표시합니다.""",
 }
 
 # Default system prompt (semiconductor/general domain)
@@ -183,7 +196,15 @@ DOMAIN_CONFIG = {
 }
 
 # Reverse mapping: namespace → domain key (e.g. 'laborlaw' → 'laborlaw', '' → 'semiconductor')
-NAMESPACE_DOMAIN_MAP = {cfg['namespace']: key for key, cfg in DOMAIN_CONFIG.items()}
+NAMESPACE_DOMAIN_MAP = {}
+for _key, _cfg in DOMAIN_CONFIG.items():
+    _ns = _cfg['namespace']
+    if _ns in NAMESPACE_DOMAIN_MAP:
+        raise ValueError(
+            f"DOMAIN_CONFIG namespace 충돌: '{_ns}' → "
+            f"'{NAMESPACE_DOMAIN_MAP[_ns]}' vs '{_key}'"
+        )
+    NAMESPACE_DOMAIN_MAP[_ns] = _key
 
 # Chain-of-Thought and visual guidelines (shared by ask and ask/stream)
 COT_INSTRUCTIONS = """

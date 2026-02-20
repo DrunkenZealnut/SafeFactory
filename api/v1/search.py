@@ -12,7 +12,8 @@ from flask import request, Response, stream_with_context
 from api.v1 import v1_bp
 from api.response import success_response, error_response
 from api import rate_limit
-from services.singletons import get_agent, get_hybrid_searcher_instance
+from services.settings import get_setting
+from services.singletons import get_agent, get_anthropic_client, get_gemini_client, get_hybrid_searcher_instance, get_openai_client
 from services.rag_pipeline import run_rag_pipeline, build_llm_messages, find_related_images
 from services.domain_config import DOCUMENTS_PATH
 
@@ -32,8 +33,8 @@ def _get_pdf_index():
     if _pdf_index and (now - _pdf_index_ts) < _PDF_INDEX_TTL:
         return _pdf_index
     with _pdf_index_lock:
-        # Double-check after acquiring lock
-        if _pdf_index and (now - _pdf_index_ts) < _PDF_INDEX_TTL:
+        # Double-check after acquiring lock (recapture time to avoid stale value)
+        if _pdf_index and (time.monotonic() - _pdf_index_ts) < _PDF_INDEX_TTL:
             return _pdf_index
         pdfs_dir = DOCUMENTS_PATH / 'ncs' / 'pdfs'
         index = {}
@@ -64,6 +65,21 @@ def _collect_related_images(sources, max_images=12):
     return related_images[:max_images]
 
 
+_VALID_MODEL_RE = re.compile(r'^[a-zA-Z0-9._-]+$')
+
+
+def _prepare_gemini_params(messages, temperature, max_tokens):
+    """Extract Gemini-compatible params from OpenAI-style messages."""
+    system_msg = next((m['content'] for m in messages if m['role'] == 'system'), '')
+    user_msg = next((m['content'] for m in messages if m['role'] == 'user'), '')
+    config = {
+        'system_instruction': system_msg,
+        'temperature': temperature,
+        'max_output_tokens': max_tokens,
+    }
+    return user_msg, config
+
+
 @v1_bp.route('/search', methods=['POST'])
 @rate_limit("30 per minute")
 def api_search():
@@ -78,8 +94,12 @@ def api_search():
         except (ValueError, TypeError):
             top_k = 5
         namespace = data.get('namespace', '')
+        if namespace == 'all':
+            namespace = ''
         file_type = data.get('file_type', '')
         search_mode = data.get('search_mode', 'vector')  # vector | hybrid | keyword
+        if search_mode not in ('vector', 'hybrid', 'keyword'):
+            return error_response('search_mode 값이 올바르지 않습니다.', 400)
 
         # 3-level metadata filters
         domain = data.get('domain', '')
@@ -88,6 +108,8 @@ def api_search():
 
         if not query:
             return error_response('검색어를 입력해주세요.', 400)
+        if len(query) > 500:
+            return error_response('검색어는 500자 이하여야 합니다.', 400)
 
         agent = get_agent()
 
@@ -201,21 +223,50 @@ def api_ask():
         enhanced_queries = pipeline['enhanced_queries']
         keywords = pipeline['keywords']
         use_enhancement = pipeline['use_enhancement']
-        client = pipeline['client']
 
         # ========================================
-        # Phase 8: Generate Answer with Improved Prompt
+        # Phase 8: Generate Answer via LLM (OpenAI or Gemini)
         # ========================================
         messages = build_llm_messages(query, sources, context, namespace)
+        provider = get_setting('llm_answer_provider', 'openai')
+        model = get_setting('llm_answer_model', 'gpt-4o-mini')
+        if not _VALID_MODEL_RE.match(model):
+            logging.error('Invalid model name in settings: %s', model)
+            return error_response('잘못된 모델 설정입니다. 관리자에게 문의하세요.', 500)
+        try:
+            temperature = float(get_setting('llm_answer_temperature', '0.3'))
+        except (ValueError, TypeError):
+            temperature = 0.3
+        answer_max_tokens = min(4000, 1500 + len(sources) * 200)
 
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=messages,
-            temperature=0.3,
-            max_tokens=2500
-        )
-
-        answer = response.choices[0].message.content
+        if provider == 'gemini':
+            gemini = get_gemini_client()
+            user_msg, config = _prepare_gemini_params(messages, temperature, answer_max_tokens)
+            gemini_resp = gemini.models.generate_content(
+                model=model, contents=user_msg, config=config,
+            )
+            answer = gemini_resp.text
+        elif provider == 'anthropic':
+            client = get_anthropic_client()
+            system_msg = next((m['content'] for m in messages if m['role'] == 'system'), '')
+            user_msgs = [m for m in messages if m['role'] != 'system']
+            response = client.messages.create(
+                model=model,
+                system=system_msg,
+                messages=user_msgs,
+                temperature=temperature,
+                max_tokens=answer_max_tokens,
+            )
+            answer = response.content[0].text
+        else:
+            client = get_openai_client()
+            response = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=answer_max_tokens,
+            )
+            answer = response.choices[0].message.content
 
         related_images = _collect_related_images(sources)
 
@@ -260,9 +311,17 @@ def api_ask_stream():
     enhanced_queries = pipeline['enhanced_queries']
     keywords = pipeline['keywords']
     use_enhancement = pipeline['use_enhancement']
-    client = pipeline['client']
 
     messages = build_llm_messages(query, sources, context, namespace)
+    provider = get_setting('llm_answer_provider', 'openai')
+    model = get_setting('llm_answer_model', 'gpt-4o-mini')
+    if not _VALID_MODEL_RE.match(model):
+        logging.error('Invalid model name in settings: %s', model)
+        return error_response('잘못된 모델 설정입니다. 관리자에게 문의하세요.', 500)
+    try:
+        temperature = float(get_setting('llm_answer_temperature', '0.3'))
+    except (ValueError, TypeError):
+        temperature = 0.3
 
     def generate():
         try:
@@ -283,19 +342,50 @@ def api_ask_stream():
             }, ensure_ascii=False)
             yield f"data: {metadata_event}\n\n"
 
-            # Stream LLM response
-            stream = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=messages,
-                temperature=0.3,
-                max_tokens=2500,
-                stream=True
-            )
-            for chunk in stream:
-                if chunk.choices and chunk.choices[0].delta.content:
-                    token = chunk.choices[0].delta.content
-                    token_event = json.dumps({'type': 'token', 'data': token}, ensure_ascii=False)
-                    yield f"data: {token_event}\n\n"
+            # Dynamic max_tokens: scale with source count for complex multi-doc answers
+            answer_max_tokens = min(4000, 1500 + len(sources) * 200)
+
+            if provider == 'gemini':
+                # Stream LLM response via Gemini
+                gemini = get_gemini_client()
+                user_msg, config = _prepare_gemini_params(messages, temperature, answer_max_tokens)
+                stream = gemini.models.generate_content_stream(
+                    model=model, contents=user_msg, config=config,
+                )
+                for chunk in stream:
+                    if chunk.text:
+                        token_event = json.dumps({'type': 'token', 'data': chunk.text}, ensure_ascii=False)
+                        yield f"data: {token_event}\n\n"
+            elif provider == 'anthropic':
+                # Stream LLM response via Anthropic Claude
+                client = get_anthropic_client()
+                system_msg = next((m['content'] for m in messages if m['role'] == 'system'), '')
+                user_msgs = [m for m in messages if m['role'] != 'system']
+                with client.messages.stream(
+                    model=model,
+                    system=system_msg,
+                    messages=user_msgs,
+                    temperature=temperature,
+                    max_tokens=answer_max_tokens,
+                ) as stream:
+                    for text in stream.text_stream:
+                        token_event = json.dumps({'type': 'token', 'data': text}, ensure_ascii=False)
+                        yield f"data: {token_event}\n\n"
+            else:
+                # Stream LLM response via OpenAI
+                client = get_openai_client()
+                stream = client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=answer_max_tokens,
+                    stream=True,
+                )
+                for chunk in stream:
+                    if chunk.choices and chunk.choices[0].delta.content:
+                        token = chunk.choices[0].delta.content
+                        token_event = json.dumps({'type': 'token', 'data': token}, ensure_ascii=False)
+                        yield f"data: {token_event}\n\n"
 
             # Send done event
             done_event = json.dumps({
@@ -304,9 +394,9 @@ def api_ask_stream():
             }, ensure_ascii=False)
             yield f"data: {done_event}\n\n"
 
-        except Exception as e:
-            logging.exception("[API/ask/stream] Streaming error: %s", e)
-            error_event = json.dumps({'type': 'error', 'data': str(e)}, ensure_ascii=False)
+        except Exception:
+            logging.exception("[API/ask/stream] Streaming error")
+            error_event = json.dumps({'type': 'error', 'data': '답변 생성 중 오류가 발생했습니다.'}, ensure_ascii=False)
             yield f"data: {error_event}\n\n"
 
     return Response(

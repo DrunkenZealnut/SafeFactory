@@ -7,6 +7,7 @@ Usage:
 
 import argparse
 import os
+import re
 import sys
 
 # Add project root to path
@@ -16,11 +17,18 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+_EMAIL_RE = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$')
+
+
 def main():
     parser = argparse.ArgumentParser(description='Create admin user')
     parser.add_argument('--email', required=True, help='Admin email address')
     parser.add_argument('--name', required=True, help='Admin display name')
     args = parser.parse_args()
+
+    if not _EMAIL_RE.match(args.email):
+        print(f"Error: Invalid email format: {args.email}", file=sys.stderr)
+        sys.exit(1)
 
     # Import after path setup
     from web_app import app

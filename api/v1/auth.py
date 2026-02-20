@@ -3,7 +3,7 @@
 from flask_login import current_user, login_required, logout_user
 
 from api.v1 import v1_bp
-from api.response import success_response, error_response
+from api.response import success_response
 
 
 @v1_bp.route('/auth/me', methods=['GET'])

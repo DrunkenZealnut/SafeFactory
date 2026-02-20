@@ -3,17 +3,18 @@
 import logging
 import os
 import re
+import unicodedata
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 
 from flask import request
 from flask_login import current_user, login_required
 
-from api.response import error_response, success_response
+from api.response import error_response, escape_like as _escape_like, success_response
 from api.v1 import v1_bp
 from models import (
-    AdminLog, Category, Comment, Document, Post, PostAttachment, PostLike,
-    SocialAccount, User, db,
+    AdminLog, Category, Comment, Document, NewsArticle, Post, PostAttachment,
+    PostLike, SocialAccount, SystemSetting, User, db,
 )
 
 # ---------------------------------------------------------------------------
@@ -44,6 +45,17 @@ def _log_action(action, target_type=None, target_id=None, details=None):
     db.session.add(log)
 
 
+def _safe_commit(error_msg='작업 처리 중 오류가 발생했습니다.'):
+    """Commit session with rollback on failure. Returns error response or None."""
+    try:
+        db.session.commit()
+        return None
+    except Exception:
+        db.session.rollback()
+        logging.exception('DB commit failed')
+        return error_response(error_msg, 500)
+
+
 # ---------------------------------------------------------------------------
 # Stats – overview / vectors / community / users
 # ---------------------------------------------------------------------------
@@ -70,6 +82,7 @@ def admin_stats_overview():
     ).filter(
         Document.file_type != 'folder',
     ).scalar()
+    total_news = NewsArticle.query.count()
 
     return success_response(data={
         'total_users': total_users,
@@ -78,6 +91,7 @@ def admin_stats_overview():
         'total_documents': total_documents,
         'total_vectors': total_vectors,
         'namespaces': namespace_count,
+        'total_news': total_news,
     })
 
 
@@ -118,7 +132,7 @@ def admin_stats_community():
             db.func.date(Post.created_at).label('day'),
             db.func.count(Post.id).label('cnt'),
         )
-        .filter(Post.created_at >= since, Post.is_deleted == False)  # noqa: E712
+        .filter(Post.created_at >= since, Post.is_deleted.is_(False))
         .group_by(db.func.date(Post.created_at))
         .all()
     )
@@ -129,7 +143,7 @@ def admin_stats_community():
             db.func.date(Comment.created_at).label('day'),
             db.func.count(Comment.id).label('cnt'),
         )
-        .filter(Comment.created_at >= since, Comment.is_deleted == False)  # noqa: E712
+        .filter(Comment.created_at >= since, Comment.is_deleted.is_(False))
         .group_by(db.func.date(Comment.created_at))
         .all()
     )
@@ -141,7 +155,7 @@ def admin_stats_community():
             db.func.count(Post.id).label('cnt'),
         )
         .join(Post, Post.category_id == Category.id)
-        .filter(Post.is_deleted == False)  # noqa: E712
+        .filter(Post.is_deleted.is_(False))
         .group_by(Category.name)
         .all()
     )
@@ -199,7 +213,7 @@ def admin_stats_users():
 @admin_required
 def admin_documents_list():
     """List documents with filters and pagination."""
-    page = max(1, request.args.get('page', 1, type=int))
+    page = min(10000, max(1, request.args.get('page', 1, type=int)))
     per_page = min(100, max(1, request.args.get('per_page', 20, type=int)))
     namespace = request.args.get('namespace', '').strip()
     status = request.args.get('status', '').strip()
@@ -214,9 +228,12 @@ def admin_documents_list():
     if status:
         query = query.filter_by(status=status)
     if search:
-        like = f'%{search}%'
+        like = f'%{_escape_like(search)}%'
         query = query.filter(
-            db.or_(Document.filename.ilike(like), Document.source_file.ilike(like))
+            db.or_(
+                Document.filename.ilike(like, escape='\\'),
+                Document.source_file.ilike(like, escape='\\'),
+            )
         )
 
     # Sortable columns whitelist
@@ -259,7 +276,7 @@ def admin_documents_sync_filesystem():
     (the marker for a fully-processed learning material) and creates
     or updates Document rows accordingly.
     """
-    import unicodedata
+
 
     from services.domain_config import get_namespace_for_path
     from services.filetree import scan_document_folders
@@ -356,7 +373,7 @@ def admin_documents_sync():
     The heavy per-vector enumeration is only needed for initial DB population
     and is available via the ?full=true query parameter.
     """
-    import unicodedata
+
 
     full_mode = request.args.get('full', '').lower() == 'true'
 
@@ -553,10 +570,11 @@ def _full_pinecone_sync(uploader, namespaces):
     Only used when file-level Documents don't exist yet (initial population).
     Takes 15-30+ minutes for large indexes.
     """
-    import unicodedata
+
     from concurrent.futures import ThreadPoolExecutor
 
     created = 0
+    updated = 0
     skipped = 0
 
     active_ns = {
@@ -564,7 +582,7 @@ def _full_pinecone_sync(uploader, namespaces):
         if info.get('vector_count', 0) > 0
     }
 
-    ns_results = {}
+    # Process each namespace and commit immediately to limit memory usage
     with ThreadPoolExecutor(max_workers=min(len(active_ns), 10) or 1) as ns_exec:
         ns_futures = {
             ns_exec.submit(_enumerate_namespace_sources, uploader, ns): ns
@@ -573,46 +591,59 @@ def _full_pinecone_sync(uploader, namespaces):
         for future in ns_futures:
             ns_name = ns_futures[future]
             try:
-                ns_results[ns_name] = future.result()
+                source_file_vectors = future.result()
             except Exception as exc:
                 logging.warning('Namespace %s sync failed: %s', ns_name, exc)
-                ns_results[ns_name] = {}
-
-    for ns_name, source_file_vectors in ns_results.items():
-        for sf, sf_vec_count in source_file_vectors.items():
-            sf = unicodedata.normalize('NFC', sf)
-
-            existing = Document.query.filter_by(
-                namespace=ns_name, source_file=sf,
-            ).first()
-            if existing:
-                if existing.vector_count != sf_vec_count:
-                    existing.vector_count = sf_vec_count
-                skipped += 1
                 continue
 
-            filename = sf.rsplit('/', 1)[-1] if '/' in sf else sf
-            ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
-            doc = Document(
-                namespace=ns_name,
-                source_file=sf,
-                filename=filename,
-                file_type=ext or None,
-                vector_count=sf_vec_count,
-                status='indexed',
-                uploaded_by=current_user.id,
-            )
-            db.session.add(doc)
-            created += 1
+            for sf, sf_vec_count in source_file_vectors.items():
+                sf = unicodedata.normalize('NFC', sf)
+
+                existing = Document.query.filter_by(
+                    namespace=ns_name, source_file=sf,
+                ).first()
+                if existing:
+                    if existing.vector_count != sf_vec_count:
+                        existing.vector_count = sf_vec_count
+                        updated += 1
+                    else:
+                        skipped += 1
+                    continue
+
+                filename = sf.rsplit('/', 1)[-1] if '/' in sf else sf
+                ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+                doc = Document(
+                    namespace=ns_name,
+                    source_file=sf,
+                    filename=filename,
+                    file_type=ext or None,
+                    vector_count=sf_vec_count,
+                    status='indexed',
+                    uploaded_by=current_user.id,
+                )
+                db.session.add(doc)
+                created += 1
+
+            # Commit per namespace to free memory and avoid giant transactions
+            try:
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+                logging.exception('Sync commit failed for namespace %s', ns_name)
 
     _log_action('sync_documents', details={
-        'mode': 'full', 'created': created, 'skipped': skipped,
+        'mode': 'full', 'created': created, 'updated': updated, 'skipped': skipped,
     })
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        logging.exception('Full Pinecone sync final commit failed')
+        return error_response('전체 동기화 중 오류가 발생했습니다.', 500)
 
     return success_response(
-        data={'created': created, 'skipped': skipped},
-        message=f'전체 동기화 완료: {created}개 문서 등록 ({skipped}개 이미 존재)',
+        data={'created': created, 'updated': updated, 'skipped': skipped},
+        message=f'전체 동기화 완료: {created}개 등록, {updated}개 갱신, {skipped}개 변경없음',
     )
 
 
@@ -622,7 +653,7 @@ def _resolve_folder_source_file(source_file):
     Handles both absolute and relative paths.  Returns the folder path in
     'documents/...' format (matching filesystem sync), or None.
     """
-    import unicodedata
+
     from pathlib import PurePosixPath
 
     sf = source_file
@@ -674,7 +705,7 @@ def _resolve_folder_source_file_fuzzy(source_file, folder_sfs):
     Returns:
         matched folder source_file string, or None
     """
-    import unicodedata
+
 
     exact = _resolve_folder_source_file(source_file)
     if exact and exact in folder_sfs:
@@ -831,7 +862,7 @@ def admin_documents_update_folder_status():
     using fuzzy path matching.  No Pinecone API calls — purely DB-based,
     completes in under a second.
     """
-    import unicodedata
+
 
     try:
         # 1. Get all folder-level Documents (targets)
@@ -987,7 +1018,9 @@ def admin_document_delete(doc_id):
         'filename': doc.filename, 'namespace': doc.namespace,
     })
     db.session.delete(doc)
-    db.session.commit()
+    err = _safe_commit('문서 삭제 중 오류가 발생했습니다.')
+    if err:
+        return err
 
     return success_response(message='문서가 삭제되었습니다.')
 
@@ -1005,9 +1038,51 @@ def admin_namespace_delete(ns):
 
     count = Document.query.filter_by(namespace=ns).delete()
     _log_action('delete_namespace', 'namespace', details={'namespace': ns, 'documents': count})
-    db.session.commit()
+    err = _safe_commit('네임스페이스 삭제 중 오류가 발생했습니다.')
+    if err:
+        return err
 
     return success_response(message=f"네임스페이스 '{ns}'가 삭제되었습니다. ({count}개 문서)")
+
+
+# ---------------------------------------------------------------------------
+# News management (admin-specific list; CUD endpoints in api/v1/news.py)
+# ---------------------------------------------------------------------------
+
+@v1_bp.route('/admin/news', methods=['GET'])
+@admin_required
+def admin_news_list():
+    """List all news articles including unpublished ones."""
+    page = min(10000, max(1, request.args.get('page', 1, type=int)))
+    per_page = min(100, max(1, request.args.get('per_page', 20, type=int)))
+    search = request.args.get('search', '').strip()
+    category = request.args.get('category', '').strip()
+
+    query = NewsArticle.query
+
+    if category and category in NewsArticle.CATEGORIES:
+        query = query.filter_by(category=category)
+    if search:
+        like = f'%{_escape_like(search)}%'
+        query = query.filter(
+            db.or_(
+                NewsArticle.title.ilike(like, escape='\\'),
+                NewsArticle.summary.ilike(like, escape='\\'),
+            )
+        )
+
+    query = query.order_by(NewsArticle.created_at.desc())
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+
+    return success_response(data={
+        'articles': [
+            {**a.to_dict(include_content=False), 'is_published': a.is_published}
+            for a in pagination.items
+        ],
+        'total': pagination.total,
+        'pages': pagination.pages,
+        'current_page': page,
+    })
 
 
 # ---------------------------------------------------------------------------
@@ -1018,7 +1093,7 @@ def admin_namespace_delete(ns):
 @admin_required
 def admin_posts_list():
     """List all posts including soft-deleted ones."""
-    page = max(1, request.args.get('page', 1, type=int))
+    page = min(10000, max(1, request.args.get('page', 1, type=int)))
     per_page = min(100, max(1, request.args.get('per_page', 20, type=int)))
     search = request.args.get('search', '').strip()
     show_deleted = request.args.get('deleted', '').lower() == 'true'
@@ -1032,9 +1107,12 @@ def admin_posts_list():
         if cat:
             query = query.filter_by(category_id=cat.id)
     if search:
-        like = f'%{search}%'
+        like = f'%{_escape_like(search)}%'
         query = query.filter(
-            db.or_(Post.title.ilike(like), Post.content.ilike(like))
+            db.or_(
+                Post.title.ilike(like, escape='\\'),
+                Post.content.ilike(like, escape='\\'),
+            )
         )
 
     query = query.order_by(Post.created_at.desc())
@@ -1065,7 +1143,9 @@ def admin_post_pin(post_id):
 
     post.is_pinned = not post.is_pinned
     _log_action('pin_post' if post.is_pinned else 'unpin_post', 'post', post_id)
-    db.session.commit()
+    err = _safe_commit('게시글 고정 처리 중 오류가 발생했습니다.')
+    if err:
+        return err
 
     action = '고정' if post.is_pinned else '고정 해제'
     return success_response(
@@ -1086,7 +1166,9 @@ def admin_post_restore(post_id):
 
     post.is_deleted = False
     _log_action('restore_post', 'post', post_id)
-    db.session.commit()
+    err = _safe_commit('게시글 복원 중 오류가 발생했습니다.')
+    if err:
+        return err
 
     return success_response(message='게시글이 복원되었습니다.')
 
@@ -1117,7 +1199,9 @@ def admin_post_hard_delete(post_id):
 
     _log_action('hard_delete_post', 'post', post_id, {'title': post.title})
     db.session.delete(post)  # cascade deletes comments, likes, attachments
-    db.session.commit()
+    err = _safe_commit('게시글 완전 삭제 중 오류가 발생했습니다.')
+    if err:
+        return err
 
     return success_response(message='게시글이 완전히 삭제되었습니다.')
 
@@ -1130,7 +1214,7 @@ def admin_post_hard_delete(post_id):
 @admin_required
 def admin_comments_list():
     """List all comments with pagination."""
-    page = max(1, request.args.get('page', 1, type=int))
+    page = min(10000, max(1, request.args.get('page', 1, type=int)))
     per_page = min(100, max(1, request.args.get('per_page', 20, type=int)))
 
     query = Comment.query.order_by(Comment.created_at.desc())
@@ -1138,7 +1222,7 @@ def admin_comments_list():
 
     comments = []
     for c in pagination.items:
-        d = c.to_dict()
+        d = c.to_dict(include_replies=False)
         d['is_deleted'] = c.is_deleted
         d['user_id'] = c.user_id
         comments.append(d)
@@ -1161,7 +1245,9 @@ def admin_comment_hard_delete(comment_id):
 
     _log_action('hard_delete_comment', 'comment', comment_id)
     db.session.delete(comment)
-    db.session.commit()
+    err = _safe_commit('댓글 삭제 중 오류가 발생했습니다.')
+    if err:
+        return err
 
     return success_response(message='댓글이 완전히 삭제되었습니다.')
 
@@ -1179,7 +1265,7 @@ def admin_categories_list():
             Post.category_id,
             db.func.count(Post.id).label('post_count'),
         )
-        .filter(Post.is_deleted == False)  # noqa: E712
+        .filter(Post.is_deleted.is_(False))
         .group_by(Post.category_id)
         .subquery()
     )
@@ -1225,7 +1311,9 @@ def admin_category_create():
     )
     db.session.add(cat)
     _log_action('create_category', 'category', details={'name': name, 'slug': slug})
-    db.session.commit()
+    err = _safe_commit('카테고리 생성 중 오류가 발생했습니다.')
+    if err:
+        return err
 
     return success_response(data=cat.to_dict(), message='카테고리가 생성되었습니다.')
 
@@ -1256,7 +1344,9 @@ def admin_category_update(cat_id):
         cat.is_active = bool(data['is_active'])
 
     _log_action('update_category', 'category', cat_id)
-    db.session.commit()
+    err = _safe_commit('카테고리 수정 중 오류가 발생했습니다.')
+    if err:
+        return err
 
     return success_response(data=cat.to_dict(), message='카테고리가 수정되었습니다.')
 
@@ -1271,7 +1361,9 @@ def admin_category_deactivate(cat_id):
 
     cat.is_active = False
     _log_action('deactivate_category', 'category', cat_id, {'name': cat.name})
-    db.session.commit()
+    err = _safe_commit('카테고리 비활성화 중 오류가 발생했습니다.')
+    if err:
+        return err
 
     return success_response(message='카테고리가 비활성화되었습니다.')
 
@@ -1284,7 +1376,7 @@ def admin_category_deactivate(cat_id):
 @admin_required
 def admin_users_list():
     """List users with search and pagination."""
-    page = max(1, request.args.get('page', 1, type=int))
+    page = min(10000, max(1, request.args.get('page', 1, type=int)))
     per_page = min(100, max(1, request.args.get('per_page', 20, type=int)))
     search = request.args.get('search', '').strip()
     sort = request.args.get('sort', 'latest')
@@ -1295,7 +1387,7 @@ def admin_users_list():
             Post.user_id,
             db.func.count(Post.id).label('cnt'),
         )
-        .filter(Post.is_deleted == False)  # noqa: E712
+        .filter(Post.is_deleted.is_(False))
         .group_by(Post.user_id)
         .subquery()
     )
@@ -1304,7 +1396,7 @@ def admin_users_list():
             Comment.user_id,
             db.func.count(Comment.id).label('cnt'),
         )
-        .filter(Comment.is_deleted == False)  # noqa: E712
+        .filter(Comment.is_deleted.is_(False))
         .group_by(Comment.user_id)
         .subquery()
     )
@@ -1320,9 +1412,12 @@ def admin_users_list():
     )
 
     if search:
-        like = f'%{search}%'
+        like = f'%{_escape_like(search)}%'
         query = query.filter(
-            db.or_(User.name.ilike(like), User.email.ilike(like))
+            db.or_(
+                User.name.ilike(like, escape='\\'),
+                User.email.ilike(like, escape='\\'),
+            )
         )
 
     if sort == 'name':
@@ -1389,7 +1484,9 @@ def admin_user_role(user_id):
     _log_action('change_role', 'user', user_id, {
         'old_role': old_role, 'new_role': new_role, 'name': user.name,
     })
-    db.session.commit()
+    err = _safe_commit('역할 변경 중 오류가 발생했습니다.')
+    if err:
+        return err
 
     return success_response(
         data={'role': user.role},
@@ -1411,7 +1508,9 @@ def admin_user_active(user_id):
     user.is_active = not user.is_active
     action = 'activate_user' if user.is_active else 'deactivate_user'
     _log_action(action, 'user', user_id, {'name': user.name})
-    db.session.commit()
+    err = _safe_commit('계정 상태 변경 중 오류가 발생했습니다.')
+    if err:
+        return err
 
     status = '활성화' if user.is_active else '비활성화'
     return success_response(
@@ -1428,7 +1527,7 @@ def admin_user_active(user_id):
 @admin_required
 def admin_logs_list():
     """List admin activity logs."""
-    page = max(1, request.args.get('page', 1, type=int))
+    page = min(10000, max(1, request.args.get('page', 1, type=int)))
     per_page = min(100, max(1, request.args.get('per_page', 30, type=int)))
     action_filter = request.args.get('action', '').strip()
     target_filter = request.args.get('target_type', '').strip()
@@ -1484,5 +1583,270 @@ def admin_filetree_refresh():
 
     invalidate_cache()
     _log_action('refresh_filetree')
-    db.session.commit()
+    err = _safe_commit('캐시 갱신 중 오류가 발생했습니다.')
+    if err:
+        return err
     return success_response(message='파일 트리 캐시가 갱신되었습니다.')
+
+
+# ---------------------------------------------------------------------------
+# System settings
+# ---------------------------------------------------------------------------
+
+# Provider → Model mapping (only shown if API key is configured in .env)
+_PROVIDER_MODELS = {
+    'openai': {
+        'label': 'OpenAI',
+        'env_key': 'OPENAI_API_KEY',
+        'llm_models': [
+            {'value': 'gpt-4o-mini', 'label': 'GPT-4o Mini (빠름, 균형)'},
+            {'value': 'gpt-4o', 'label': 'GPT-4o (고품질)'},
+            {'value': 'gpt-4.1', 'label': 'GPT-4.1 (최고품질)'},
+        ],
+    },
+    'gemini': {
+        'label': 'Google Gemini',
+        'env_key': 'GEMINI_API_KEY',
+        'llm_models': [
+            {'value': 'gemini-2.5-pro', 'label': 'Gemini 2.5 Pro (최고품질)'},
+            {'value': 'gemini-2.5-flash', 'label': 'Gemini 2.5 Flash (빠름, 추론)'},
+            {'value': 'gemini-2.5-flash-lite', 'label': 'Gemini 2.5 Flash Lite (경량)'},
+            {'value': 'gemini-2.0-flash', 'label': 'Gemini 2.0 Flash (안정)'},
+            {'value': 'gemini-1.5-flash', 'label': 'Gemini 1.5 Flash (균형)'},
+            {'value': 'gemini-1.5-pro', 'label': 'Gemini 1.5 Pro (고품질)'},
+        ],
+    },
+    'anthropic': {
+        'label': 'Anthropic Claude',
+        'env_key': 'ANTHROPIC_API_KEY',
+        'llm_models': [
+            {'value': 'claude-sonnet-4-20250514', 'label': 'Claude Sonnet 4 (균형)'},
+            {'value': 'claude-haiku-4-5-20251001', 'label': 'Claude Haiku 4.5 (빠름, 저렴)'},
+            {'value': 'claude-3-5-sonnet-20241022', 'label': 'Claude 3.5 Sonnet (안정)'},
+            {'value': 'claude-3-5-haiku-20241022', 'label': 'Claude 3.5 Haiku (경량)'},
+        ],
+    },
+}
+
+# Build combined model list from all providers
+_ALL_LLM_MODELS = []
+for _pinfo in _PROVIDER_MODELS.values():
+    _ALL_LLM_MODELS.extend([m['value'] for m in _pinfo['llm_models']])
+
+# Whitelist of allowed setting keys
+_ALLOWED_SETTING_KEYS = {
+    'llm_answer_model', 'llm_answer_temperature', 'llm_answer_provider',
+    'llm_query_model', 'llm_query_provider',
+    'llm_context_model', 'llm_context_provider',
+    'embedding_model', 'reranker_type',
+}
+
+# Valid values per key (empty means any value accepted)
+_VALID_SETTING_VALUES = {
+    'llm_answer_model': _ALL_LLM_MODELS,
+    'llm_answer_provider': list(_PROVIDER_MODELS.keys()),
+    'llm_query_model': _ALL_LLM_MODELS,
+    'llm_query_provider': list(_PROVIDER_MODELS.keys()),
+    'llm_context_model': _ALL_LLM_MODELS,
+    'llm_context_provider': list(_PROVIDER_MODELS.keys()),
+    'embedding_model': [
+        'text-embedding-3-small', 'text-embedding-3-large',
+        'text-embedding-ada-002',
+    ],
+    'reranker_type': [
+        'pinecone', 'local', 'lightweight',
+    ],
+}
+
+
+@v1_bp.route('/admin/settings', methods=['GET'])
+@admin_required
+def admin_settings_list():
+    """List all system settings grouped by category."""
+    settings = SystemSetting.query.order_by(
+        SystemSetting.category, SystemSetting.key,
+    ).all()
+    grouped: dict[str, list] = {}
+    for s in settings:
+        grouped.setdefault(s.category, []).append(s.to_dict())
+    return success_response(data=grouped)
+
+
+@v1_bp.route('/admin/settings', methods=['PUT'])
+@admin_required
+def admin_settings_update():
+    """Bulk-update system settings with validation."""
+    from services.settings import invalidate_cache as invalidate_settings_cache
+    from services.singletons import (
+        invalidate_context_optimizer,
+        invalidate_query_enhancer,
+        invalidate_reranker,
+    )
+
+    data = request.get_json(silent=True)
+    if not data or 'settings' not in data:
+        return error_response('설정 데이터가 없습니다.', 400)
+
+    updated = []
+    for item in data['settings']:
+        key = str(item.get('key', '')).strip()
+        value = str(item.get('value', '')).strip()
+
+        if key not in _ALLOWED_SETTING_KEYS:
+            continue
+        if not value:
+            return error_response(f"'{key}' 값이 비어 있습니다.", 400)
+        if key in _VALID_SETTING_VALUES and value not in _VALID_SETTING_VALUES[key]:
+            return error_response(
+                f"'{key}'의 값 '{value}'은(는) 허용되지 않습니다. "
+                f"허용 값: {_VALID_SETTING_VALUES[key]}", 400,
+            )
+        # Temperature range check
+        if key == 'llm_answer_temperature':
+            try:
+                temp = float(value)
+                if not (0.0 <= temp <= 1.0):
+                    return error_response('Temperature는 0.0~1.0 범위여야 합니다.', 400)
+            except ValueError:
+                return error_response('Temperature는 숫자여야 합니다.', 400)
+
+        setting = SystemSetting.query.filter_by(key=key).first()
+        if setting:
+            if setting.value != value:
+                old_value = setting.value
+                setting.value = value
+                setting.updated_by = current_user.id
+                setting.updated_at = datetime.now(timezone.utc)
+                updated.append({'key': key, 'old': old_value, 'new': value})
+        else:
+            # Upsert: create new setting row for newly introduced keys
+            new_setting = SystemSetting(
+                key=key,
+                value=value,
+                description=key,
+                category='llm' if 'llm' in key else 'general',
+                updated_by=current_user.id,
+                updated_at=datetime.now(timezone.utc),
+            )
+            db.session.add(new_setting)
+            updated.append({'key': key, 'old': '', 'new': value})
+
+    if updated:
+        _log_action('update_settings', 'system_setting', details={
+            'changes': updated,
+        })
+        db.session.commit()
+
+        # Invalidate caches so new values take effect immediately
+        invalidate_settings_cache()
+        changed_keys = {u['key'] for u in updated}
+        if changed_keys & {'llm_query_model', 'llm_query_provider'}:
+            invalidate_query_enhancer()
+        if changed_keys & {'llm_context_model', 'llm_context_provider'}:
+            invalidate_context_optimizer()
+        if 'reranker_type' in changed_keys:
+            invalidate_reranker()
+
+    return success_response(
+        data={'updated': len(updated)},
+        message=f'{len(updated)}개 설정이 변경되었습니다.',
+    )
+
+
+@v1_bp.route('/admin/settings/models', methods=['GET'])
+@admin_required
+def admin_settings_available_models():
+    """Return available model options grouped by provider (filtered by .env API keys)."""
+    available_providers = []
+    for provider_key, provider_info in _PROVIDER_MODELS.items():
+        if os.getenv(provider_info['env_key']):
+            available_providers.append({
+                'key': provider_key,
+                'label': provider_info['label'],
+                'llm_models': provider_info['llm_models'],
+            })
+
+    return success_response(data={
+        'providers': available_providers,
+        'embedding_models': [
+            {'value': 'text-embedding-3-small', 'label': 'Small (1536D, 저렴)'},
+            {'value': 'text-embedding-3-large', 'label': 'Large (3072D, 고품질)'},
+            {'value': 'text-embedding-ada-002', 'label': 'Ada-002 (1536D, 레거시)'},
+        ],
+        'reranker_types': [
+            {'value': 'pinecone', 'label': 'Pinecone API (bge-reranker-v2-m3)'},
+            {'value': 'local', 'label': '로컬 Cross-Encoder (multilingual)'},
+            {'value': 'lightweight', 'label': '키워드 기반 (경량)'},
+        ],
+    })
+
+
+@v1_bp.route('/admin/settings/test-connection', methods=['POST'])
+@admin_required
+def admin_test_connection():
+    """Test API key connectivity for a given provider."""
+    data = request.get_json(silent=True)
+    if not data:
+        return error_response('요청 데이터가 없습니다.', 400)
+
+    provider = (data.get('provider') or '').strip()
+
+    if provider == 'openai':
+        try:
+            from services.singletons import get_openai_client
+            client = get_openai_client()
+            models = client.models.list()
+            model_count = sum(1 for _ in models)
+            return success_response(
+                data={'provider': 'openai', 'status': 'connected', 'models': model_count},
+                message=f'OpenAI 연결 성공 (모델 {model_count}개 확인)',
+            )
+        except Exception:
+            logging.exception('OpenAI connection test failed')
+            return error_response('OpenAI 연결 실패', 502, details={'provider': 'openai', 'status': 'failed'})
+
+    elif provider == 'gemini':
+        try:
+            from services.singletons import get_gemini_client
+            client = get_gemini_client()
+            models = list(client.models.list())
+            model_count = len(models)
+            return success_response(
+                data={'provider': 'gemini', 'status': 'connected', 'models': model_count},
+                message=f'Gemini 연결 성공 (모델 {model_count}개 확인)',
+            )
+        except Exception:
+            logging.exception('Gemini connection test failed')
+            return error_response('Gemini 연결 실패', 502, details={'provider': 'gemini', 'status': 'failed'})
+
+    elif provider == 'anthropic':
+        try:
+            from services.singletons import get_anthropic_client
+            client = get_anthropic_client()
+            # Simple connectivity check: list models
+            models = client.models.list()
+            model_count = len(models.data)
+            return success_response(
+                data={'provider': 'anthropic', 'status': 'connected', 'models': model_count},
+                message=f'Anthropic 연결 성공 (모델 {model_count}개 확인)',
+            )
+        except Exception:
+            logging.exception('Anthropic connection test failed')
+            return error_response('Anthropic 연결 실패', 502, details={'provider': 'anthropic', 'status': 'failed'})
+
+    elif provider == 'pinecone':
+        try:
+            from services.singletons import get_uploader
+            uploader = get_uploader()
+            stats = uploader.get_stats()
+            vec_count = stats.get('total_vector_count', 0)
+            return success_response(
+                data={'provider': 'pinecone', 'status': 'connected', 'vectors': vec_count},
+                message=f'Pinecone 연결 성공 (벡터: {vec_count:,}개)',
+            )
+        except Exception:
+            logging.exception('Pinecone connection test failed')
+            return error_response('Pinecone 연결 실패', 502, details={'provider': 'pinecone', 'status': 'failed'})
+
+    else:
+        return error_response(f"알 수 없는 제공자: {provider}", 400)

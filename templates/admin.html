@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - Pinecone Agent</title>
+    <title>Admin Dashboard - SafeFactory</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -426,6 +426,8 @@
         }
         th.sortable.asc, th.sortable.desc { color: #00d4ff; }
 
+        @keyframes spin { to { transform: rotate(360deg); } }
+
         /* Responsive */
         @media (max-width: 768px) {
             .admin-layout { flex-direction: column; }
@@ -479,6 +481,9 @@
             <div class="sidebar-item" data-section="logs">
                 <span class="sidebar-icon">📋</span> 활동로그
             </div>
+            <div class="sidebar-item" data-section="settings">
+                <span class="sidebar-icon">⚙️</span> 설정
+            </div>
         </nav>
 
         <!-- Main Content -->
@@ -512,6 +517,11 @@
                         <div class="stat-icon">💬</div>
                         <div class="stat-value" id="ov-comments">-</div>
                         <div class="stat-label">댓글</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📰</div>
+                        <div class="stat-value" id="ov-news">-</div>
+                        <div class="stat-label">뉴스</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-icon">🗂️</div>
@@ -585,10 +595,11 @@
             <div id="section-posts" class="section">
                 <h2 class="section-title">게시판 관리</h2>
 
-                <!-- Sub tabs: posts / categories -->
+                <!-- Sub tabs: posts / categories / news -->
                 <div style="display:flex;gap:12px;margin-bottom:20px;">
                     <button class="btn btn-primary post-tab active" data-tab="posts-tab" onclick="switchPostTab('posts-tab',this)">게시글</button>
                     <button class="btn post-tab" data-tab="categories-tab" onclick="switchPostTab('categories-tab',this)">카테고리</button>
+                    <button class="btn post-tab" data-tab="news-tab" onclick="switchPostTab('news-tab',this)">뉴스</button>
                 </div>
 
                 <div id="posts-tab">
@@ -620,6 +631,28 @@
                             <tbody id="cat-table"></tbody>
                         </table>
                     </div>
+                </div>
+
+                <div id="news-tab" style="display:none;">
+                    <div class="toolbar">
+                        <input type="text" id="news-search" placeholder="뉴스 검색..." style="flex:1;min-width:200px;">
+                        <select id="news-cat-filter">
+                            <option value="">전체 카테고리</option>
+                            <option value="accident">산재사고</option>
+                            <option value="regulation">법령개정</option>
+                            <option value="policy">정책동향</option>
+                            <option value="technology">안전기술</option>
+                            <option value="general">일반</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="openNewsModal()">+ 뉴스 등록</button>
+                    </div>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>ID</th><th>카테고리</th><th>제목</th><th>작성자</th><th>조회</th><th>상태</th><th>작성일</th><th>관리</th></tr></thead>
+                            <tbody id="news-table"></tbody>
+                        </table>
+                    </div>
+                    <div class="pagination" id="news-pagination"></div>
                 </div>
             </div>
 
@@ -696,9 +729,13 @@
                         <option value="create_category">카테고리 생성</option>
                         <option value="update_category">카테고리 수정</option>
                         <option value="deactivate_category">카테고리 비활성화</option>
+                        <option value="create_news">뉴스 등록</option>
+                        <option value="update_news">뉴스 수정</option>
+                        <option value="delete_news">뉴스 삭제</option>
                         <option value="change_role">역할 변경</option>
                         <option value="activate_user">사용자 활성화</option>
                         <option value="deactivate_user">사용자 비활성화</option>
+                        <option value="update_settings">설정 변경</option>
                     </select>
                 </div>
                 <div class="table-wrapper">
@@ -708,6 +745,109 @@
                     </table>
                 </div>
                 <div class="pagination" id="log-pagination"></div>
+            </div>
+
+            <!-- ===== Settings ===== -->
+            <div id="section-settings" class="section">
+                <h2 class="section-title">시스템 설정</h2>
+
+                <!-- API Connection Test -->
+                <div class="card" style="margin-bottom:20px;">
+                    <h3 style="color:#00d4ff;margin-bottom:16px;">🔌 API 연결 테스트</h3>
+                    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                        <button class="btn" onclick="testConnection('openai')" id="test-openai-btn"
+                            style="padding:8px 16px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:6px;cursor:pointer;">
+                            OpenAI 테스트
+                        </button>
+                        <button class="btn" onclick="testConnection('gemini')" id="test-gemini-btn"
+                            style="padding:8px 16px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:6px;cursor:pointer;">
+                            Gemini 테스트
+                        </button>
+                        <button class="btn" onclick="testConnection('pinecone')" id="test-pinecone-btn"
+                            style="padding:8px 16px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:6px;cursor:pointer;">
+                            Pinecone 테스트
+                        </button>
+                    </div>
+                    <div id="connection-results" style="margin-top:12px;font-size:0.9rem;"></div>
+                </div>
+
+                <!-- Answer Generation -->
+                <div class="card" style="margin-bottom:20px;">
+                    <h3 style="color:#00d4ff;margin-bottom:16px;">🤖 답변 생성 (Answer Generation)</h3>
+                    <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+                        <div style="flex:1;min-width:140px;">
+                            <label style="display:block;margin-bottom:4px;font-weight:600;">제공자</label>
+                            <select id="set-answer-provider" onchange="onProviderChange('answer')" style="width:100%;padding:8px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:6px;"></select>
+                        </div>
+                        <div style="flex:2;min-width:200px;">
+                            <label style="display:block;margin-bottom:4px;font-weight:600;">모델</label>
+                            <select id="set-answer-model" style="width:100%;padding:8px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:6px;"></select>
+                        </div>
+                    </div>
+                    <small style="display:block;color:#888;margin-bottom:12px;">RAG 질문 답변에 사용되는 LLM</small>
+                    <div>
+                        <label style="display:block;margin-bottom:4px;font-weight:600;">Temperature</label>
+                        <input type="number" id="set-answer-temp" min="0" max="1" step="0.1" value="0.3" style="width:120px;padding:8px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:6px;">
+                        <small style="display:block;color:#888;margin-top:4px;">낮을수록 일관적, 높을수록 창의적 (0.0~1.0)</small>
+                    </div>
+                </div>
+
+                <!-- Query Enhancement -->
+                <div class="card" style="margin-bottom:20px;">
+                    <h3 style="color:#00d4ff;margin-bottom:16px;">🔍 쿼리 강화 (Query Enhancement)</h3>
+                    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                        <div style="flex:1;min-width:140px;">
+                            <label style="display:block;margin-bottom:4px;font-weight:600;">제공자</label>
+                            <select id="set-query-provider" onchange="onProviderChange('query')" style="width:100%;padding:8px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:6px;"></select>
+                        </div>
+                        <div style="flex:2;min-width:200px;">
+                            <label style="display:block;margin-bottom:4px;font-weight:600;">모델</label>
+                            <select id="set-query-model" style="width:100%;padding:8px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:6px;"></select>
+                        </div>
+                    </div>
+                    <small style="display:block;color:#888;margin-top:8px;">Multi-Query, HyDE 생성에 사용 (현재 OpenAI만 지원)</small>
+                </div>
+
+                <!-- Context Optimizer -->
+                <div class="card" style="margin-bottom:20px;">
+                    <h3 style="color:#00d4ff;margin-bottom:16px;">📊 컨텍스트 최적화 (Context Optimizer)</h3>
+                    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                        <div style="flex:1;min-width:140px;">
+                            <label style="display:block;margin-bottom:4px;font-weight:600;">제공자</label>
+                            <select id="set-context-provider" onchange="onProviderChange('context')" style="width:100%;padding:8px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:6px;"></select>
+                        </div>
+                        <div style="flex:2;min-width:200px;">
+                            <label style="display:block;margin-bottom:4px;font-weight:600;">모델</label>
+                            <select id="set-context-model" style="width:100%;padding:8px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:6px;"></select>
+                        </div>
+                    </div>
+                    <small style="display:block;color:#888;margin-top:8px;">관련 문장 추출, 문맥 정제에 사용 (현재 OpenAI만 지원)</small>
+                </div>
+
+                <!-- Embedding -->
+                <div class="card" style="margin-bottom:20px;">
+                    <h3 style="color:#00d4ff;margin-bottom:16px;">📐 임베딩 (Embedding)</h3>
+                    <div>
+                        <label style="display:block;margin-bottom:4px;font-weight:600;">모델</label>
+                        <select id="set-embedding-model" style="width:100%;max-width:360px;padding:8px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:6px;"></select>
+                        <small style="display:block;color:#f59e0b;margin-top:4px;">변경 시 기존 벡터와 호환되지 않을 수 있습니다</small>
+                    </div>
+                </div>
+
+                <!-- Reranker -->
+                <div class="card" style="margin-bottom:20px;">
+                    <h3 style="color:#00d4ff;margin-bottom:16px;">🔄 리랭커 (Reranker)</h3>
+                    <div>
+                        <label style="display:block;margin-bottom:4px;font-weight:600;">유형</label>
+                        <select id="set-reranker-type" style="width:100%;max-width:360px;padding:8px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:6px;"></select>
+                        <small style="display:block;color:#888;margin-top:4px;">검색 결과 재순위 방식</small>
+                    </div>
+                </div>
+
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <button class="btn btn-primary" onclick="saveSettings()" id="btn-save-settings">💾 설정 저장</button>
+                    <span id="settings-status" style="color:#888;"></span>
+                </div>
             </div>
 
         </main>
@@ -751,11 +891,50 @@
         </div>
     </div>
 
+    <!-- News Modal -->
+    <div class="modal-overlay" id="news-modal">
+        <div class="modal" style="max-width:680px;">
+            <h3 id="news-modal-title">뉴스 등록</h3>
+            <input type="hidden" id="news-edit-id">
+            <div class="form-group">
+                <label>카테고리</label>
+                <select id="news-category">
+                    <option value="accident">산재사고</option>
+                    <option value="regulation">법령개정</option>
+                    <option value="policy">정책동향</option>
+                    <option value="technology">안전기술</option>
+                    <option value="general">일반</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>제목</label>
+                <input type="text" id="news-title" placeholder="뉴스 제목" maxlength="300">
+            </div>
+            <div class="form-group">
+                <label>내용 (마크다운 지원 · 링크를 붙여넣으면 미리보기가 표시됩니다)</label>
+                <textarea id="news-content" placeholder="뉴스 내용을 입력하세요...&#10;&#10;링크를 붙여넣으면 자동으로 미리보기가 표시됩니다." style="width:100%;min-height:200px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:10px 14px;color:#e0e0e0;font-size:0.9rem;outline:none;resize:vertical;font-family:inherit;"></textarea>
+                <div id="news-link-previews" style="margin-top:8px;display:flex;flex-direction:column;gap:8px;"></div>
+            </div>
+            <div class="form-group">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                    <input type="checkbox" id="news-published" checked style="accent-color:#00d4ff;"> 즉시 공개
+                </label>
+            </div>
+            <div class="modal-actions">
+                <button class="btn" onclick="closeNewsModal()">취소</button>
+                <button class="btn btn-primary" onclick="saveNews()">저장</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
+    <script src="/static/js/common.js"></script>
+    {% include 'partials/link_preview.html' %}
     <script>
-    const API = '/api/v1/admin';
+    const API_BASE = '/api/v1';
+    const API = API_BASE + '/admin';
 
     // ---------------------------------------------------------------------------
     // Utility
@@ -810,17 +989,14 @@
         c.innerHTML = html;
     }
 
-    function escHtml(s) {
-        const d = document.createElement('div');
-        d.textContent = s || '';
-        return d.innerHTML;
-    }
+    // Alias shared escapeHtml from common.js
+    const escHtml = escapeHtml;
 
     function truncateJson(obj, maxLen = 60) {
         if (!obj) return '-';
         const str = JSON.stringify(obj);
         if (str.length <= maxLen) return str;
-        return [...str].slice(0, maxLen).join('') + '...';
+        return str.slice(0, maxLen) + '...';
     }
 
     // ---------------------------------------------------------------------------
@@ -841,9 +1017,11 @@
     function switchPostTab(tab, btn) {
         document.getElementById('posts-tab').style.display = tab === 'posts-tab' ? '' : 'none';
         document.getElementById('categories-tab').style.display = tab === 'categories-tab' ? '' : 'none';
+        document.getElementById('news-tab').style.display = tab === 'news-tab' ? '' : 'none';
         document.querySelectorAll('.post-tab').forEach(b => b.classList.remove('active', 'btn-primary'));
         btn.classList.add('active', 'btn-primary');
         if (tab === 'categories-tab') loadCategories();
+        if (tab === 'news-tab') loadNews();
     }
 
     // ---------------------------------------------------------------------------
@@ -857,6 +1035,7 @@
             document.getElementById('ov-users').textContent = fmtNumber(data.total_users);
             document.getElementById('ov-posts').textContent = fmtNumber(data.total_posts);
             document.getElementById('ov-comments').textContent = fmtNumber(data.total_comments);
+            document.getElementById('ov-news').textContent = fmtNumber(data.total_news);
             document.getElementById('ov-namespaces').textContent = fmtNumber(data.namespaces);
         } catch (e) { console.error(e); }
 
@@ -1177,11 +1356,16 @@
 
     async function loadPostCategories() {
         try {
-            const res = await fetch('/api/v1/community/categories');
+            const res = await fetch(API_BASE + '/community/categories');
             const { data } = await res.json();
             const sel = document.getElementById('post-cat-filter');
             sel.innerHTML = '<option value="">전체 카테고리</option>';
-            data.forEach(c => sel.innerHTML += `<option value="${c.slug}">${c.name}</option>`);
+            data.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.slug;
+                opt.textContent = c.name;
+                sel.appendChild(opt);
+            });
         } catch (e) { /* ignore */ }
     }
 
@@ -1221,12 +1405,14 @@
         try {
             const { data } = await apiFetch('/categories');
             const tb = document.getElementById('cat-table');
-            tb.innerHTML = data.map(c => `<tr>
+            tb.innerHTML = data.map(c => {
+                const safeColor = /^#[0-9A-Fa-f]{6}$/.test(c.color) ? c.color : '#888888';
+                return `<tr>
                 <td>${c.sort_order}</td>
                 <td>${escHtml(c.icon || '-')}</td>
                 <td>${escHtml(c.name)}</td>
                 <td>${escHtml(c.slug)}</td>
-                <td><span style="display:inline-block;width:20px;height:20px;border-radius:4px;background:${c.color};vertical-align:middle;"></span> ${c.color}</td>
+                <td><span style="display:inline-block;width:20px;height:20px;border-radius:4px;background:${safeColor};vertical-align:middle;"></span> ${escHtml(c.color || '')}</td>
                 <td>${fmtNumber(c.post_count)}</td>
                 <td><span class="badge badge-${c.is_active?'active':'inactive'}">${c.is_active?'활성':'비활성'}</span></td>
                 <td>
@@ -1235,7 +1421,7 @@
                         ${c.is_active ? `<button class="btn btn-danger btn-sm deactivate-cat-btn" data-id="${c.id}">비활성화</button>` : ''}
                     </div>
                 </td>
-            </tr>`).join('');
+            </tr>`}).join('');
         } catch (e) { showToast(e.message, true); }
     }
 
@@ -1304,6 +1490,157 @@
             loadCategories();
         } catch (e) { showToast(e.message, true); }
     }
+
+    // ---------------------------------------------------------------------------
+    // News
+    // ---------------------------------------------------------------------------
+    const NEWS_CATS = {
+        accident: '산재사고', regulation: '법령개정', policy: '정책동향',
+        technology: '안전기술', general: '일반',
+    };
+
+    let newsPage = 1;
+    async function loadNews(page = 1) {
+        newsPage = page;
+        const search = document.getElementById('news-search').value;
+        const cat = document.getElementById('news-cat-filter').value;
+        try {
+            const params = new URLSearchParams({ page, per_page: 20 });
+            if (search) params.set('search', search);
+            if (cat) params.set('category', cat);
+
+            const { data } = await apiFetch(`/news?${params}`);
+            const tb = document.getElementById('news-table');
+            if (!data.articles.length) {
+                tb.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#666;">뉴스가 없습니다.</td></tr>';
+            } else {
+                tb.innerHTML = data.articles.map(a => {
+                    const catLabel = NEWS_CATS[a.category] || a.category;
+                    const pubBadge = a.is_published
+                        ? '<span class="badge badge-active">공개</span>'
+                        : '<span class="badge badge-inactive">비공개</span>';
+                    return `<tr>
+                        <td>${a.id}</td>
+                        <td>${escHtml(catLabel)}</td>
+                        <td title="${escHtml(a.title)}">${escHtml(a.title)}</td>
+                        <td>${escHtml(a.author?.name || '-')}</td>
+                        <td>${fmtNumber(a.view_count)}</td>
+                        <td>${pubBadge}</td>
+                        <td>${fmtDate(a.created_at)}</td>
+                        <td>
+                            <div class="btn-group">
+                                <button class="btn btn-sm" data-action="edit-news" data-id="${a.id}">수정</button>
+                                <button class="btn btn-danger btn-sm" data-action="delete-news" data-id="${a.id}">삭제</button>
+                            </div>
+                        </td>
+                    </tr>`;
+                }).join('');
+            }
+            renderPagination('news-pagination', data.current_page, data.pages, 'loadNews');
+        } catch (e) { showToast(e.message, true); }
+    }
+
+    async function newsApiFetch(path, opts = {}) {
+        const csrfHeaders = opts.method && opts.method.toUpperCase() !== 'GET'
+            ? { 'X-CSRFToken': CSRF_TOKEN } : {};
+        const res = await fetch(`${API_BASE}/news${path}`, {
+            headers: { 'Content-Type': 'application/json', ...csrfHeaders, ...opts.headers },
+            ...opts,
+        });
+        const contentType = res.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            throw new Error(`서버 응답 오류 (${res.status})`);
+        }
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'API 오류');
+        return data;
+    }
+
+    // Link preview instance
+    const newsLP = new LinkPreview({
+        containerId: 'news-link-previews',
+        textareaId:  'news-content',
+        apiUrl:      API_BASE + '/news/link-preview',
+        csrfToken:   CSRF_TOKEN,
+    });
+
+    function openNewsModal() {
+        document.getElementById('news-modal-title').textContent = '뉴스 등록';
+        document.getElementById('news-edit-id').value = '';
+        document.getElementById('news-category').value = 'general';
+        document.getElementById('news-title').value = '';
+        document.getElementById('news-content').value = '';
+        document.getElementById('news-published').checked = true;
+        newsLP.clear();
+        document.getElementById('news-modal').classList.add('active');
+        document.getElementById('news-title').focus();
+    }
+
+    async function editNews(id) {
+        try {
+            const { data } = await newsApiFetch(`/articles/${id}`);
+            document.getElementById('news-modal-title').textContent = '뉴스 수정';
+            document.getElementById('news-edit-id').value = id;
+            document.getElementById('news-category').value = data.category || 'general';
+            document.getElementById('news-title').value = data.title || '';
+            document.getElementById('news-content').value = data.content || '';
+            document.getElementById('news-published').checked = data.is_published !== false;
+            newsLP.clear();
+            document.getElementById('news-modal').classList.add('active');
+            newsLP.update();
+        } catch (e) { showToast(e.message, true); }
+    }
+
+    function closeNewsModal() {
+        document.getElementById('news-modal').classList.remove('active');
+        newsLP.clear();
+    }
+
+    async function saveNews() {
+        const id = document.getElementById('news-edit-id').value;
+        const title = document.getElementById('news-title').value.trim();
+        const content = document.getElementById('news-content').value.trim();
+
+        if (!title || title.length < 2) { showToast('제목은 2자 이상이어야 합니다.', true); return; }
+        if (!content) { showToast('내용을 입력해주세요.', true); return; }
+
+        const src = newsLP.getSourceData(content) || {};
+
+        const body = {
+            title,
+            content,
+            category: document.getElementById('news-category').value,
+            summary: src.summary || null,
+            source_name: src.source_name || null,
+            source_url: src.source_url || null,
+            source_image: src.source_image || null,
+            is_published: document.getElementById('news-published').checked,
+        };
+
+        try {
+            if (id) {
+                await newsApiFetch(`/articles/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+                showToast('뉴스가 수정되었습니다.');
+            } else {
+                await newsApiFetch('/articles', { method: 'POST', body: JSON.stringify(body) });
+                showToast('뉴스가 등록되었습니다.');
+            }
+            closeNewsModal();
+            loadNews(newsPage);
+        } catch (e) { showToast(e.message, true); }
+    }
+
+    async function deleteNews(id) {
+        if (!confirm('이 뉴스를 삭제합니다. 복구할 수 없습니다. 계속하시겠습니까?')) return;
+        try {
+            await newsApiFetch(`/articles/${id}`, { method: 'DELETE' });
+            showToast('뉴스가 삭제되었습니다.');
+            loadNews(newsPage);
+        } catch (e) { showToast(e.message, true); }
+    }
+
+    document.getElementById('news-search').addEventListener('input', debounce(() => loadNews(1), 400));
+    document.getElementById('news-cat-filter').addEventListener('change', () => loadNews(1));
 
     // ---------------------------------------------------------------------------
     // Users
@@ -1501,6 +1838,12 @@
             case 'hard-delete-post':
                 hardDeletePost(id);
                 break;
+            case 'edit-news':
+                editNews(id);
+                break;
+            case 'delete-news':
+                deleteNews(id);
+                break;
             case 'toggle-role':
                 toggleRole(id, btn.dataset.role);
                 break;
@@ -1509,6 +1852,157 @@
                 break;
         }
     });
+
+    // ---------------------------------------------------------------------------
+    // Settings
+    // ---------------------------------------------------------------------------
+    let _availableProviders = [];
+
+    function fillSelect(id, options, currentValue) {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        sel.innerHTML = options.map(o =>
+            `<option value="${escHtml(o.value)}" ${o.value === currentValue ? 'selected' : ''}>${escHtml(o.label)}</option>`
+        ).join('');
+    }
+
+    function populateProviderSelect(selectId, currentValue) {
+        const sel = document.getElementById(selectId);
+        if (!sel) return;
+        sel.innerHTML = _availableProviders.map(p =>
+            `<option value="${escHtml(p.key)}" ${p.key === currentValue ? 'selected' : ''}>${escHtml(p.label)}</option>`
+        ).join('');
+    }
+
+    function onProviderChange(type) {
+        updateModelSelect(type);
+    }
+
+    function updateModelSelect(type, currentModel) {
+        const providerSel = document.getElementById('set-' + type + '-provider');
+        const modelSel = document.getElementById('set-' + type + '-model');
+        if (!providerSel || !modelSel) return;
+        const selectedProvider = providerSel.value;
+        const provider = _availableProviders.find(p => p.key === selectedProvider);
+        if (!provider) return;
+        const models = provider.llm_models || [];
+        modelSel.innerHTML = models.map(m =>
+            `<option value="${escHtml(m.value)}" ${m.value === currentModel ? 'selected' : ''}>${escHtml(m.label)}</option>`
+        ).join('');
+    }
+
+    async function testConnection(provider) {
+        const btn = document.getElementById('test-' + provider + '-btn');
+        const results = document.getElementById('connection-results');
+        if (!btn) return;
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = '테스트 중...';
+        try {
+            const res = await apiFetch('/settings/test-connection', {
+                method: 'POST',
+                body: JSON.stringify({ provider }),
+            });
+            const d = res.data;
+            const ok = d.status === 'connected';
+            const icon = ok ? '✅' : '❌';
+            const color = ok ? '#4caf50' : '#f44336';
+            results.innerHTML += '<div style="color:' + color + ';margin:4px 0;">'
+                + icon + ' ' + escHtml(res.message || provider) + '</div>';
+        } catch (e) {
+            results.innerHTML += '<div style="color:#f44336;margin:4px 0;">'
+                + '❌ ' + escHtml(provider) + ' 테스트 실패: ' + escHtml(e.message) + '</div>';
+        } finally {
+            btn.disabled = false;
+            btn.textContent = originalText;
+        }
+    }
+
+    async function loadSettings() {
+        try {
+            const [modelsRes, settingsRes] = await Promise.all([
+                apiFetch('/settings/models'),
+                apiFetch('/settings'),
+            ]);
+            const modelData = modelsRes.data;
+            _availableProviders = modelData.providers || [];
+
+            // Flatten grouped settings into a key->value map
+            const flat = {};
+            Object.values(settingsRes.data).flat().forEach(s => { flat[s.key] = s.value; });
+
+            // Defaults for missing values
+            const defaults = {
+                llm_answer_provider: 'openai', llm_answer_model: 'gpt-4o-mini', llm_answer_temperature: '0.3',
+                llm_query_provider: 'openai', llm_query_model: 'gpt-4o-mini',
+                llm_context_provider: 'openai', llm_context_model: 'gpt-4o-mini',
+                embedding_model: 'text-embedding-3-small', reranker_type: 'pinecone',
+            };
+            for (const [k, v] of Object.entries(defaults)) {
+                if (!flat[k]) flat[k] = v;
+            }
+
+            // Populate provider selects then model selects
+            populateProviderSelect('set-answer-provider', flat['llm_answer_provider']);
+            populateProviderSelect('set-query-provider', flat['llm_query_provider']);
+            populateProviderSelect('set-context-provider', flat['llm_context_provider']);
+
+            updateModelSelect('answer', flat['llm_answer_model']);
+            updateModelSelect('query', flat['llm_query_model']);
+            updateModelSelect('context', flat['llm_context_model']);
+
+            // Embedding and reranker (unchanged)
+            fillSelect('set-embedding-model', modelData.embedding_models, flat['embedding_model']);
+            fillSelect('set-reranker-type', modelData.reranker_types, flat['reranker_type']);
+
+            document.getElementById('set-answer-temp').value = flat['llm_answer_temperature'];
+
+            // Clear previous connection test results
+            const cr = document.getElementById('connection-results');
+            if (cr) cr.innerHTML = '';
+        } catch (e) {
+            console.error('Failed to load settings:', e);
+            showToast('설정 로드 실패: ' + e.message, true);
+        }
+    }
+
+    async function saveSettings() {
+        const btn = document.getElementById('btn-save-settings');
+        const status = document.getElementById('settings-status');
+        btn.disabled = true;
+        status.textContent = '저장 중...';
+        status.style.color = '#888';
+
+        try {
+            const settings = [
+                { key: 'llm_answer_provider', value: document.getElementById('set-answer-provider').value },
+                { key: 'llm_answer_model', value: document.getElementById('set-answer-model').value },
+                { key: 'llm_answer_temperature', value: document.getElementById('set-answer-temp').value },
+                { key: 'llm_query_provider', value: document.getElementById('set-query-provider').value },
+                { key: 'llm_query_model', value: document.getElementById('set-query-model').value },
+                { key: 'llm_context_provider', value: document.getElementById('set-context-provider').value },
+                { key: 'llm_context_model', value: document.getElementById('set-context-model').value },
+                { key: 'embedding_model', value: document.getElementById('set-embedding-model').value },
+                { key: 'reranker_type', value: document.getElementById('set-reranker-type').value },
+            ];
+
+            const res = await apiFetch('/settings', {
+                method: 'PUT',
+                body: JSON.stringify({ settings }),
+            });
+
+            showToast(res.message || '설정이 저장되었습니다.');
+            status.textContent = '저장 완료';
+            status.style.color = '#4caf50';
+            setTimeout(() => { status.textContent = ''; }, 3000);
+        } catch (e) {
+            showToast('설정 저장 실패: ' + e.message, true);
+            status.textContent = '저장 실패';
+            status.style.color = '#ef4444';
+        } finally {
+            btn.disabled = false;
+        }
+    }
 
     // ---------------------------------------------------------------------------
     // Section loader map + init
@@ -1520,6 +2014,7 @@
         users: loadUsers,
         stats: loadStats,
         logs: loadLogs,
+        settings: loadSettings,
     };
 
     // Init: navigate from hash or default to dashboard

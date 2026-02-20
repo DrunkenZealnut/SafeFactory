@@ -3,6 +3,7 @@ Query Enhancer Module
 Implements query expansion and enhancement techniques for improved RAG retrieval.
 """
 
+import logging
 import os
 import re
 import certifi
@@ -29,20 +30,79 @@ class QueryEnhancer:
         self,
         openai_api_key: str,
         model: str = "gpt-4o-mini",
-        temperature: float = 0.3
+        temperature: float = 0.3,
+        provider: str = "openai",
     ):
         """
         Initialize the QueryEnhancer.
 
         Args:
-            openai_api_key: OpenAI API key
+            openai_api_key: API key for the configured provider
             model: Model for query enhancement
             temperature: Generation temperature
+            provider: LLM provider ('openai', 'gemini', 'anthropic')
         """
-        http_client = httpx.Client(verify=certifi.where())
-        self.client = OpenAI(api_key=openai_api_key, http_client=http_client, timeout=60.0)
+        self.provider = provider
         self.model = model
         self.temperature = temperature
+
+        if provider == 'gemini':
+            from google import genai
+            self._gemini = genai.Client(api_key=openai_api_key)
+            self.client = None
+        elif provider == 'anthropic':
+            import anthropic
+            self._anthropic = anthropic.Anthropic(api_key=openai_api_key)
+            self.client = None
+        else:
+            self._http_client = httpx.Client(verify=certifi.where())
+            self.client = OpenAI(api_key=openai_api_key, http_client=self._http_client, timeout=60.0)
+
+    def close(self):
+        """Close the underlying HTTP client."""
+        if hasattr(self, '_http_client'):
+            try:
+                self._http_client.close()
+            except Exception:
+                pass
+
+
+
+    def _chat_complete(self, messages, temperature=None, max_tokens=500):
+        """Dispatch chat completion to the configured provider."""
+        temp = temperature if temperature is not None else self.temperature
+        if self.provider == 'gemini':
+            from google.genai import types
+            system_msg = next((m['content'] for m in messages if m['role'] == 'system'), '')
+            user_msg = next((m['content'] for m in messages if m['role'] == 'user'), '')
+            config = types.GenerateContentConfig(
+                system_instruction=system_msg or None,
+                temperature=temp,
+                max_output_tokens=max_tokens,
+            )
+            resp = self._gemini.models.generate_content(
+                model=self.model, contents=user_msg, config=config,
+            )
+            return resp.text
+        elif self.provider == 'anthropic':
+            system_msg = next((m['content'] for m in messages if m['role'] == 'system'), '')
+            user_msgs = [m for m in messages if m['role'] != 'system']
+            resp = self._anthropic.messages.create(
+                model=self.model,
+                system=system_msg or None,
+                messages=user_msgs,
+                temperature=temp,
+                max_tokens=max_tokens,
+            )
+            return resp.content[0].text
+        else:
+            resp = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=temp,
+                max_tokens=max_tokens,
+            )
+            return resp.choices[0].message.content
 
     def multi_query(self, query: str, num_variations: int = 3) -> List[str]:
         """
@@ -69,14 +129,10 @@ class QueryEnhancer:
 변형된 질문들:"""
 
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=self.temperature,
-                max_tokens=500
-            )
-
-            content = response.choices[0].message.content.strip()
+            content = self._chat_complete(
+                [{"role": "user", "content": prompt}],
+                max_tokens=500,
+            ).strip()
             variations = [line.strip() for line in content.split('\n') if line.strip()]
 
             # Always include original query first
@@ -90,7 +146,7 @@ class QueryEnhancer:
             return result[:num_variations + 1]
 
         except Exception as e:
-            print(f"Multi-query generation failed: {e}")
+            logging.warning("Multi-query generation failed: %s", e)
             return [query]
 
     def hyde(self, query: str, domain: str = "general") -> str:
@@ -112,6 +168,9 @@ class QueryEnhancer:
         domain_context = {
             "semiconductor": "반도체 기술 및 공정",
             "laborlaw": "한국 노동법 및 고용 관련 법률",
+            "field-training": "산업안전보건 현장실습 교육",
+            "safeguide": "안전보건공단 안전보건 가이드",
+            "msds": "물질안전보건자료(MSDS) 화학물질 안전 정보",
             "general": "기술 문서"
         }
 
@@ -125,18 +184,54 @@ class QueryEnhancer:
 가상 문서 내용 (200-300자):"""
 
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
+            return self._chat_complete(
+                [{"role": "user", "content": prompt}],
                 temperature=0.7,  # Slightly higher for creative generation
-                max_tokens=400
-            )
-
-            return response.choices[0].message.content.strip()
+                max_tokens=400,
+            ).strip()
 
         except Exception as e:
-            print(f"HyDE generation failed: {e}")
+            logging.warning("HyDE generation failed: %s", e)
             return query
+
+    def extract_keywords_fast(self, query: str, max_keywords: int = 5) -> List[str]:
+        """
+        Extract keywords using regex rules without LLM calls.
+
+        Extracts English technical terms and Korean nouns with particle stripping.
+        Much faster than LLM-based extraction (~0ms vs ~500ms).
+
+        Args:
+            query: User query
+            max_keywords: Maximum number of keywords to extract
+
+        Returns:
+            List of extracted keywords
+        """
+        # Extract English technical terms (2+ chars)
+        english_terms = re.findall(r'[A-Za-z][A-Za-z0-9-]+', query)
+
+        # Extract Korean words (2+ chars)
+        korean_words = re.findall(r'[가-힣]{2,}', query)
+
+        # Strip common Korean particles
+        particles = re.compile(r'(은|는|이|가|을|를|의|에|에서|으로|로|와|과|도|만|까지|부터|에게|한테|께)$')
+        korean_cleaned = []
+        for w in korean_words:
+            cleaned = particles.sub('', w)
+            if len(cleaned) >= 2:
+                korean_cleaned.append(cleaned)
+
+        # Deduplicate while preserving order
+        seen = set()
+        result = []
+        for term in english_terms + korean_cleaned:
+            lower = term.lower()
+            if lower not in seen:
+                seen.add(lower)
+                result.append(term)
+
+        return result[:max_keywords]
 
     def extract_keywords(self, query: str, max_keywords: int = 5) -> List[str]:
         """
@@ -163,20 +258,17 @@ class QueryEnhancer:
 키워드:"""
 
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
+            content = self._chat_complete(
+                [{"role": "user", "content": prompt}],
                 temperature=0.1,  # Low temperature for consistent extraction
-                max_tokens=100
-            )
-
-            content = response.choices[0].message.content.strip()
+                max_tokens=100,
+            ).strip()
             keywords = [kw.strip() for kw in content.split(',') if kw.strip()]
 
             return keywords[:max_keywords]
 
         except Exception as e:
-            print(f"Keyword extraction failed: {e}")
+            logging.warning("Keyword extraction failed: %s", e)
             # Fallback: simple word extraction
             words = query.split()
             return [w for w in words if len(w) > 1][:max_keywords]

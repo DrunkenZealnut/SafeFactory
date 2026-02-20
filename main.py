@@ -222,7 +222,7 @@ def main():
             print("\n  네임스페이스별 벡터 수:")
             for ns, info in stats['namespaces'].items():
                 ns_name = ns if ns else "(기본)"
-                print(f"    - {ns_name}: {info.vector_count}개")
+                print(f"    - {ns_name}: {info.get('vector_count', 0)}개")
 
     elif args.command == "delete":
         if not args.all and not args.source_file:

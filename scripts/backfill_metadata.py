@@ -65,7 +65,7 @@ def backfill_namespace(
             print(f"⚠️ No vectors found in namespace: {namespace}")
         return 0
 
-    vector_count = namespace_info.vector_count
+    vector_count = namespace_info.get('vector_count', 0)
     if verbose:
         print(f"📊 Total vectors in namespace: {vector_count}")
 

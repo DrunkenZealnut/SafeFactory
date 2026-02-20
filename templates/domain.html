@@ -1,1107 +1,1007 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ config.title }} - AI 문서 검색</title>
-    <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script src="/static/js/common.js"></script>
-    <style>
-        :root {
-            --primary-color: {{ config.color }};
-            --gradient-from: {{ config.gradient_from }};
-            --gradient-to: {{ config.gradient_to }};
-            --primary-color-rgb: {{ config.color_rgb }};
-        }
+{% extends "base.html" %}
+{% block title %}{{ config.title }} - SafeFactory{% endblock %}
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+{# Active nav tab based on current path #}
+{% set domain_key = request.path.strip('/') %}
+{% block nav_semiconductor %}{{ 'active' if domain_key == 'semiconductor' else '' }}{% endblock %}
+{% block nav_laborlaw %}{{ 'active' if domain_key == 'laborlaw' else '' }}{% endblock %}
+{% block nav_field_training %}{{ 'active' if domain_key == 'field-training' else '' }}{% endblock %}
+{% block nav_safeguide %}{{ 'active' if domain_key == 'safeguide' else '' }}{% endblock %}
+{% block nav_msds %}{{ 'active' if domain_key == 'msds' else '' }}{% endblock %}
+{% block mobile_nav_semiconductor %}{{ 'active' if domain_key == 'semiconductor' else '' }}{% endblock %}
+{% block mobile_nav_laborlaw %}{{ 'active' if domain_key == 'laborlaw' else '' }}{% endblock %}
+{% block mobile_nav_field_training %}{{ 'active' if domain_key == 'field-training' else '' }}{% endblock %}
+{% block mobile_nav_safeguide %}{{ 'active' if domain_key == 'safeguide' else '' }}{% endblock %}
+{% block mobile_nav_msds %}{{ 'active' if domain_key == 'msds' else '' }}{% endblock %}
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            min-height: 100vh;
-            color: #e0e0e0;
-        }
+{% block head_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/marked@17.0.2/lib/marked.umd.js"
+        integrity="sha384-HQ7B/VBz5B0fo8GBiEFD/BZsAVXM9iDzC+hpeY1M1cpYezmRrwJSQh5MkTEI8G/H"
+        crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.3.1/dist/purify.min.js"
+        integrity="sha384-80VlBZnyAwkkqtSfg5NhPyZff6nU4K/qniLBL8Jnm4KDv6jZhLiYtJbhglg/i9ww"
+        crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"
+        integrity="sha384-IIdvx9utVbG20X/hvcHPpj9PRjgL4mWPUIR56BAmP74jVU1NmVh0bqKLOZMvGIc7"
+        crossorigin="anonymous"></script>
+<script defer src="/static/js/common.js"></script>
+{% endblock %}
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
+{% block head_extra %}
+<style>
+    :root {
+        --primary-color: {{ config.color }};
+        --gradient-from: {{ config.gradient_from }};
+        --gradient-to: {{ config.gradient_to }};
+        --primary-color-rgb: {{ config.color_rgb }};
+    }
 
-        /* Navigation Bar */
-        nav {
-            background: rgba(0,0,0,0.3);
-            padding: 15px 0;
-            margin-bottom: 20px;
-        }
+    body {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    }
 
-        nav .nav-inner {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+    .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
 
-        nav a {
-            color: #fff;
-            text-decoration: none;
-            font-size: 0.9rem;
-            transition: color 0.3s;
-            white-space: nowrap;
-        }
+    header {
+        text-align: center;
+        padding: 40px 0;
+    }
 
-        nav a:hover {
-            color: var(--primary-color);
-        }
+    header h1 {
+        font-size: 2.5rem;
+        color: var(--primary-color);
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 15px;
+    }
 
-        nav .home-link {
-            font-size: 1.1rem;
-            flex-shrink: 0;
-        }
+    header p {
+        color: #888;
+        font-size: 1.1rem;
+    }
 
-        nav .nav-links {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-            flex-wrap: wrap;
-            justify-content: flex-end;
-        }
+    .search-form {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
 
-        nav .user-section {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-left: 20px;
-            padding-left: 20px;
-            border-left: 1px solid rgba(255,255,255,0.15);
-        }
+    .search-row {
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
 
-        nav .user-avatar {
-            width: 26px;
-            height: 26px;
-            border-radius: 50%;
-            object-fit: cover;
-        }
+    .search-input-group {
+        flex: 1;
+        min-width: 200px;
+    }
 
-        nav .user-name {
-            color: #ccc;
-            font-size: 0.9rem;
-        }
+    .search-input-group label {
+        display: block;
+        margin-bottom: 8px;
+        color: #aaa;
+        font-size: 0.9rem;
+    }
 
-        nav .admin-link {
-            color: #00d4ff !important;
-        }
+    input[type="text"], select, textarea {
+        width: 100%;
+        padding: 15px 20px;
+        border: 2px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        background: rgba(0, 0, 0, 0.3);
+        color: #fff;
+        font-size: 1rem;
+        transition: border-color 0.3s, box-shadow 0.3s;
+    }
 
-        nav .btn-login-sm {
-            background: rgba(255,255,255,0.1);
-            padding: 5px 14px;
-            border-radius: 6px;
-            color: #ccc;
-            font-size: 0.85rem;
-            margin-left: 20px;
-        }
+    textarea {
+        min-height: 100px;
+        resize: vertical;
+        font-family: inherit;
+    }
 
-        nav .btn-login-sm:hover {
-            background: rgba(255,255,255,0.2);
-            color: #fff;
-        }
+    input[type="text"]:focus, select:focus, textarea:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 20px rgba(var(--primary-color-rgb), 0.3);
+    }
 
-        nav .btn-logout {
-            background: none;
-            border: none;
-            cursor: pointer;
-            font: inherit;
-            color: #fff;
-            padding: 0;
-            text-decoration: none;
-            font-size: 0.9rem;
-            transition: color 0.3s;
-        }
+    input[type="text"]::placeholder, textarea::placeholder {
+        color: #666;
+    }
 
-        header {
-            text-align: center;
-            padding: 40px 0;
-        }
+    .btn {
+        padding: 15px 30px;
+        border: none;
+        border-radius: 12px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
 
+    .btn-primary {
+        background: linear-gradient(135deg, var(--gradient-from) 0%, var(--gradient-to) 100%);
+        color: #fff;
+    }
+
+    .btn-primary:hover {
+        transform: scale(1.02);
+        box-shadow: 0 5px 20px rgba(var(--primary-color-rgb), 0.4);
+    }
+
+    .btn-ai {
+        background: linear-gradient(135deg, #9c27b0 0%, #673ab7 100%);
+        color: #fff;
+    }
+
+    .btn-ai:hover {
+        transform: scale(1.02);
+        box-shadow: 0 5px 20px rgba(156, 39, 176, 0.4);
+    }
+
+    .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .results-container {
+        margin-top: 30px;
+    }
+
+    .results-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .results-header h3 {
+        color: var(--primary-color);
+    }
+
+    .result-card {
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 15px;
+        transition: border-color 0.3s;
+    }
+
+    .result-card:hover {
+        border-color: var(--primary-color);
+    }
+
+    .result-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 15px;
+    }
+
+    .result-score {
+        background: linear-gradient(135deg, var(--gradient-from) 0%, var(--gradient-to) 100%);
+        color: #fff;
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-weight: bold;
+        font-size: 0.9rem;
+    }
+
+    .result-meta {
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+    }
+
+    .result-meta span {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 5px 12px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        color: #aaa;
+    }
+
+    .result-meta span.type-image {
+        background: rgba(255, 193, 7, 0.2);
+        color: #ffc107;
+    }
+
+    .result-meta span.type-markdown {
+        background: rgba(76, 175, 80, 0.2);
+        color: #4caf50;
+    }
+
+    .result-meta span.type-json {
+        background: rgba(156, 39, 176, 0.2);
+        color: #ce93d8;
+    }
+
+    .result-content {
+        color: #ccc;
+        line-height: 1.6;
+        font-size: 0.95rem;
+        white-space: pre-wrap;
+        word-break: break-word;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    /* AI Answer Styles */
+    .ai-answer-container {
+        background: rgba(156, 39, 176, 0.1);
+        border: 1px solid rgba(156, 39, 176, 0.3);
+        border-radius: 16px;
+        padding: 25px;
+        margin-bottom: 25px;
+    }
+
+    .ai-answer-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 15px;
+        color: #ce93d8;
+        font-size: 1.2rem;
+        font-weight: 600;
+    }
+
+    .ai-answer-content {
+        color: #e0e0e0;
+        line-height: 1.8;
+        font-size: 1rem;
+    }
+
+    .ai-answer-content h1, .ai-answer-content h2, .ai-answer-content h3 {
+        color: var(--primary-color);
+        margin: 20px 0 10px 0;
+    }
+
+    .ai-answer-content h1 { font-size: 1.5rem; }
+    .ai-answer-content h2 { font-size: 1.3rem; }
+    .ai-answer-content h3 { font-size: 1.1rem; }
+
+    .ai-answer-content p {
+        margin-bottom: 15px;
+    }
+
+    .ai-answer-content ul, .ai-answer-content ol {
+        margin: 15px 0;
+        padding-left: 25px;
+    }
+
+    .ai-answer-content li {
+        margin-bottom: 8px;
+    }
+
+    .ai-answer-content code {
+        background: rgba(0, 0, 0, 0.3);
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-family: 'Monaco', 'Menlo', monospace;
+        font-size: 0.9rem;
+    }
+
+    .ai-answer-content pre {
+        background: rgba(0, 0, 0, 0.4);
+        padding: 15px;
+        border-radius: 8px;
+        overflow-x: auto;
+        margin: 15px 0;
+    }
+
+    .ai-answer-content pre code {
+        background: none;
+        padding: 0;
+    }
+
+    .ai-answer-content table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .ai-answer-content th, .ai-answer-content td {
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        padding: 12px 16px;
+        text-align: left;
+    }
+
+    .ai-answer-content th {
+        background: linear-gradient(135deg, rgba(var(--primary-color-rgb), 0.3) 0%, rgba(var(--primary-color-rgb), 0.2) 100%);
+        color: var(--primary-color);
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 0.5px;
+    }
+
+    .ai-answer-content tr:nth-child(even) {
+        background: rgba(255, 255, 255, 0.03);
+    }
+
+    .ai-answer-content tr:hover {
+        background: rgba(var(--primary-color-rgb), 0.1);
+    }
+
+    /* Image Gallery Styles */
+    .image-gallery {
+        margin: 25px 0;
+        padding: 20px;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .image-gallery-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 15px;
+        color: #ffc107;
+        font-weight: 600;
+    }
+
+    .image-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 12px;
+    }
+
+    .image-item {
+        position: relative;
+        aspect-ratio: 4/3;
+        border-radius: 10px;
+        overflow: hidden;
+        cursor: pointer;
+        transition: transform 0.3s, box-shadow 0.3s;
+        border: 2px solid transparent;
+    }
+
+    .image-item:hover {
+        transform: scale(1.05);
+        box-shadow: 0 8px 25px rgba(var(--primary-color-rgb), 0.3);
+        border-color: var(--primary-color);
+    }
+
+    .image-item img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .image-item .image-overlay {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 8px;
+        background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+        font-size: 0.7rem;
+        color: #ccc;
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+
+    .image-item:hover .image-overlay {
+        opacity: 1;
+    }
+
+    /* Lightbox for full image view */
+    .lightbox {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.95);
+        z-index: 2000;
+        justify-content: center;
+        align-items: center;
+        padding: 40px;
+    }
+
+    .lightbox.active {
+        display: flex;
+    }
+
+    .lightbox img {
+        max-width: 90%;
+        max-height: 90%;
+        object-fit: contain;
+        border-radius: 8px;
+    }
+
+    .lightbox-close {
+        position: absolute;
+        top: 20px;
+        right: 30px;
+        font-size: 2.5rem;
+        color: #fff;
+        cursor: pointer;
+        transition: color 0.3s;
+    }
+
+    .lightbox-close:hover {
+        color: var(--primary-color);
+    }
+
+    /* Chart Container */
+    .chart-container {
+        margin: 25px 0;
+        padding: 20px;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .chart-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 15px;
+        color: #4caf50;
+        font-weight: 600;
+    }
+
+    .chart-wrapper {
+        position: relative;
+        height: 300px;
+    }
+
+    .ai-answer-content strong {
+        color: var(--primary-color);
+    }
+
+    /* Citation styling */
+    .ai-answer-content a[href^="#source-"] {
+        background: linear-gradient(135deg, #9c27b0 0%, #673ab7 100%);
+        color: #fff;
+        padding: 1px 6px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: bold;
+        text-decoration: none;
+        margin: 0 2px;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .ai-answer-content a[href^="#source-"]:hover {
+        transform: scale(1.1);
+        box-shadow: 0 2px 8px rgba(156, 39, 176, 0.5);
+    }
+
+    .streaming-cursor {
+        display: inline;
+        color: var(--primary-color, #00d4ff);
+        animation: blink 0.7s step-end infinite;
+    }
+    @keyframes blink {
+        50% { opacity: 0; }
+    }
+
+    .source-item {
+        scroll-margin-top: 20px;
+    }
+
+    .source-item.highlighted {
+        animation: highlight-pulse 2s ease-out;
+    }
+
+    @keyframes highlight-pulse {
+        0% { box-shadow: 0 0 0 3px rgba(156, 39, 176, 0.8); }
+        100% { box-shadow: 0 0 0 3px rgba(156, 39, 176, 0); }
+    }
+
+    .sources-section {
+        margin-top: 25px;
+        padding-top: 20px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .sources-header {
+        color: #aaa;
+        font-size: 0.9rem;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .source-item {
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 8px;
+        padding: 12px 15px;
+        margin-bottom: 10px;
+        font-size: 0.85rem;
+    }
+
+    .source-item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 5px;
+    }
+
+    .source-item-file {
+        color: var(--primary-color);
+        word-break: break-all;
+    }
+
+    .source-item-score {
+        color: #888;
+        font-size: 0.8rem;
+    }
+
+    .source-item-preview {
+        color: #888;
+        font-size: 0.8rem;
+        line-height: 1.4;
+    }
+
+    .source-item-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin-top: 6px;
+    }
+
+    .source-meta-tag {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.72rem;
+        font-weight: 500;
+    }
+
+    .source-meta-tag.category {
+        background: rgba(0, 212, 255, 0.15);
+        color: var(--primary-color);
+    }
+
+    .source-meta-tag.section-type {
+        background: rgba(156, 39, 176, 0.15);
+        color: #ce93d8;
+    }
+
+    .source-meta-tag.ncs-code {
+        background: rgba(255, 193, 7, 0.15);
+        color: #ffd54f;
+    }
+
+    /* Source Image Styles */
+    .source-image-item {
+        background: rgba(255, 193, 7, 0.05);
+        border-color: rgba(255, 193, 7, 0.3);
+    }
+
+    .source-image-container {
+        position: relative;
+        margin: 12px 0;
+        border-radius: 10px;
+        overflow: hidden;
+        cursor: pointer;
+        max-width: 400px;
+        transition: transform 0.3s, box-shadow 0.3s;
+    }
+
+    .source-image-container:hover {
+        transform: scale(1.02);
+        box-shadow: 0 5px 20px rgba(255, 193, 7, 0.3);
+    }
+
+    .source-image-container img {
+        width: 100%;
+        height: auto;
+        display: block;
+    }
+
+    .source-image-zoom {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 8px;
+        background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+        color: #ffc107;
+        font-size: 0.75rem;
+        text-align: center;
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+
+    .source-image-container:hover .source-image-zoom {
+        opacity: 1;
+    }
+
+    .loading {
+        display: none;
+        text-align: center;
+        padding: 40px;
+    }
+
+    .loading.active {
+        display: block;
+    }
+
+    .spinner {
+        width: 50px;
+        height: 50px;
+        border: 4px solid rgba(255, 255, 255, 0.1);
+        border-top-color: var(--primary-color);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 20px;
+    }
+
+    .spinner.ai {
+        border-top-color: #9c27b0;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #666;
+    }
+
+    .empty-state .icon {
+        font-size: 4rem;
+        margin-bottom: 20px;
+    }
+
+    .toast {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        background: #333;
+        color: #fff;
+        padding: 15px 25px;
+        border-radius: 12px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+        transform: translateX(150%);
+        transition: transform 0.3s;
+        z-index: 1000;
+    }
+
+    .toast.show {
+        transform: translateX(0);
+    }
+
+    .toast.success {
+        background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
+    }
+
+    .toast.error {
+        background: linear-gradient(135deg, #f44336 0%, #c62828 100%);
+    }
+
+    .main-panel {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        overflow: hidden;
+        margin-bottom: 30px;
+    }
+
+    .tabs {
+        display: flex;
+        background: rgba(0, 0, 0, 0.3);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 0;
+        margin: 0;
+    }
+
+    .tab {
+        flex: 1;
+        padding: 16px 20px;
+        background: transparent;
+        border: none;
+        border-bottom: 3px solid transparent;
+        color: #888;
+        cursor: pointer;
+        transition: all 0.3s;
+        font-size: 1rem;
+        font-weight: 500;
+        text-align: center;
+    }
+
+    .tab:hover {
+        color: #ccc;
+        background: rgba(255, 255, 255, 0.03);
+    }
+
+    .tab.active {
+        color: var(--primary-color);
+        border-bottom-color: var(--primary-color);
+        background: rgba(var(--primary-color-rgb), 0.05);
+    }
+
+    .tab.ai-tab.active {
+        color: #ce93d8;
+        border-bottom-color: #9c27b0;
+        background: rgba(156, 39, 176, 0.05);
+    }
+
+    .tab-content {
+        display: none;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+
+    .tab-body {
+        padding: 30px;
+    }
+
+    .hint {
+        background: rgba(var(--primary-color-rgb), 0.1);
+        border: 1px solid rgba(var(--primary-color-rgb), 0.3);
+        border-radius: 8px;
+        padding: 12px 15px;
+        margin-top: 15px;
+        font-size: 0.9rem;
+        color: #aaa;
+    }
+
+    .hint strong {
+        color: var(--primary-color);
+    }
+
+    /* PDF Viewer Modal */
+    .pdf-modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.85);
+        z-index: 3000;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+    }
+
+    .pdf-modal-overlay.active {
+        display: flex;
+    }
+
+    .pdf-modal {
+        background: #1e1e2e;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 16px;
+        width: 90%;
+        max-width: 1000px;
+        height: 90vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .pdf-modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px;
+        background: rgba(0, 0, 0, 0.3);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        flex-shrink: 0;
+    }
+
+    .pdf-modal-title {
+        color: var(--primary-color);
+        font-size: 0.95rem;
+        font-weight: 600;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        flex: 1;
+        margin-right: 15px;
+    }
+
+    .pdf-modal-close {
+        background: rgba(255, 255, 255, 0.1);
+        border: none;
+        color: #aaa;
+        font-size: 1.4rem;
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        flex-shrink: 0;
+    }
+
+    .pdf-modal-close:hover {
+        background: rgba(239, 68, 68, 0.3);
+        color: #ef4444;
+    }
+
+    .pdf-modal-body {
+        flex: 1;
+        overflow: hidden;
+    }
+
+    .pdf-modal-body iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+    }
+
+    .pdf-modal-loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: #888;
+        font-size: 1rem;
+    }
+
+    /* Clickable source file name */
+    .source-item-file.clickable {
+        cursor: pointer;
+        transition: color 0.2s;
+    }
+
+    .source-item-file.clickable:hover {
+        color: #fff;
+        text-decoration: underline;
+    }
+
+    /* Sample Question Links */
+    .sample-question {
+        cursor: pointer;
+        transition: opacity 0.3s;
+    }
+
+    .sample-question:hover {
+        opacity: 0.7;
+        text-decoration: underline;
+    }
+
+    @media (max-width: 768px) {
         header h1 {
-            font-size: 2.5rem;
-            color: var(--primary-color);
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 15px;
-        }
-
-        header p {
-            color: #888;
-            font-size: 1.1rem;
-        }
-
-        .search-form {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
+            font-size: 1.8rem;
         }
 
         .search-row {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-        }
-
-        .search-input-group {
-            flex: 1;
-            min-width: 200px;
-        }
-
-        .search-input-group label {
-            display: block;
-            margin-bottom: 8px;
-            color: #aaa;
-            font-size: 0.9rem;
-        }
-
-        input[type="text"], select, textarea {
-            width: 100%;
-            padding: 15px 20px;
-            border: 2px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            background: rgba(0, 0, 0, 0.3);
-            color: #fff;
-            font-size: 1rem;
-            transition: border-color 0.3s, box-shadow 0.3s;
-        }
-
-        textarea {
-            min-height: 100px;
-            resize: vertical;
-            font-family: inherit;
-        }
-
-        input[type="text"]:focus, select:focus, textarea:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 20px rgba(var(--primary-color-rgb), 0.3);
-        }
-
-        input[type="text"]::placeholder, textarea::placeholder {
-            color: #666;
-        }
-
-        .btn {
-            padding: 15px 30px;
-            border: none;
-            border-radius: 12px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, var(--gradient-from) 0%, var(--gradient-to) 100%);
-            color: #fff;
-        }
-
-        .btn-primary:hover {
-            transform: scale(1.02);
-            box-shadow: 0 5px 20px rgba(var(--primary-color-rgb), 0.4);
-        }
-
-        .btn-ai {
-            background: linear-gradient(135deg, #9c27b0 0%, #673ab7 100%);
-            color: #fff;
-        }
-
-        .btn-ai:hover {
-            transform: scale(1.02);
-            box-shadow: 0 5px 20px rgba(156, 39, 176, 0.4);
-        }
-
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .results-container {
-            margin-top: 30px;
-        }
-
-        .results-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .results-header h3 {
-            color: var(--primary-color);
-        }
-
-        .result-card {
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 15px;
-            transition: border-color 0.3s;
-        }
-
-        .result-card:hover {
-            border-color: var(--primary-color);
-        }
-
-        .result-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 15px;
-        }
-
-        .result-score {
-            background: linear-gradient(135deg, var(--gradient-from) 0%, var(--gradient-to) 100%);
-            color: #fff;
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-weight: bold;
-            font-size: 0.9rem;
-        }
-
-        .result-meta {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            margin-bottom: 10px;
-        }
-
-        .result-meta span {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 5px 12px;
-            border-radius: 8px;
-            font-size: 0.85rem;
-            color: #aaa;
-        }
-
-        .result-meta span.type-image {
-            background: rgba(255, 193, 7, 0.2);
-            color: #ffc107;
-        }
-
-        .result-meta span.type-markdown {
-            background: rgba(76, 175, 80, 0.2);
-            color: #4caf50;
-        }
-
-        .result-meta span.type-json {
-            background: rgba(156, 39, 176, 0.2);
-            color: #ce93d8;
-        }
-
-        .result-content {
-            color: #ccc;
-            line-height: 1.6;
-            font-size: 0.95rem;
-            white-space: pre-wrap;
-            word-break: break-word;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-
-        /* AI Answer Styles */
-        .ai-answer-container {
-            background: rgba(156, 39, 176, 0.1);
-            border: 1px solid rgba(156, 39, 176, 0.3);
-            border-radius: 16px;
-            padding: 25px;
-            margin-bottom: 25px;
-        }
-
-        .ai-answer-header {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 15px;
-            color: #ce93d8;
-            font-size: 1.2rem;
-            font-weight: 600;
-        }
-
-        .ai-answer-content {
-            color: #e0e0e0;
-            line-height: 1.8;
-            font-size: 1rem;
-        }
-
-        .ai-answer-content h1, .ai-answer-content h2, .ai-answer-content h3 {
-            color: var(--primary-color);
-            margin: 20px 0 10px 0;
-        }
-
-        .ai-answer-content h1 { font-size: 1.5rem; }
-        .ai-answer-content h2 { font-size: 1.3rem; }
-        .ai-answer-content h3 { font-size: 1.1rem; }
-
-        .ai-answer-content p {
-            margin-bottom: 15px;
-        }
-
-        .ai-answer-content ul, .ai-answer-content ol {
-            margin: 15px 0;
-            padding-left: 25px;
-        }
-
-        .ai-answer-content li {
-            margin-bottom: 8px;
-        }
-
-        .ai-answer-content code {
-            background: rgba(0, 0, 0, 0.3);
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-family: 'Monaco', 'Menlo', monospace;
-            font-size: 0.9rem;
-        }
-
-        .ai-answer-content pre {
-            background: rgba(0, 0, 0, 0.4);
-            padding: 15px;
-            border-radius: 8px;
-            overflow-x: auto;
-            margin: 15px 0;
-        }
-
-        .ai-answer-content pre code {
-            background: none;
-            padding: 0;
-        }
-
-        .ai-answer-content table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 12px;
-            overflow: hidden;
-        }
-
-        .ai-answer-content th, .ai-answer-content td {
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            padding: 12px 16px;
-            text-align: left;
-        }
-
-        .ai-answer-content th {
-            background: linear-gradient(135deg, rgba(var(--primary-color-rgb), 0.3) 0%, rgba(var(--primary-color-rgb), 0.2) 100%);
-            color: var(--primary-color);
-            font-weight: 600;
-            text-transform: uppercase;
-            font-size: 0.85rem;
-            letter-spacing: 0.5px;
-        }
-
-        .ai-answer-content tr:nth-child(even) {
-            background: rgba(255, 255, 255, 0.03);
-        }
-
-        .ai-answer-content tr:hover {
-            background: rgba(var(--primary-color-rgb), 0.1);
-        }
-
-        /* Image Gallery Styles */
-        .image-gallery {
-            margin: 25px 0;
-            padding: 20px;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 16px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .image-gallery-header {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 15px;
-            color: #ffc107;
-            font-weight: 600;
-        }
-
-        .image-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 12px;
-        }
-
-        .image-item {
-            position: relative;
-            aspect-ratio: 4/3;
-            border-radius: 10px;
-            overflow: hidden;
-            cursor: pointer;
-            transition: transform 0.3s, box-shadow 0.3s;
-            border: 2px solid transparent;
-        }
-
-        .image-item:hover {
-            transform: scale(1.05);
-            box-shadow: 0 8px 25px rgba(var(--primary-color-rgb), 0.3);
-            border-color: var(--primary-color);
-        }
-
-        .image-item img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .image-item .image-overlay {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            padding: 8px;
-            background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
-            font-size: 0.7rem;
-            color: #ccc;
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-
-        .image-item:hover .image-overlay {
-            opacity: 1;
-        }
-
-        /* Lightbox for full image view */
-        .lightbox {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.95);
-            z-index: 2000;
-            justify-content: center;
-            align-items: center;
-            padding: 40px;
-        }
-
-        .lightbox.active {
-            display: flex;
-        }
-
-        .lightbox img {
-            max-width: 90%;
-            max-height: 90%;
-            object-fit: contain;
-            border-radius: 8px;
-        }
-
-        .lightbox-close {
-            position: absolute;
-            top: 20px;
-            right: 30px;
-            font-size: 2.5rem;
-            color: #fff;
-            cursor: pointer;
-            transition: color 0.3s;
-        }
-
-        .lightbox-close:hover {
-            color: var(--primary-color);
-        }
-
-        /* Chart Container */
-        .chart-container {
-            margin: 25px 0;
-            padding: 20px;
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 16px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .chart-header {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 15px;
-            color: #4caf50;
-            font-weight: 600;
-        }
-
-        .chart-wrapper {
-            position: relative;
-            height: 300px;
-        }
-
-        .ai-answer-content strong {
-            color: var(--primary-color);
-        }
-
-        /* Citation styling */
-        .ai-answer-content a[href^="#source-"] {
-            background: linear-gradient(135deg, #9c27b0 0%, #673ab7 100%);
-            color: #fff;
-            padding: 1px 6px;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            font-weight: bold;
-            text-decoration: none;
-            margin: 0 2px;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .ai-answer-content a[href^="#source-"]:hover {
-            transform: scale(1.1);
-            box-shadow: 0 2px 8px rgba(156, 39, 176, 0.5);
-        }
-
-        .streaming-cursor {
-            display: inline;
-            color: var(--primary-color, #00d4ff);
-            animation: blink 0.7s step-end infinite;
-        }
-        @keyframes blink {
-            50% { opacity: 0; }
-        }
-
-        .source-item {
-            scroll-margin-top: 20px;
-        }
-
-        .source-item.highlighted {
-            animation: highlight-pulse 2s ease-out;
-        }
-
-        @keyframes highlight-pulse {
-            0% { box-shadow: 0 0 0 3px rgba(156, 39, 176, 0.8); }
-            100% { box-shadow: 0 0 0 3px rgba(156, 39, 176, 0); }
-        }
-
-        .sources-section {
-            margin-top: 25px;
-            padding-top: 20px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .sources-header {
-            color: #aaa;
-            font-size: 0.9rem;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .source-item {
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 8px;
-            padding: 12px 15px;
-            margin-bottom: 10px;
-            font-size: 0.85rem;
-        }
-
-        .source-item-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 5px;
-        }
-
-        .source-item-file {
-            color: var(--primary-color);
-            word-break: break-all;
-        }
-
-        .source-item-score {
-            color: #888;
-            font-size: 0.8rem;
-        }
-
-        .source-item-preview {
-            color: #888;
-            font-size: 0.8rem;
-            line-height: 1.4;
-        }
-
-        .source-item-meta {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 5px;
-            margin-top: 6px;
-        }
-
-        .source-meta-tag {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 0.72rem;
-            font-weight: 500;
-        }
-
-        .source-meta-tag.category {
-            background: rgba(0, 212, 255, 0.15);
-            color: var(--primary-color);
-        }
-
-        .source-meta-tag.section-type {
-            background: rgba(156, 39, 176, 0.15);
-            color: #ce93d8;
-        }
-
-        .source-meta-tag.ncs-code {
-            background: rgba(255, 193, 7, 0.15);
-            color: #ffd54f;
-        }
-
-        /* Source Image Styles */
-        .source-image-item {
-            background: rgba(255, 193, 7, 0.05);
-            border-color: rgba(255, 193, 7, 0.3);
-        }
-
-        .source-image-container {
-            position: relative;
-            margin: 12px 0;
-            border-radius: 10px;
-            overflow: hidden;
-            cursor: pointer;
-            max-width: 400px;
-            transition: transform 0.3s, box-shadow 0.3s;
-        }
-
-        .source-image-container:hover {
-            transform: scale(1.02);
-            box-shadow: 0 5px 20px rgba(255, 193, 7, 0.3);
-        }
-
-        .source-image-container img {
-            width: 100%;
-            height: auto;
-            display: block;
-        }
-
-        .source-image-zoom {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            padding: 8px;
-            background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
-            color: #ffc107;
-            font-size: 0.75rem;
-            text-align: center;
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-
-        .source-image-container:hover .source-image-zoom {
-            opacity: 1;
-        }
-
-        .loading {
-            display: none;
-            text-align: center;
-            padding: 40px;
-        }
-
-        .loading.active {
-            display: block;
-        }
-
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 4px solid rgba(255, 255, 255, 0.1);
-            border-top-color: var(--primary-color);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
-        }
-
-        .spinner.ai {
-            border-top-color: #9c27b0;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: #666;
-        }
-
-        .empty-state .icon {
-            font-size: 4rem;
-            margin-bottom: 20px;
-        }
-
-        .toast {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            background: #333;
-            color: #fff;
-            padding: 15px 25px;
-            border-radius: 12px;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
-            transform: translateX(150%);
-            transition: transform 0.3s;
-            z-index: 1000;
-        }
-
-        .toast.show {
-            transform: translateX(0);
-        }
-
-        .toast.success {
-            background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
-        }
-
-        .toast.error {
-            background: linear-gradient(135deg, #f44336 0%, #c62828 100%);
-        }
-
-        .main-panel {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 20px;
-            overflow: hidden;
-            margin-bottom: 30px;
-        }
-
-        .tabs {
-            display: flex;
-            background: rgba(0, 0, 0, 0.3);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 0;
-            margin: 0;
-        }
-
-        .tab {
-            flex: 1;
-            padding: 16px 20px;
-            background: transparent;
-            border: none;
-            border-bottom: 3px solid transparent;
-            color: #888;
-            cursor: pointer;
-            transition: all 0.3s;
-            font-size: 1rem;
-            font-weight: 500;
-            text-align: center;
-        }
-
-        .tab:hover {
-            color: #ccc;
-            background: rgba(255, 255, 255, 0.03);
-        }
-
-        .tab.active {
-            color: var(--primary-color);
-            border-bottom-color: var(--primary-color);
-            background: rgba(var(--primary-color-rgb), 0.05);
-        }
-
-        .tab.ai-tab.active {
-            color: #ce93d8;
-            border-bottom-color: #9c27b0;
-            background: rgba(156, 39, 176, 0.05);
-        }
-
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        .tab-body {
-            padding: 30px;
-        }
-
-        .hint {
-            background: rgba(var(--primary-color-rgb), 0.1);
-            border: 1px solid rgba(var(--primary-color-rgb), 0.3);
-            border-radius: 8px;
-            padding: 12px 15px;
-            margin-top: 15px;
-            font-size: 0.9rem;
-            color: #aaa;
-        }
-
-        .hint strong {
-            color: var(--primary-color);
-        }
-
-        /* PDF Viewer Modal */
-        .pdf-modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.85);
-            z-index: 3000;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-
-        .pdf-modal-overlay.active {
-            display: flex;
-        }
-
-        .pdf-modal {
-            background: #1e1e2e;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 16px;
-            width: 90%;
-            max-width: 1000px;
-            height: 90vh;
-            display: flex;
             flex-direction: column;
-            overflow: hidden;
-            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
         }
+    }
 
-        .pdf-modal-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 16px 20px;
-            background: rgba(0, 0, 0, 0.3);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            flex-shrink: 0;
-        }
+    /* LLM Info Bar */
+    .llm-info-bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 12px;
+        padding: 8px 14px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+        font-size: 12px;
+        color: #666;
+    }
+    .llm-info-icon { font-size: 13px; flex-shrink: 0; }
+    .llm-info-text { color: #888; }
+    .llm-info-text .model-name {
+        color: var(--primary-color);
+        font-weight: 600;
+    }
+    .llm-info-text .separator {
+        margin: 0 6px;
+        color: #444;
+    }
 
-        .pdf-modal-title {
-            color: var(--primary-color);
-            font-size: 0.95rem;
-            font-weight: 600;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            flex: 1;
-            margin-right: 15px;
-        }
+    /* Search Mode Selector */
+    .search-mode-selector {
+        display: flex;
+        gap: 0;
+        border: 1px solid #333;
+        border-radius: 8px;
+        overflow: hidden;
+        margin-bottom: 16px;
+    }
 
-        .pdf-modal-close {
-            background: rgba(255, 255, 255, 0.1);
-            border: none;
-            color: #aaa;
-            font-size: 1.4rem;
-            width: 36px;
-            height: 36px;
-            border-radius: 8px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-            flex-shrink: 0;
-        }
+    .search-mode-btn {
+        flex: 1;
+        padding: 10px 16px;
+        background: #1a1a2e;
+        color: #aaa;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.2s ease;
+        text-align: center;
+    }
 
-        .pdf-modal-close:hover {
-            background: rgba(239, 68, 68, 0.3);
-            color: #ef4444;
-        }
+    .search-mode-btn:not(:last-child) {
+        border-right: 1px solid #333;
+    }
 
-        .pdf-modal-body {
-            flex: 1;
-            overflow: hidden;
-        }
+    .search-mode-btn:hover {
+        background: #252540;
+        color: #fff;
+    }
 
-        .pdf-modal-body iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
+    .search-mode-btn.active {
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+        color: #fff;
+        font-weight: 600;
+    }
 
-        .pdf-modal-loading {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-            color: #888;
-            font-size: 1rem;
-        }
+    .search-mode-info {
+        font-size: 12px;
+        color: #666;
+        margin-bottom: 16px;
+        padding: 8px 12px;
+        background: rgba(255,255,255,0.03);
+        border-radius: 6px;
+    }
 
-        /* Clickable source file name */
-        .source-item-file.clickable {
-            cursor: pointer;
-            transition: color 0.2s;
-        }
+    /* Provenance Badges */
+    .provenance-badges {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-top: 4px;
+    }
 
-        .source-item-file.clickable:hover {
-            color: #fff;
-            text-decoration: underline;
-        }
+    .provenance-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 600;
+    }
 
-        /* Sample Question Links */
-        .sample-question {
-            cursor: pointer;
-            transition: opacity 0.3s;
-        }
+    .provenance-badge.vector {
+        background: rgba(59, 130, 246, 0.15);
+        color: #60a5fa;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+    }
 
-        .sample-question:hover {
-            opacity: 0.7;
-            text-decoration: underline;
-        }
+    .provenance-badge.bm25 {
+        background: rgba(245, 158, 11, 0.15);
+        color: #fbbf24;
+        border: 1px solid rgba(245, 158, 11, 0.3);
+    }
 
-        @media (max-width: 768px) {
-            header h1 {
-                font-size: 1.8rem;
-            }
+    .provenance-badge.rrf {
+        background: rgba(139, 92, 246, 0.15);
+        color: #a78bfa;
+        border: 1px solid rgba(139, 92, 246, 0.3);
+    }
+</style>
+{% endblock %}
 
-            .search-row {
-                flex-direction: column;
-            }
-
-            nav .nav-inner {
-                flex-direction: column;
-                gap: 10px;
-            }
-
-            nav .nav-links {
-                gap: 8px;
-                justify-content: center;
-            }
-
-            nav a {
-                font-size: 0.8rem;
-            }
-        }
-
-        /* Search Mode Selector */
-        .search-mode-selector {
-            display: flex;
-            gap: 0;
-            border: 1px solid #333;
-            border-radius: 8px;
-            overflow: hidden;
-            margin-bottom: 16px;
-        }
-
-        .search-mode-btn {
-            flex: 1;
-            padding: 10px 16px;
-            background: #1a1a2e;
-            color: #aaa;
-            border: none;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.2s ease;
-            text-align: center;
-        }
-
-        .search-mode-btn:not(:last-child) {
-            border-right: 1px solid #333;
-        }
-
-        .search-mode-btn:hover {
-            background: #252540;
-            color: #fff;
-        }
-
-        .search-mode-btn.active {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: #fff;
-            font-weight: 600;
-        }
-
-        .search-mode-info {
-            font-size: 12px;
-            color: #666;
-            margin-bottom: 16px;
-            padding: 8px 12px;
-            background: rgba(255,255,255,0.03);
-            border-radius: 6px;
-        }
-
-        /* Provenance Badges */
-        .provenance-badges {
-            display: flex;
-            gap: 6px;
-            flex-wrap: wrap;
-            margin-top: 4px;
-        }
-
-        .provenance-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 3px;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: 600;
-        }
-
-        .provenance-badge.vector {
-            background: rgba(59, 130, 246, 0.15);
-            color: #60a5fa;
-            border: 1px solid rgba(59, 130, 246, 0.3);
-        }
-
-        .provenance-badge.bm25 {
-            background: rgba(245, 158, 11, 0.15);
-            color: #fbbf24;
-            border: 1px solid rgba(245, 158, 11, 0.3);
-        }
-
-        .provenance-badge.rrf {
-            background: rgba(139, 92, 246, 0.15);
-            color: #a78bfa;
-            border: 1px solid rgba(139, 92, 246, 0.3);
-        }
-    </style>
-</head>
-<body>
-    <!-- Navigation Bar -->
-    <nav>
-        <div class="nav-inner">
-            <a href="/" class="home-link">🏠 홈</a>
-            <div class="nav-links">
-                <a href="/semiconductor">🔬 반도체</a>
-                <a href="/laborlaw">⚖️ 노동법</a>
-                <a href="/field-training">🏭 현장실습</a>
-                <a href="/safeguide">🛡️ 안전보건</a>
-                <a href="/msds">🧪 MSDS</a>
-                <a href="/community">💬 커뮤니티</a>
-                {% if current_user.is_authenticated %}
-                <div class="user-section">
-                    {% if current_user.profile_image %}
-                    <img src="{{ current_user.profile_image }}" alt="{{ current_user.name }}님의 프로필 사진" class="user-avatar">
-                    {% endif %}
-                    <span class="user-name">{{ current_user.name }}</span>
-                    {% if current_user.role == 'admin' %}
-                    <a href="/admin" class="admin-link">관리자</a>
-                    {% endif %}
-                    <a href="/mypage">마이페이지</a>
-                    <form action="/logout" method="POST" style="display:inline;margin:0;"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn-logout">로그아웃</button></form>
-                </div>
-                {% else %}
-                <a href="/login" class="btn-login-sm">로그인</a>
-                {% endif %}
-            </div>
-        </div>
-    </nav>
-
+{% block content %}
     <div class="container">
         <header>
             <h1>
@@ -1149,6 +1049,11 @@
                         </div>
                     </div>
                 </form>
+
+                <div class="llm-info-bar" id="llmInfoBar">
+                    <span class="llm-info-icon">⚙️</span>
+                    <span class="llm-info-text" id="llmInfoText">모델 정보 로딩 중...</span>
+                </div>
 
                 <div class="hint">
                     <strong>💡 샘플 질문:</strong><br>
@@ -1267,561 +1172,620 @@
             </div>
         </div>
     </div>
+{% endblock %}
 
-    <script>
-        // Default namespace configuration
-        const DEFAULT_NAMESPACE = '{{ config.namespace }}';
+{% block scripts %}
+<script>
+    // Default namespace configuration
+    const DEFAULT_NAMESPACE = '{{ config.namespace }}';
 
-        // Active chart instances for cleanup
-        let activeCharts = [];
+    // Active chart instances for cleanup
+    let activeCharts = [];
 
-        // Set default namespace value on page load
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('askNamespace').value = DEFAULT_NAMESPACE;
+    // Set default namespace value on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('askNamespace').value = DEFAULT_NAMESPACE;
+    });
+
+    // Sample question click handlers
+    document.querySelectorAll('.sample-question').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            document.getElementById('askQuery').value = e.target.textContent;
         });
+    });
 
-        // Sample question click handlers
-        document.querySelectorAll('.sample-question').forEach(link => {
+    // Tab functionality
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+            tab.classList.add('active');
+            document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+        });
+    });
+
+    // Search mode state
+    let currentSearchMode = 'vector';
+    const modeDescriptions = {
+        'vector': '벡터 유사도 기반으로 의미적으로 유사한 문서를 검색합니다.',
+        'hybrid': 'BM25 키워드 매칭 + 벡터 유사도를 RRF로 결합하여 검색합니다.',
+        'keyword': '벡터 검색 결과에서 BM25 키워드 관련도 순으로 재정렬합니다.'
+    };
+
+    document.querySelectorAll('.search-mode-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.search-mode-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentSearchMode = btn.dataset.mode;
+            document.getElementById('searchModeInfo').textContent = modeDescriptions[currentSearchMode];
+        });
+    });
+
+    // Toast notification
+    function showToast(message, type = 'success') {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.className = 'toast show ' + type;
+
+        setTimeout(() => {
+            toast.classList.remove('show');
+        }, 3000);
+    }
+
+    // Lightbox functions moved to common.js
+
+    // Chart and image gallery functions moved to common.js
+
+    // Load stats
+    async function loadStats() {
+        try {
+            const response = await fetch('/api/stats');
+            const data = await response.json();
+
+            if (data.success) {
+                // Update namespace dropdowns
+                const selects = ['namespace', 'askNamespace'];
+                const namespaces = Array.isArray(data.data.namespaces)
+                    ? data.data.namespaces.map(ns => ({
+                        name: ns.name || ns.namespace || '',
+                        vector_count: ns.vector_count || 0
+                    }))
+                    : Object.entries(data.data.namespaces || {}).map(([name, info]) => ({
+                        name, vector_count: info.vector_count || 0
+                    }));
+
+                // Find namespace with most vectors for auto-selection
+                let maxVectorsNs = null;
+                let maxVectors = 0;
+                namespaces.forEach(ns => {
+                    if (ns.vector_count > maxVectors) {
+                        maxVectors = ns.vector_count;
+                        maxVectorsNs = ns.name === '(기본)' ? '' : ns.name;
+                    }
+                });
+
+                const totalVectorCount = namespaces.reduce((sum, ns) => sum + ns.vector_count, 0);
+
+                selects.forEach(selectId => {
+                    const select = document.getElementById(selectId);
+                    if (select) {
+                        const firstOption = select.options[0];
+                        select.innerHTML = '';
+                        select.appendChild(firstOption);
+
+                        // Add "전체" (All namespaces) option for ask/search selects
+                        if (namespaces.length > 1) {
+                            const allOption = document.createElement('option');
+                            allOption.value = 'all';
+                            allOption.textContent = `🔍 전체 검색 (${totalVectorCount.toLocaleString()}개)`;
+                            select.appendChild(allOption);
+                        }
+
+                        namespaces.forEach(ns => {
+                            const option = document.createElement('option');
+                            option.value = ns.name === '(기본)' ? '' : ns.name;
+                            option.textContent = `${ns.name} (${ns.vector_count.toLocaleString()}개)`;
+                            select.appendChild(option);
+                        });
+
+                        // Use default namespace if configured, otherwise use the one with most vectors
+                        if (DEFAULT_NAMESPACE) {
+                            select.value = DEFAULT_NAMESPACE;
+                        } else if (maxVectorsNs !== null) {
+                            select.value = maxVectorsNs;
+                        }
+                    }
+                });
+
+            }
+        } catch (error) {
+            console.error('Failed to load stats:', error);
+        }
+    }
+
+    // AI Ask functionality (SSE streaming)
+    function renderAskResults(resultsContainer, metadata, answerText, calculations) {
+        // Destroy previous charts
+        activeCharts.forEach(chart => chart.destroy());
+        activeCharts = [];
+
+        // Extract chart data from answer
+        const { cleanAnswer, charts } = extractChartData(answerText);
+
+        // Convert citation numbers [1], [2] to clickable links
+        let answerHtml = renderMarkdown(cleanAnswer);
+        answerHtml = answerHtml.replace(/\[(\d+)\]/g, '<a href="#source-$1" class="citation" data-source="$1">[$1]</a>');
+
+        let html = `
+            <div class="ai-answer-container">
+                <div class="ai-answer-header">
+                    <span>🤖</span> AI 답변
+                </div>
+                <div class="ai-answer-content" id="aiAnswerContent">
+                    ${answerHtml}
+                </div>
+            </div>
+        `;
+
+        // Add charts if present
+        if (charts.length > 0) {
+            charts.forEach((chartData, index) => {
+                html += `
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <span>📊</span> ${escapeHtml(chartData.title || '데이터 시각화')}
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="chart-${index}"></canvas>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // Add image gallery
+        if (metadata.images && metadata.images.length > 0) {
+            html += renderImageGallery(metadata.images);
+        }
+
+        // Add sources section
+        if (metadata.sources && metadata.sources.length > 0) {
+            html += `
+                <div class="sources-section">
+                    <div class="sources-header">
+                        <span>📚</span> 참고 문서 (${metadata.source_count || metadata.sources.length}개)
+                    </div>
+            `;
+            metadata.sources.forEach((source, index) => {
+                const sourceFile = source.source_file || 'Unknown';
+                const score = source.score !== undefined ? source.score : 0;
+                const contentPreview = source.content_preview || '';
+                const ncsCategory = source.ncs_category || '';
+                const ncsSectionType = source.ncs_section_type || '';
+                const ncsCode = source.ncs_code || '';
+
+                let metaTags = '';
+                if (ncsCategory) metaTags += `<span class="source-meta-tag category">${escapeHtml(ncsCategory)}</span>`;
+                if (ncsSectionType && ncsSectionType !== 'general') metaTags += `<span class="source-meta-tag section-type">${escapeHtml(ncsSectionType)}</span>`;
+                if (ncsCode) metaTags += `<span class="source-meta-tag ncs-code">${escapeHtml(ncsCode)}</span>`;
+
+                html += `
+                    <div class="source-item" id="source-${index + 1}">
+                        <div class="source-item-header">
+                            <span class="source-item-file clickable" data-source-file="${escapeHtml(sourceFile)}" onclick="openPdfViewer(this)" title="PDF 원본 보기">[${index + 1}] ${escapeHtml(sourceFile.split('/').pop())}</span>
+                            <span class="source-item-score">유사도: ${score}</span>
+                        </div>
+                        ${metaTags ? `<div class="source-item-meta">${metaTags}</div>` : ''}
+                        <div class="source-item-preview">${escapeHtml(contentPreview)}</div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+        }
+
+        resultsContainer.innerHTML = html;
+
+        // Render charts
+        if (charts.length > 0) {
+            charts.forEach((chartData, index) => {
+                requestAnimationFrame(() => {
+                    try { renderChart(chartData, `chart-${index}`); }
+                    catch (e) { console.error('Chart render error:', e); }
+                });
+            });
+        }
+
+        // Citation click handlers
+        document.querySelectorAll('.citation').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
-                document.getElementById('askQuery').value = e.target.textContent;
-            });
-        });
-
-        // Tab functionality
-        document.querySelectorAll('.tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-
-                tab.classList.add('active');
-                document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
-            });
-        });
-
-        // Search mode state
-        let currentSearchMode = 'vector';
-        const modeDescriptions = {
-            'vector': '벡터 유사도 기반으로 의미적으로 유사한 문서를 검색합니다.',
-            'hybrid': 'BM25 키워드 매칭 + 벡터 유사도를 RRF로 결합하여 검색합니다.',
-            'keyword': '벡터 검색 결과에서 BM25 키워드 관련도 순으로 재정렬합니다.'
-        };
-
-        document.querySelectorAll('.search-mode-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.search-mode-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                currentSearchMode = btn.dataset.mode;
-                document.getElementById('searchModeInfo').textContent = modeDescriptions[currentSearchMode];
-            });
-        });
-
-        // Toast notification
-        function showToast(message, type = 'success') {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.className = 'toast show ' + type;
-
-            setTimeout(() => {
-                toast.classList.remove('show');
-            }, 3000);
-        }
-
-        // Lightbox functions moved to common.js
-
-        // Chart and image gallery functions moved to common.js
-
-        // Load stats
-        async function loadStats() {
-            try {
-                const response = await fetch('/api/stats');
-                const data = await response.json();
-
-                if (data.success) {
-                    // Update namespace dropdowns
-                    const selects = ['namespace', 'askNamespace'];
-
-                    // Find namespace with most vectors for auto-selection
-                    let maxVectorsNs = null;
-                    let maxVectors = 0;
-                    data.data.namespaces.forEach(ns => {
-                        if (ns.vector_count > maxVectors) {
-                            maxVectors = ns.vector_count;
-                            maxVectorsNs = ns.name === '(기본)' ? '' : ns.name;
-                        }
-                    });
-
-                    const totalVectorCount = data.data.namespaces.reduce((sum, ns) => sum + ns.vector_count, 0);
-
-                    selects.forEach(selectId => {
-                        const select = document.getElementById(selectId);
-                        if (select) {
-                            const firstOption = select.options[0];
-                            select.innerHTML = '';
-                            select.appendChild(firstOption);
-
-                            // Add "전체" (All namespaces) option for ask/search selects
-                            if (data.data.namespaces.length > 1) {
-                                const allOption = document.createElement('option');
-                                allOption.value = 'all';
-                                allOption.textContent = `🔍 전체 검색 (${totalVectorCount.toLocaleString()}개)`;
-                                select.appendChild(allOption);
-                            }
-
-                            data.data.namespaces.forEach(ns => {
-                                const option = document.createElement('option');
-                                option.value = ns.name === '(기본)' ? '' : ns.name;
-                                option.textContent = `${ns.name} (${ns.vector_count.toLocaleString()}개)`;
-                                select.appendChild(option);
-                            });
-
-                            // Use default namespace if configured, otherwise use the one with most vectors
-                            if (DEFAULT_NAMESPACE) {
-                                select.value = DEFAULT_NAMESPACE;
-                            } else if (maxVectorsNs !== null) {
-                                select.value = maxVectorsNs;
-                            }
-                        }
-                    });
-
+                const sourceEl = document.getElementById('source-' + link.dataset.source);
+                if (sourceEl) {
+                    sourceEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    sourceEl.classList.add('highlighted');
+                    setTimeout(() => sourceEl.classList.remove('highlighted'), 2000);
                 }
-            } catch (error) {
-                console.error('Failed to load stats:', error);
+            });
+        });
+    }
+
+    document.getElementById('askForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const query = document.getElementById('askQuery').value;
+        const namespace = document.getElementById('askNamespace').value;
+        const topK = document.getElementById('askTopK').value;
+
+        const loading = document.getElementById('askLoading');
+        const resultsContainer = document.getElementById('askResultsContainer');
+
+        loading.classList.add('active');
+        resultsContainer.innerHTML = '';
+
+        try {
+            const response = await fetch('/api/ask/stream', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query, namespace, top_k: topK })
+            });
+
+            // Check if response is JSON (error or early response)
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+                const data = await response.json();
+                loading.classList.remove('active');
+                if (data.success && data.data) {
+                    renderAskResults(resultsContainer, data.data, data.data.answer || '', null);
+                } else {
+                    showToast(data.error || '알 수 없는 오류', 'error');
+                    resultsContainer.innerHTML = `<div class="empty-state"><div class="icon">❌</div><p>${escapeHtml(data.error || '오류가 발생했습니다.')}</p></div>`;
+                }
+                return;
             }
-        }
 
-        // AI Ask functionality (SSE streaming)
-        function renderAskResults(resultsContainer, metadata, answerText, calculations) {
-            // Destroy previous charts
-            activeCharts.forEach(chart => chart.destroy());
-            activeCharts = [];
+            // SSE streaming response
+            let metadata = null;
+            let answerText = '';
+            let calculations = null;
 
-            // Extract chart data from answer
-            const { cleanAnswer, charts } = extractChartData(answerText);
-
-            // Convert citation numbers [1], [2] to clickable links
-            let answerHtml = DOMPurify.sanitize(marked.parse(cleanAnswer));
-            answerHtml = answerHtml.replace(/\[(\d+)\]/g, '<a href="#source-$1" class="citation" data-source="$1">[$1]</a>');
-
-            let html = `
+            // Show streaming UI
+            resultsContainer.innerHTML = `
                 <div class="ai-answer-container">
-                    <div class="ai-answer-header">
-                        <span>🤖</span> AI 답변
-                    </div>
-                    <div class="ai-answer-content" id="aiAnswerContent">
-                        ${answerHtml}
-                    </div>
+                    <div class="ai-answer-header"><span>🤖</span> AI 답변</div>
+                    <div class="ai-answer-content" id="aiAnswerContent"><span class="streaming-cursor">▌</span></div>
                 </div>
             `;
 
-            // Add charts if present
-            if (charts.length > 0) {
-                charts.forEach((chartData, index) => {
-                    html += `
-                        <div class="chart-container">
-                            <div class="chart-header">
-                                <span>📊</span> ${chartData.title || '데이터 시각화'}
-                            </div>
-                            <div class="chart-wrapper">
-                                <canvas id="chart-${index}"></canvas>
-                            </div>
-                        </div>
-                    `;
-                });
-            }
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
 
-            // Add image gallery
-            if (metadata.images && metadata.images.length > 0) {
-                html += renderImageGallery(metadata.images);
-            }
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
 
-            // Add sources section
-            if (metadata.sources && metadata.sources.length > 0) {
-                html += `
-                    <div class="sources-section">
-                        <div class="sources-header">
-                            <span>📚</span> 참고 문서 (${metadata.source_count || metadata.sources.length}개)
-                        </div>
-                `;
-                metadata.sources.forEach((source, index) => {
-                    const sourceFile = source.source_file || 'Unknown';
-                    const score = source.score !== undefined ? source.score : 0;
-                    const contentPreview = source.content_preview || '';
-                    const ncsCategory = source.ncs_category || '';
-                    const ncsSectionType = source.ncs_section_type || '';
-                    const ncsCode = source.ncs_code || '';
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop();
 
-                    let metaTags = '';
-                    if (ncsCategory) metaTags += `<span class="source-meta-tag category">${escapeHtml(ncsCategory)}</span>`;
-                    if (ncsSectionType && ncsSectionType !== 'general') metaTags += `<span class="source-meta-tag section-type">${escapeHtml(ncsSectionType)}</span>`;
-                    if (ncsCode) metaTags += `<span class="source-meta-tag ncs-code">${escapeHtml(ncsCode)}</span>`;
+                for (const line of lines) {
+                    if (!line.startsWith('data: ')) continue;
+                    const jsonStr = line.slice(6);
+                    if (!jsonStr) continue;
 
-                    html += `
-                        <div class="source-item" id="source-${index + 1}">
-                            <div class="source-item-header">
-                                <span class="source-item-file clickable" data-source-file="${escapeHtml(sourceFile)}" onclick="openPdfViewer(this)" title="PDF 원본 보기">[${index + 1}] ${escapeHtml(sourceFile.split('/').pop())}</span>
-                                <span class="source-item-score">유사도: ${score}</span>
-                            </div>
-                            ${metaTags ? `<div class="source-item-meta">${metaTags}</div>` : ''}
-                            <div class="source-item-preview">${escapeHtml(contentPreview)}</div>
-                        </div>
-                    `;
-                });
-                html += '</div>';
-            }
+                    try {
+                        const event = JSON.parse(jsonStr);
 
-            resultsContainer.innerHTML = html;
-
-            // Render charts
-            if (charts.length > 0) {
-                charts.forEach((chartData, index) => {
-                    requestAnimationFrame(() => {
-                        try { renderChart(chartData, `chart-${index}`); }
-                        catch (e) { console.error('Chart render error:', e); }
-                    });
-                });
-            }
-
-            // Citation click handlers
-            document.querySelectorAll('.citation').forEach(link => {
-                link.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const sourceEl = document.getElementById('source-' + link.dataset.source);
-                    if (sourceEl) {
-                        sourceEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        sourceEl.classList.add('highlighted');
-                        setTimeout(() => sourceEl.classList.remove('highlighted'), 2000);
-                    }
-                });
-            });
-        }
-
-        document.getElementById('askForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            const query = document.getElementById('askQuery').value;
-            const namespace = document.getElementById('askNamespace').value;
-            const topK = document.getElementById('askTopK').value;
-
-            const loading = document.getElementById('askLoading');
-            const resultsContainer = document.getElementById('askResultsContainer');
-
-            loading.classList.add('active');
-            resultsContainer.innerHTML = '';
-
-            try {
-                const response = await fetch('/api/ask/stream', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ query, namespace, top_k: topK })
-                });
-
-                // Check if response is JSON (error or early response)
-                const contentType = response.headers.get('content-type') || '';
-                if (contentType.includes('application/json')) {
-                    const data = await response.json();
-                    loading.classList.remove('active');
-                    if (data.success && data.data) {
-                        renderAskResults(resultsContainer, data.data, data.data.answer || '', null);
-                    } else {
-                        showToast(data.error || '알 수 없는 오류', 'error');
-                        resultsContainer.innerHTML = `<div class="empty-state"><div class="icon">❌</div><p>${escapeHtml(data.error || '오류가 발생했습니다.')}</p></div>`;
-                    }
-                    return;
-                }
-
-                // SSE streaming response
-                let metadata = null;
-                let answerText = '';
-                let calculations = null;
-
-                // Show streaming UI
-                resultsContainer.innerHTML = `
-                    <div class="ai-answer-container">
-                        <div class="ai-answer-header"><span>🤖</span> AI 답변</div>
-                        <div class="ai-answer-content" id="aiAnswerContent"><span class="streaming-cursor">▌</span></div>
-                    </div>
-                `;
-
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
-                let buffer = '';
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-
-                    buffer += decoder.decode(value, { stream: true });
-                    const lines = buffer.split('\n');
-                    buffer = lines.pop();
-
-                    for (const line of lines) {
-                        if (!line.startsWith('data: ')) continue;
-                        const jsonStr = line.slice(6);
-                        if (!jsonStr) continue;
-
-                        try {
-                            const event = JSON.parse(jsonStr);
-
-                            if (event.type === 'metadata') {
-                                metadata = event.data;
-                                loading.classList.remove('active');
-                            } else if (event.type === 'calculations') {
-                                calculations = event.data;
-                            } else if (event.type === 'token') {
-                                answerText += event.data;
-                                const contentEl = document.getElementById('aiAnswerContent');
-                                if (contentEl) {
-                                    contentEl.innerHTML = DOMPurify.sanitize(marked.parse(answerText)) + '<span class="streaming-cursor">▌</span>';
-                                }
-                            } else if (event.type === 'done') {
-                                if (event.data && event.data.calculations) {
-                                    calculations = event.data.calculations;
-                                }
-                                if (metadata) {
-                                    renderAskResults(resultsContainer, metadata, answerText, calculations);
-                                }
-                            } else if (event.type === 'error') {
-                                loading.classList.remove('active');
-                                showToast('오류: ' + event.data, 'error');
-                                resultsContainer.innerHTML = `<div class="empty-state"><div class="icon">❌</div><p>${escapeHtml(event.data)}</p></div>`;
+                        if (event.type === 'metadata') {
+                            metadata = event.data;
+                            loading.classList.remove('active');
+                        } else if (event.type === 'calculations') {
+                            calculations = event.data;
+                        } else if (event.type === 'token') {
+                            answerText += event.data;
+                            const contentEl = document.getElementById('aiAnswerContent');
+                            if (contentEl) {
+                                contentEl.innerHTML = renderMarkdown(answerText) + '<span class="streaming-cursor">▌</span>';
                             }
-                        } catch (parseErr) {
-                            console.error('SSE parse error:', parseErr, jsonStr);
+                        } else if (event.type === 'done') {
+                            if (event.data && event.data.calculations) {
+                                calculations = event.data.calculations;
+                            }
+                            if (metadata) {
+                                renderAskResults(resultsContainer, metadata, answerText, calculations);
+                            }
+                        } else if (event.type === 'error') {
+                            loading.classList.remove('active');
+                            showToast('오류: ' + event.data, 'error');
+                            resultsContainer.innerHTML = `<div class="empty-state"><div class="icon">❌</div><p>${escapeHtml(event.data)}</p></div>`;
                         }
+                    } catch (parseErr) {
+                        console.error('SSE parse error:', parseErr, jsonStr);
                     }
                 }
-
-                loading.classList.remove('active');
-
-                // If stream ended without done event, render what we have
-                if (answerText && metadata && !document.querySelector('.sources-section')) {
-                    renderAskResults(resultsContainer, metadata, answerText, calculations);
-                }
-
-            } catch (error) {
-                console.error('Fetch error:', error);
-                loading.classList.remove('active');
-                showToast('AI 답변 생성 중 오류가 발생했습니다: ' + error.message, 'error');
             }
-        });
 
-        // Search functionality
-        document.getElementById('searchForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
+            loading.classList.remove('active');
 
-            const query = document.getElementById('query').value;
-            const namespace = document.getElementById('namespace').value;
-            const topK = document.getElementById('topK').value;
-            const fileType = document.getElementById('fileType').value;
-
-            const loading = document.getElementById('searchLoading');
-            const resultsContainer = document.getElementById('resultsContainer');
-            const emptyState = document.getElementById('emptyState');
-
-            loading.classList.add('active');
-            resultsContainer.innerHTML = '';
-
-            try {
-                const response = await fetch('/api/search', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ query, namespace, top_k: topK, file_type: fileType, search_mode: currentSearchMode })
-                });
-
-                const data = await response.json();
-
-                loading.classList.remove('active');
-
-                if (data.success) {
-                    if (data.data.results.length === 0) {
-                        resultsContainer.innerHTML = `
-                            <div class="empty-state">
-                                <div class="icon">😕</div>
-                                <p>검색 결과가 없습니다</p>
-                            </div>
-                        `;
-                    } else {
-                        resultsContainer.innerHTML = `
-                            <div class="results-header">
-                                <h3>검색 결과 (${data.data.count}개)</h3>
-                            </div>
-                        `;
-
-                        const mode = data.data.search_mode || 'vector';
-                        data.data.results.forEach((result, index) => {
-                            const typeClass = 'type-' + result.file_type;
-                            const card = document.createElement('div');
-                            card.className = 'result-card';
-
-                            // Build score label based on mode
-                            let scoreLabel = '';
-                            let badgesHtml = '';
-                            if (mode === 'vector') {
-                                scoreLabel = `유사도: ${result.score}`;
-                            } else {
-                                scoreLabel = `RRF: ${result.rrf_score || '-'}`;
-                                const badges = [];
-                                if (result.vector_rank != null) {
-                                    badges.push(`<span class="provenance-badge vector">벡터 #${result.vector_rank}</span>`);
-                                }
-                                if (result.bm25_rank != null) {
-                                    badges.push(`<span class="provenance-badge bm25">BM25 #${result.bm25_rank}</span>`);
-                                }
-                                if (result.rrf_score != null && result.vector_rank != null && result.bm25_rank != null) {
-                                    badges.push(`<span class="provenance-badge rrf">RRF</span>`);
-                                }
-                                badgesHtml = badges.length ? `<div class="provenance-badges">${badges.join('')}</div>` : '';
-                            }
-
-                            card.innerHTML = `
-                                <div class="result-header">
-                                    <div class="result-meta">
-                                        <span class="${typeClass}">${result.file_type}</span>
-                                        <span>📄 ${result.filename || result.source_file.split('/').pop()}</span>
-                                    </div>
-                                    <div class="result-score">${scoreLabel}</div>
-                                </div>
-                                ${badgesHtml}
-                                <div class="result-meta">
-                                    <span title="${result.source_file}">📁 ${result.source_file}</span>
-                                </div>
-                                <div class="result-content">${escapeHtml(result.content)}</div>
-                            `;
-                            resultsContainer.appendChild(card);
-                        });
-                    }
-                } else {
-                    showToast(data.error, 'error');
-                }
-            } catch (error) {
-                loading.classList.remove('active');
-                showToast('검색 중 오류가 발생했습니다.', 'error');
+            // If stream ended without done event, render what we have
+            if (answerText && metadata && !document.querySelector('.sources-section')) {
+                renderAskResults(resultsContainer, metadata, answerText, calculations);
             }
-        });
 
-        // Escape HTML
-        // escapeHtml function moved to common.js
-
-        // Load available sources for @ mention hints
-        async function loadSources() {
-            try {
-                const namespace = document.getElementById('askNamespace').value;
-                const response = await fetch(`/api/sources?namespace=${encodeURIComponent(namespace)}`);
-                const data = await response.json();
-
-                if (data.success) {
-                    const sourcesEl = document.getElementById('availableSources');
-                    const folders = data.data.folders.slice(0, 5);
-                    const files = data.data.files.slice(0, 5);
-
-                    let hints = [];
-                    if (folders.length > 0) {
-                        // Extract short folder names
-                        const shortFolders = folders.map(f => {
-                            const parts = f.split('/');
-                            return parts[parts.length - 1];
-                        }).filter(f => f.length > 0).slice(0, 3);
-                        hints.push(...shortFolders.map(f => `@${f}/`));
-                    }
-                    if (files.length > 0) {
-                        // Extract keywords from file names
-                        const keywords = files.map(f => {
-                            // Extract meaningful part from filename
-                            const match = f.match(/_([\uAC00-\uD7AF_]+)\./);
-                            return match ? match[1].split('_').slice(0, 2).join('_') : null;
-                        }).filter(k => k).slice(0, 3);
-                        hints.push(...keywords.map(k => `@${k}`));
-                    }
-
-                    if (hints.length > 0) {
-                        sourcesEl.innerHTML = hints.map(h =>
-                            `<code style="background: rgba(156,39,176,0.2); padding: 2px 6px; border-radius: 4px; margin: 2px;">${h}</code>`
-                        ).join(' ');
-                    } else {
-                        sourcesEl.textContent = '문서 없음';
-                    }
-                }
-            } catch (error) {
-                console.error('Failed to load sources:', error);
-                document.getElementById('availableSources').textContent = '로드 실패';
-            }
+        } catch (error) {
+            console.error('Fetch error:', error);
+            loading.classList.remove('active');
+            showToast('AI 답변 생성 중 오류가 발생했습니다: ' + error.message, 'error');
         }
+    });
 
-        // Reload sources when namespace changes
-        document.getElementById('askNamespace').addEventListener('change', loadSources);
+    // Search functionality
+    document.getElementById('searchForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
 
-        // ========================================
-        // PDF Viewer Modal
-        // ========================================
-        function openPdfViewer(el) {
-            const sourceFile = el.getAttribute('data-source-file');
-            if (!sourceFile) return;
+        const query = document.getElementById('query').value;
+        const namespace = document.getElementById('namespace').value;
+        const topK = document.getElementById('topK').value;
+        const fileType = document.getElementById('fileType').value;
 
-            const modal = document.getElementById('pdfModal');
-            const body = document.getElementById('pdfModalBody');
-            const title = document.getElementById('pdfModalTitle');
+        const loading = document.getElementById('searchLoading');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const emptyState = document.getElementById('emptyState');
 
-            title.textContent = sourceFile.split('/').pop();
-            body.innerHTML = '<div class="pdf-modal-loading">PDF를 찾는 중...</div>';
-            modal.classList.add('active');
+        loading.classList.add('active');
+        resultsContainer.innerHTML = '';
 
-            fetch('/api/pdf/resolve', {
+        try {
+            const response = await fetch('/api/search', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ source_file: sourceFile })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success && data.data.found) {
-                    const pdfUrl = data.data.pdf_url;
-                    try {
-                        const url = new URL(pdfUrl, window.location.origin);
-                        if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-                            body.innerHTML = '<div class="pdf-modal-loading">유효하지 않은 PDF URL입니다.</div>';
-                            return;
+                body: JSON.stringify({ query, namespace, top_k: topK, file_type: fileType, search_mode: currentSearchMode })
+            });
+
+            const data = await response.json();
+
+            loading.classList.remove('active');
+
+            if (data.success) {
+                if (data.data.results.length === 0) {
+                    resultsContainer.innerHTML = `
+                        <div class="empty-state">
+                            <div class="icon">😕</div>
+                            <p>검색 결과가 없습니다</p>
+                        </div>
+                    `;
+                } else {
+                    resultsContainer.innerHTML = `
+                        <div class="results-header">
+                            <h3>검색 결과 (${data.data.count}개)</h3>
+                        </div>
+                    `;
+
+                    const mode = data.data.search_mode || 'vector';
+                    data.data.results.forEach((result, index) => {
+                        const safeFileType = escapeHtml(result.file_type || '');
+                        const typeClass = 'type-' + safeFileType;
+                        const card = document.createElement('div');
+                        card.className = 'result-card';
+
+                        // Build score label based on mode
+                        let scoreLabel = '';
+                        let badgesHtml = '';
+                        if (mode === 'vector') {
+                            scoreLabel = `유사도: ${result.score}`;
+                        } else {
+                            scoreLabel = `RRF: ${result.rrf_score || '-'}`;
+                            const badges = [];
+                            if (result.vector_rank != null) {
+                                badges.push(`<span class="provenance-badge vector">벡터 #${result.vector_rank}</span>`);
+                            }
+                            if (result.bm25_rank != null) {
+                                badges.push(`<span class="provenance-badge bm25">BM25 #${result.bm25_rank}</span>`);
+                            }
+                            if (result.rrf_score != null && result.vector_rank != null && result.bm25_rank != null) {
+                                badges.push(`<span class="provenance-badge rrf">RRF</span>`);
+                            }
+                            badgesHtml = badges.length ? `<div class="provenance-badges">${badges.join('')}</div>` : '';
                         }
-                    } catch (e) {
+
+                        const safeFilename = escapeHtml(result.filename || result.source_file.split('/').pop() || '');
+                        const safeSourceFile = escapeHtml(result.source_file || '');
+                        card.innerHTML = `
+                            <div class="result-header">
+                                <div class="result-meta">
+                                    <span class="${typeClass}">${safeFileType}</span>
+                                    <span>📄 ${safeFilename}</span>
+                                </div>
+                                <div class="result-score">${scoreLabel}</div>
+                            </div>
+                            ${badgesHtml}
+                            <div class="result-meta">
+                                <span title="${safeSourceFile}">📁 ${safeSourceFile}</span>
+                            </div>
+                            <div class="result-content">${escapeHtml(result.content)}</div>
+                        `;
+                        resultsContainer.appendChild(card);
+                    });
+                }
+            } else {
+                showToast(data.error, 'error');
+            }
+        } catch (error) {
+            loading.classList.remove('active');
+            showToast('검색 중 오류가 발생했습니다.', 'error');
+        }
+    });
+
+    // Escape HTML
+    // escapeHtml function moved to common.js
+
+    // Load available sources for @ mention hints
+    async function loadSources() {
+        try {
+            const namespace = document.getElementById('askNamespace').value;
+            const response = await fetch(`/api/sources?namespace=${encodeURIComponent(namespace)}`);
+            const data = await response.json();
+
+            if (data.success) {
+                const sourcesEl = document.getElementById('availableSources');
+                const folders = data.data.folders.slice(0, 5);
+                const files = data.data.files.slice(0, 5);
+
+                let hints = [];
+                if (folders.length > 0) {
+                    // Extract short folder names
+                    const shortFolders = folders.map(f => {
+                        const parts = f.split('/');
+                        return parts[parts.length - 1];
+                    }).filter(f => f.length > 0).slice(0, 3);
+                    hints.push(...shortFolders.map(f => `@${f}/`));
+                }
+                if (files.length > 0) {
+                    // Extract keywords from file names
+                    const keywords = files.map(f => {
+                        // Extract meaningful part from filename
+                        const match = f.match(/_([\uAC00-\uD7AF_]+)\./);
+                        return match ? match[1].split('_').slice(0, 2).join('_') : null;
+                    }).filter(k => k).slice(0, 3);
+                    hints.push(...keywords.map(k => `@${k}`));
+                }
+
+                if (hints.length > 0) {
+                    sourcesEl.innerHTML = hints.map(h =>
+                        `<code style="background: rgba(156,39,176,0.2); padding: 2px 6px; border-radius: 4px; margin: 2px;">${escapeHtml(h)}</code>`
+                    ).join(' ');
+                } else {
+                    sourcesEl.textContent = '문서 없음';
+                }
+            }
+        } catch (error) {
+            console.error('Failed to load sources:', error);
+            document.getElementById('availableSources').textContent = '로드 실패';
+        }
+    }
+
+    // Reload sources when namespace changes
+    document.getElementById('askNamespace').addEventListener('change', loadSources);
+
+    // ========================================
+    // PDF Viewer Modal
+    // ========================================
+    function openPdfViewer(el) {
+        const sourceFile = el.getAttribute('data-source-file');
+        if (!sourceFile) return;
+
+        const modal = document.getElementById('pdfModal');
+        const body = document.getElementById('pdfModalBody');
+        const title = document.getElementById('pdfModalTitle');
+
+        title.textContent = sourceFile.split('/').pop();
+        body.innerHTML = '<div class="pdf-modal-loading">PDF를 찾는 중...</div>';
+        modal.classList.add('active');
+
+        fetch('/api/pdf/resolve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ source_file: sourceFile })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success && data.data.found) {
+                const pdfUrl = data.data.pdf_url;
+                try {
+                    const url = new URL(pdfUrl, window.location.origin);
+                    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
                         body.innerHTML = '<div class="pdf-modal-loading">유효하지 않은 PDF URL입니다.</div>';
                         return;
                     }
-                    title.textContent = data.data.filename || sourceFile.split('/').pop();
-                    const iframe = document.createElement('iframe');
-                    iframe.src = pdfUrl;
-                    body.innerHTML = '';
-                    body.appendChild(iframe);
-                } else {
-                    body.innerHTML = '<div class="pdf-modal-loading">해당 소스 파일의 PDF를 찾을 수 없습니다.</div>';
+                } catch (e) {
+                    body.innerHTML = '<div class="pdf-modal-loading">유효하지 않은 PDF URL입니다.</div>';
+                    return;
                 }
-            })
-            .catch(err => {
-                console.error('PDF resolve error:', err);
-                body.innerHTML = '<div class="pdf-modal-loading">PDF 로드 중 오류가 발생했습니다.</div>';
-            });
-        }
-
-        function closePdfModal() {
-            const modal = document.getElementById('pdfModal');
-            const body = document.getElementById('pdfModalBody');
-            modal.classList.remove('active');
-            // Clear iframe to stop loading
-            body.innerHTML = '';
-        }
-
-        // Close PDF modal on ESC key or overlay click
-        document.getElementById('pdfModal').addEventListener('click', (e) => {
-            if (e.target === e.currentTarget) closePdfModal();
-        });
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                const modal = document.getElementById('pdfModal');
-                if (modal.classList.contains('active')) closePdfModal();
+                title.textContent = data.data.filename || sourceFile.split('/').pop();
+                const iframe = document.createElement('iframe');
+                iframe.src = pdfUrl;
+                iframe.setAttribute('sandbox', 'allow-same-origin allow-scripts');
+                body.innerHTML = '';
+                body.appendChild(iframe);
+            } else {
+                body.innerHTML = '<div class="pdf-modal-loading">해당 소스 파일의 PDF를 찾을 수 없습니다.</div>';
             }
+        })
+        .catch(err => {
+            console.error('PDF resolve error:', err);
+            body.innerHTML = '<div class="pdf-modal-loading">PDF 로드 중 오류가 발생했습니다.</div>';
         });
+    }
 
-        // Initial load
-        loadStats();
-        setTimeout(loadSources, 1000); // Load sources after stats
-    </script>
-</body>
-</html>
+    function closePdfModal() {
+        const modal = document.getElementById('pdfModal');
+        const body = document.getElementById('pdfModalBody');
+        modal.classList.remove('active');
+        // Clear iframe to stop loading
+        body.innerHTML = '';
+    }
+
+    // Close PDF modal on ESC key or overlay click
+    document.getElementById('pdfModal').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) closePdfModal();
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            const modal = document.getElementById('pdfModal');
+            if (modal.classList.contains('active')) closePdfModal();
+        }
+    });
+
+    // Auto-fill search from ?q= URL parameter
+    document.addEventListener('DOMContentLoaded', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const q = urlParams.get('q');
+        if (q) {
+            const askInput = document.getElementById('askQuery');
+            if (askInput) {
+                askInput.value = q;
+                // Switch to AI tab if not already active
+                const aiTab = document.querySelector('[data-tab="ask"]');
+                if (aiTab) aiTab.click();
+                // Focus on input to indicate action needed
+                askInput.focus();
+            }
+        }
+    });
+
+    // Load LLM model info
+    async function loadLlmInfo() {
+        try {
+            const resp = await fetch('/api/v1/llm-info');
+            const data = await resp.json();
+            if (data.success && data.data) {
+                const d = data.data;
+                const provider = escapeHtml(d.answer_provider || '');
+                const model = escapeHtml(d.answer_model || '');
+                const temp = d.answer_temperature || '';
+                const embedding = escapeHtml(d.embedding_model || '');
+                const reranker = escapeHtml(d.reranker_type || '');
+
+                let parts = [];
+                if (provider && model) {
+                    parts.push(`<span class="model-name">${provider} / ${model}</span>`);
+                }
+                if (temp) parts.push(`Temperature ${temp}`);
+                if (embedding) parts.push(`Embedding: ${embedding}`);
+                if (reranker) parts.push(`Reranker: ${reranker}`);
+
+                document.getElementById('llmInfoText').innerHTML = parts.join('<span class="separator">·</span>');
+            }
+        } catch (e) {
+            document.getElementById('llmInfoBar').style.display = 'none';
+        }
+    }
+
+    // Initial load
+    loadStats();
+    loadLlmInfo();
+    setTimeout(loadSources, 1000); // Load sources after stats
+</script>
+{% endblock %}

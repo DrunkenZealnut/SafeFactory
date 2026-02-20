@@ -40,24 +40,82 @@ class ContextOptimizer:
         self,
         openai_api_key: Optional[str] = None,
         similarity_threshold: float = 0.85,
-        model: str = "gpt-4o-mini"
+        model: str = "gpt-4o-mini",
+        provider: str = "openai",
     ):
         """
         Initialize the ContextOptimizer.
 
         Args:
-            openai_api_key: OpenAI API key (optional, for advanced features)
+            openai_api_key: API key for the configured provider (optional)
             similarity_threshold: Threshold for considering content as duplicate
             model: Model for relevance extraction
+            provider: LLM provider ('openai', 'gemini', 'anthropic')
         """
         self.similarity_threshold = similarity_threshold
         self.model = model
+        self.provider = provider
 
-        if openai_api_key:
-            http_client = httpx.Client(verify=certifi.where())
-            self.client = OpenAI(api_key=openai_api_key, http_client=http_client, timeout=60.0)
+        self._has_client = False
+
+        if not openai_api_key:
+            return
+
+        if provider == 'gemini':
+            from google import genai
+            self._gemini = genai.Client(api_key=openai_api_key)
+            self._has_client = True
+        elif provider == 'anthropic':
+            import anthropic
+            self._anthropic = anthropic.Anthropic(api_key=openai_api_key)
+            self._has_client = True
         else:
-            self.client = None
+            self._http_client = httpx.Client(verify=certifi.where())
+            self.client = OpenAI(api_key=openai_api_key, http_client=self._http_client, timeout=60.0)
+            self._has_client = True
+
+    def close(self):
+        """Close the underlying HTTP client."""
+        if hasattr(self, '_http_client'):
+            try:
+                self._http_client.close()
+            except Exception:
+                pass
+
+    def _chat_complete(self, messages, temperature=0.1, max_tokens=500):
+        """Dispatch chat completion to the configured provider."""
+        if self.provider == 'gemini':
+            from google.genai import types
+            system_msg = next((m['content'] for m in messages if m['role'] == 'system'), '')
+            user_msg = next((m['content'] for m in messages if m['role'] == 'user'), '')
+            config = types.GenerateContentConfig(
+                system_instruction=system_msg or None,
+                temperature=temperature,
+                max_output_tokens=max_tokens,
+            )
+            resp = self._gemini.models.generate_content(
+                model=self.model, contents=user_msg, config=config,
+            )
+            return resp.text
+        elif self.provider == 'anthropic':
+            system_msg = next((m['content'] for m in messages if m['role'] == 'system'), '')
+            user_msgs = [m for m in messages if m['role'] != 'system']
+            resp = self._anthropic.messages.create(
+                model=self.model,
+                system=system_msg or None,
+                messages=user_msgs,
+                temperature=temperature,
+                max_tokens=max_tokens,
+            )
+            return resp.content[0].text
+        else:
+            resp = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+            )
+            return resp.choices[0].message.content
 
     def _compute_text_similarity(self, text1: str, text2: str) -> float:
         """
@@ -130,10 +188,10 @@ class ContextOptimizer:
         if not docs:
             return []
 
-        # Sort by score descending to keep highest scored duplicates
+        # Sort by best available score (rerank > combined > rrf > score) to keep highest scored duplicates
         sorted_docs = sorted(
             docs,
-            key=lambda x: x.get('score', 0),
+            key=lambda x: x.get('rerank_score', x.get('combined_score', x.get('rrf_score', x.get('score', 0)))),
             reverse=True
         )
 
@@ -182,7 +240,7 @@ class ContextOptimizer:
         Returns:
             Extracted relevant content
         """
-        if not self.client:
+        if not self._has_client:
             # Fallback: return truncated content
             return doc_content[:1000]
 
@@ -202,14 +260,11 @@ class ContextOptimizer:
 관련 문장들:"""
 
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
+            extracted = self._chat_complete(
+                [{"role": "user", "content": prompt}],
                 temperature=0.1,
-                max_tokens=500
-            )
-
-            extracted = response.choices[0].message.content.strip()
+                max_tokens=500,
+            ).strip()
 
             # If no relevant content found
             if "관련 내용 없음" in extracted or not extracted:
@@ -339,7 +394,7 @@ class ContextOptimizer:
         result = result[:max_docs]
 
         # Step 3: Extract relevant sentences (expensive, optional)
-        if extract_relevant and self.client:
+        if extract_relevant and self._has_client:
             for doc in result:
                 content = doc.get('metadata', {}).get('content', '')
                 if content:

@@ -64,8 +64,8 @@ def load_files(folder_path: str) -> List[ProcessedFile]:
         if not file_path.is_file():
             continue
 
-        # Skip pinecone_agent folder
-        if 'pinecone_agent' in str(file_path):
+        # Skip SafeFactory folder
+        if 'SafeFactory' in str(file_path):
             continue
 
         ext = file_path.suffix.lower()

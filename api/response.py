@@ -7,6 +7,11 @@ from flask import g, jsonify
 API_VERSION = 'v1'
 
 
+def escape_like(value):
+    r"""Escape SQL LIKE wildcard characters (%, _) in user input."""
+    return value.replace('\\', r'\\').replace('%', r'\%').replace('_', r'\_')
+
+
 def _build_meta():
     """Build response meta dict with timestamp, version, and request_id."""
     return {

@@ -2,6 +2,7 @@
 
 import json
 import logging
+import re
 import threading
 from flask import request
 
@@ -99,15 +100,17 @@ def msds_identify():
             return error_response('이미지 데이터가 없습니다.', 400)
 
         # Extract MIME type and remove data URL prefix if present
+        _ALLOWED_MIME = {'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp'}
+        _DATA_URL_RE = re.compile(r'^data:(image/[a-z+]+);base64,', re.IGNORECASE)
         mime_type = "image/jpeg"
-        if ',' in image_data:
-            prefix, image_data = image_data.split(',', 1)
-            if 'png' in prefix:
-                mime_type = "image/png"
-            elif 'gif' in prefix:
-                mime_type = "image/gif"
-            elif 'webp' in prefix:
-                mime_type = "image/webp"
+        m = _DATA_URL_RE.match(image_data)
+        if m:
+            parsed_mime = m.group(1).lower()
+            if parsed_mime in _ALLOWED_MIME:
+                mime_type = parsed_mime
+            image_data = image_data[m.end():]
+        elif ',' in image_data:
+            _, image_data = image_data.split(',', 1)
 
         # Use OpenAI Vision API to identify chemical
         client = get_openai_client()
@@ -151,13 +154,16 @@ def msds_identify():
         msds_client = _get_msds_client()
 
         # If chemical name found, search for it
-        if result.get('chemical_name'):
-            search_word = result['chemical_name']
+        chemical_name = (result.get('chemical_name') or '').strip()
+        cas_no = (result.get('cas_no') or '').strip()
+
+        if chemical_name:
+            search_word = chemical_name
             search_type = 0  # Default to Korean name
 
             # If CAS number is available, use that for search
-            if result.get('cas_no'):
-                search_word = result['cas_no']
+            if cas_no:
+                search_word = cas_no
                 search_type = 1  # CAS number search
 
             # Search in MSDS database

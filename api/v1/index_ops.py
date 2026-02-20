@@ -5,6 +5,7 @@ import os
 from flask import request
 
 from api.v1 import v1_bp
+from api.v1.admin import admin_required
 from api.response import success_response, error_response
 from services.singletons import get_agent, get_uploader
 
@@ -61,44 +62,47 @@ def api_sources():
         namespace = request.args.get('namespace', '')
         agent = get_agent()
 
-        # Use generic queries based on namespace to find documents
-        generic_queries = ["문서", "정보"]
-
-        all_results = []
-        for query in generic_queries:
-            results = agent.search(
-                query=query,
-                top_k=50,
-                namespace=namespace
-            )
-            all_results.extend(results)
-
-        # Deduplicate by source_file
-        seen = set()
-        results = []
-        for r in all_results:
-            source_file = r.get('metadata', {}).get('source_file', '')
-            if source_file and source_file not in seen:
-                seen.add(source_file)
-                results.append(r)
-
         folders = set()
         files = set()
 
-        for r in results:
-            metadata = r.get('metadata', {})
-            source_file = metadata.get('source_file', '')
-            filename = metadata.get('filename', '')
+        # Primary: use SQLite metadata for a complete source list
+        if agent.metadata_manager:
+            records = agent.metadata_manager.get_all_metadata(
+                namespace=namespace or None,
+            )
+            for rec in records:
+                source_file = rec.get('source_file', '')
+                if source_file:
+                    # Extract filename from path
+                    fname = source_file.rsplit('/', 1)[-1] if '/' in source_file else source_file
+                    if fname:
+                        files.add(fname)
+                    parts = source_file.split('/')
+                    for i in range(1, len(parts)):
+                        folder = '/'.join(parts[:i])
+                        if folder:
+                            folders.add(folder)
 
-            if filename:
-                files.add(filename)
+        # Fallback: vector search if metadata unavailable or returned nothing
+        if not files:
+            all_results = []
+            for query in ["문서", "정보"]:
+                results = agent.search(query=query, top_k=50, namespace=namespace)
+                all_results.extend(results)
 
-            if source_file:
-                parts = source_file.split('/')
-                for i in range(1, len(parts)):
-                    folder = '/'.join(parts[:i])
-                    if folder:
-                        folders.add(folder)
+            seen = set()
+            for r in all_results:
+                source_file = r.get('metadata', {}).get('source_file', '')
+                if source_file and source_file not in seen:
+                    seen.add(source_file)
+                    filename = r.get('metadata', {}).get('filename', '')
+                    if filename:
+                        files.add(filename)
+                    parts = source_file.split('/')
+                    for i in range(1, len(parts)):
+                        folder = '/'.join(parts[:i])
+                        if folder:
+                            folders.add(folder)
 
         return success_response(data={
             'folders': sorted(folders),
@@ -110,6 +114,7 @@ def api_sources():
 
 
 @v1_bp.route('/delete', methods=['POST'])
+@admin_required
 def api_delete():
     """Delete vectors."""
     try:

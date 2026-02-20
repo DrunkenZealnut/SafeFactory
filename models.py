@@ -8,6 +8,7 @@ import threading
 from datetime import datetime, timezone
 
 from cryptography.fernet import Fernet, InvalidToken
+from sqlalchemy.exc import IntegrityError
 from urllib.parse import urlparse
 
 from flask_login import UserMixin
@@ -16,7 +17,7 @@ from flask_sqlalchemy import SQLAlchemy
 db = SQLAlchemy()
 
 
-def _safe_image_url(url):
+def _safe_url(url):
     """Return URL only if scheme is http or https, else None."""
     if url and urlparse(url).scheme in ('http', 'https'):
         return url
@@ -100,7 +101,7 @@ class User(db.Model, UserMixin):
             'id': self.id,
             'email': self.email,
             'name': self.name,
-            'profile_image': _safe_image_url(self.profile_image),
+            'profile_image': _safe_url(self.profile_image),
             'role': self.role,
             'is_active': self.is_active,
             'created_at': self.created_at.isoformat() if self.created_at else None,
@@ -126,6 +127,11 @@ class SocialAccount(db.Model):
     _access_token = db.Column('access_token', db.Text, nullable=True)
     _refresh_token = db.Column('refresh_token', db.Text, nullable=True)
     token_expires_at = db.Column(db.DateTime, nullable=True)
+    provider_data = db.Column(db.JSON, nullable=True)
+    created_at = db.Column(
+        db.DateTime, nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
 
     @property
     def access_token(self):
@@ -142,11 +148,6 @@ class SocialAccount(db.Model):
     @refresh_token.setter
     def refresh_token(self, value):
         self._refresh_token = encrypt_token(value)
-    provider_data = db.Column(db.JSON, nullable=True)
-    created_at = db.Column(
-        db.DateTime, nullable=False,
-        default=lambda: datetime.now(timezone.utc),
-    )
 
     user = db.relationship('User', back_populates='social_accounts')
 
@@ -235,19 +236,19 @@ class Post(db.Model):
     def comment_count(self):
         return self.comments.filter_by(is_deleted=False).count()
 
-    def to_dict(self, include_content=False):
+    def to_dict(self, include_content=False, _like_count=None, _comment_count=None):
         d = {
             'id': self.id,
             'category': self.category.to_dict() if self.category else None,
             'author': {
                 'id': self.author.id,
                 'name': self.author.name,
-                'profile_image': _safe_image_url(self.author.profile_image),
+                'profile_image': _safe_url(self.author.profile_image),
             } if self.author else None,
             'title': self.title,
             'view_count': self.view_count,
-            'like_count': self.like_count,
-            'comment_count': self.comment_count,
+            'like_count': _like_count if _like_count is not None else self.like_count,
+            'comment_count': _comment_count if _comment_count is not None else self.comment_count,
             'is_pinned': self.is_pinned,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
@@ -335,28 +336,27 @@ class Comment(db.Model):
 
     MAX_REPLY_DEPTH = 5
 
-    def to_dict(self, _depth=0):
+    def to_dict(self, _depth=0, include_replies=False):
         d = {
             'id': self.id,
             'post_id': self.post_id,
             'author': {
                 'id': self.author.id,
                 'name': self.author.name,
-                'profile_image': _safe_image_url(self.author.profile_image),
+                'profile_image': _safe_url(self.author.profile_image),
             } if self.author else None,
             'parent_id': self.parent_id,
             'content': self.content if not self.is_deleted else '삭제된 댓글입니다.',
             'is_deleted': self.is_deleted,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'replies': [],
         }
-        if _depth < self.MAX_REPLY_DEPTH:
+        if include_replies and _depth < self.MAX_REPLY_DEPTH:
             d['replies'] = [
-                r.to_dict(_depth=_depth + 1)
+                r.to_dict(_depth=_depth + 1, include_replies=include_replies)
                 for r in self.replies.filter_by(is_deleted=False).all()
             ]
-        else:
-            d['replies'] = []
         return d
 
 
@@ -499,3 +499,176 @@ class AdminLog(db.Model):
             'details': self.details,
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }
+
+
+# ---------------------------------------------------------------------------
+# System settings
+# ---------------------------------------------------------------------------
+
+class SystemSetting(db.Model):
+    """Key-value store for system configuration (admin-managed)."""
+
+    __tablename__ = 'system_settings'
+
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(100), unique=True, nullable=False, index=True)
+    value = db.Column(db.String(500), nullable=False)
+    description = db.Column(db.String(200), nullable=True)
+    category = db.Column(db.String(50), nullable=False, default='general')
+    updated_at = db.Column(db.DateTime, nullable=True)
+    updated_by = db.Column(
+        db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True,
+    )
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'key': self.key,
+            'value': self.value,
+            'description': self.description,
+            'category': self.category,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+def seed_system_settings():
+    """Insert default system settings if table is empty."""
+    if SystemSetting.query.first() is not None:
+        return
+    defaults = [
+        SystemSetting(
+            key='llm_answer_model', value='gpt-4o-mini',
+            description='답변 생성 모델', category='llm',
+        ),
+        SystemSetting(
+            key='llm_answer_provider', value='openai',
+            description='답변 생성 LLM 제공자', category='llm',
+        ),
+        SystemSetting(
+            key='llm_answer_temperature', value='0.3',
+            description='답변 생성 온도 (0.0~1.0)', category='llm',
+        ),
+        SystemSetting(
+            key='llm_query_model', value='gpt-4o-mini',
+            description='쿼리 강화 모델', category='llm',
+        ),
+        SystemSetting(
+            key='llm_query_provider', value='openai',
+            description='쿼리 강화 LLM 제공자', category='llm',
+        ),
+        SystemSetting(
+            key='llm_context_model', value='gpt-4o-mini',
+            description='컨텍스트 최적화 모델', category='llm',
+        ),
+        SystemSetting(
+            key='llm_context_provider', value='openai',
+            description='컨텍스트 최적화 LLM 제공자', category='llm',
+        ),
+        SystemSetting(
+            key='embedding_model', value='text-embedding-3-small',
+            description='임베딩 모델', category='embedding',
+        ),
+        SystemSetting(
+            key='reranker_type', value='pinecone',
+            description='리랭커 유형 (pinecone/local/lightweight)', category='reranker',
+        ),
+    ]
+    try:
+        db.session.add_all(defaults)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logging.warning("Failed to seed system settings: %s", e)
+
+
+def ensure_provider_settings():
+    """Add provider settings if they don't exist yet (safe for existing DBs)."""
+    new_keys = [
+        ('llm_answer_provider', 'openai', '답변 생성 LLM 제공자', 'llm'),
+        ('llm_query_provider', 'openai', '쿼리 강화 LLM 제공자', 'llm'),
+        ('llm_context_provider', 'openai', '컨텍스트 최적화 LLM 제공자', 'llm'),
+    ]
+    for key, value, desc, category in new_keys:
+        if not SystemSetting.query.filter_by(key=key).first():
+            try:
+                db.session.add(SystemSetting(
+                    key=key, value=value, description=desc, category=category,
+                ))
+                db.session.commit()
+            except IntegrityError:
+                db.session.rollback()  # another worker already inserted
+            except Exception as e:
+                db.session.rollback()
+                logging.warning("Failed to ensure provider setting %s: %s", key, e)
+
+
+# ---------------------------------------------------------------------------
+# News models
+# ---------------------------------------------------------------------------
+
+class NewsArticle(db.Model):
+    """Labor safety news article (admin-curated)."""
+
+    __tablename__ = 'news_articles'
+    __table_args__ = (
+        db.Index('ix_news_published', 'published_at'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(300), nullable=False)
+    summary = db.Column(db.String(500), nullable=True)
+    content = db.Column(db.Text, nullable=False)
+    category = db.Column(db.String(50), nullable=False, default='general')
+    source_name = db.Column(db.String(100), nullable=True)
+    source_url = db.Column(db.String(500), nullable=True)
+    source_image = db.Column(db.String(2000), nullable=True)
+    view_count = db.Column(db.Integer, nullable=False, default=0)
+    is_published = db.Column(db.Boolean, nullable=False, default=True)
+    author_id = db.Column(
+        db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True,
+    )
+    published_at = db.Column(
+        db.DateTime, nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+    created_at = db.Column(
+        db.DateTime, nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+    updated_at = db.Column(
+        db.DateTime, nullable=True,
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    author = db.relationship('User', foreign_keys=[author_id])
+
+    CATEGORIES = {
+        'accident': '산재사고',
+        'regulation': '법령개정',
+        'policy': '정책동향',
+        'technology': '안전기술',
+        'general': '일반',
+    }
+
+    def to_dict(self, include_content=False):
+        d = {
+            'id': self.id,
+            'title': self.title,
+            'summary': self.summary,
+            'category': self.category,
+            'category_label': self.CATEGORIES.get(self.category, self.category),
+            'source_name': self.source_name,
+            'source_url': _safe_url(self.source_url),
+            'source_image': _safe_url(self.source_image),
+            'view_count': self.view_count,
+            'is_published': self.is_published,
+            'author': {
+                'id': self.author.id,
+                'name': self.author.name,
+            } if self.author else None,
+            'published_at': self.published_at.isoformat() if self.published_at else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+        if include_content:
+            d['content'] = self.content
+        return d

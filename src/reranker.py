@@ -58,7 +58,7 @@ class Reranker:
                     max_length=max_length,
                     device=device
                 )
-                logging.info(f"Loaded cross-encoder model: {model_path}")
+                logging.info("Loaded cross-encoder model: %s", model_path)
             except Exception as e:
                 logging.error("Failed to load cross-encoder model: %s", e)
                 self.model = None
@@ -292,6 +292,9 @@ class PineconeReranker:
             reranked = []
             for item in result.data:
                 idx = item['index']
+                if idx >= len(docs):
+                    logging.warning("Pinecone rerank returned out-of-range index %d (len=%d)", idx, len(docs))
+                    continue
                 doc = docs[idx].copy() if isinstance(docs[idx], dict) else dict(docs[idx])
                 doc['rerank_score'] = float(item['score'])
                 doc['original_score'] = doc.get('score', 0)
@@ -313,7 +316,7 @@ class PineconeReranker:
     ) -> List[Dict[str, Any]]:
         """Combine Pinecone rerank scores with original retrieval scores."""
         reranked = self.rerank(query, docs, top_k=len(docs))
-        if not reranked or not any(d.get('rerank_score') for d in reranked):
+        if not reranked or not any(d.get('rerank_score') is not None for d in reranked):
             return reranked[:top_k]
 
         rerank_scores = [d.get('rerank_score', 0) for d in reranked]
@@ -395,6 +398,21 @@ class LightweightReranker:
         sorted_docs = sorted(docs, key=lambda x: x.get('combined_score', 0), reverse=True)
 
         return sorted_docs[:top_k]
+
+    def hybrid_rerank(
+        self,
+        query: str,
+        docs: List[Dict[str, Any]],
+        top_k: int = 10,
+        rerank_weight: float = 0.7,  # noqa: ARG002 - unused, for interface consistency
+        original_weight: float = 0.3  # noqa: ARG002 - unused, for interface consistency
+    ) -> List[Dict[str, Any]]:
+        """Alias for rerank() since LightweightReranker already combines scores.
+
+        Note: rerank_weight and original_weight are ignored; this class uses
+        fixed weights (0.6 original, 0.4 keyword) in rerank().
+        """
+        return self.rerank(query, docs, top_k)
 
 
 def get_reranker(

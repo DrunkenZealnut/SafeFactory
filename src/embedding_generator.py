@@ -49,8 +49,8 @@ class EmbeddingGenerator:
             dimensions: Custom dimensions (only for text-embedding-3 models)
         """
         # Create httpx client with explicit SSL certificate verification
-        http_client = httpx.Client(verify=certifi.where())
-        self.client = OpenAI(api_key=api_key, http_client=http_client, timeout=60.0)
+        self._http_client = httpx.Client(verify=certifi.where())
+        self.client = OpenAI(api_key=api_key, http_client=self._http_client, timeout=60.0)
         self.model = model
 
         if model not in self.MODELS:
@@ -61,6 +61,14 @@ class EmbeddingGenerator:
             self.dimensions = min(dimensions, self.MODELS[model])
         else:
             self.dimensions = self.MODELS[model]
+
+    def close(self):
+        """Close the underlying HTTP client."""
+        if hasattr(self, '_http_client'):
+            try:
+                self._http_client.close()
+            except Exception:
+                pass
 
     def generate(self, text: str) -> EmbeddingResult:
         """

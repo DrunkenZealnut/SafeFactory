@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pinecone Agent - AI 문서 검색</title>
-    <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"
-            integrity="sha384-dlfOVA+h/Yh4/i1P9xeBOpVqnMhTFPRzTg4xDFlDkPlf7qWwUou3scIafSGeqifq"
+    <title>SafeFactory - AI 문서 검색</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked@17.0.2/lib/marked.umd.js"
+            integrity="sha384-HQ7B/VBz5B0fo8GBiEFD/BZsAVXM9iDzC+hpeY1M1cpYezmRrwJSQh5MkTEI8G/H"
             crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"
-            integrity="sha384-QOwafhd4fG/SoT0YXgHQTcFT/kV7YBfTMBjb5WkYqszQdPkrU5VIYAgdUwsAqjsV"
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.3.1/dist/purify.min.js"
+            integrity="sha384-80VlBZnyAwkkqtSfg5NhPyZff6nU4K/qniLBL8Jnm4KDv6jZhLiYtJbhglg/i9ww"
             crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"
             integrity="sha384-IIdvx9utVbG20X/hvcHPpj9PRjgL4mWPUIR56BAmP74jVU1NmVh0bqKLOZMvGIc7"
             crossorigin="anonymous"></script>
-    <script src="/static/js/common.js"></script>
+    <script defer src="/static/js/common.js"></script>
     <style>
         * {
             margin: 0;
@@ -1056,6 +1056,7 @@
     </div>
 
     <script>
+
         // Active chart instances for cleanup
         let activeCharts = [];
 
@@ -1093,7 +1094,16 @@
 
                 if (data.success) {
                     document.getElementById('totalVectors').textContent = data.data.total_vectors.toLocaleString();
-                    document.getElementById('namespaceCount').textContent = data.data.namespaces.length;
+                    const namespaces = Array.isArray(data.data.namespaces)
+                        ? data.data.namespaces.map(ns => ({
+                            name: ns.name || ns.namespace || '',
+                            vector_count: ns.vector_count || 0
+                        }))
+                        : Object.entries(data.data.namespaces || {}).map(([name, info]) => ({
+                            name, vector_count: info.vector_count || 0
+                        }));
+
+                    document.getElementById('namespaceCount').textContent = namespaces.length;
                     document.getElementById('dimension').textContent = data.data.dimension;
                     document.getElementById('indexName').textContent = data.data.index_name;
 
@@ -1104,14 +1114,14 @@
                     // Find namespace with most vectors for auto-selection
                     let maxVectorsNs = null;
                     let maxVectors = 0;
-                    data.data.namespaces.forEach(ns => {
+                    namespaces.forEach(ns => {
                         if (ns.vector_count > maxVectors) {
                             maxVectors = ns.vector_count;
                             maxVectorsNs = ns.name === '(기본)' ? '' : ns.name;
                         }
                     });
 
-                    const totalVectorCount = data.data.namespaces.reduce((sum, ns) => sum + ns.vector_count, 0);
+                    const totalVectorCount = namespaces.reduce((sum, ns) => sum + ns.vector_count, 0);
 
                     selects.forEach(selectId => {
                         const select = document.getElementById(selectId);
@@ -1121,14 +1131,14 @@
                             select.appendChild(firstOption);
 
                             // Add "전체" (All namespaces) option for ask/search selects
-                            if (selectId !== 'deleteNamespace' && data.data.namespaces.length > 1) {
+                            if (selectId !== 'deleteNamespace' && namespaces.length > 1) {
                                 const allOption = document.createElement('option');
                                 allOption.value = 'all';
                                 allOption.textContent = `🔍 전체 검색 (${totalVectorCount.toLocaleString()}개)`;
                                 select.appendChild(allOption);
                             }
 
-                            data.data.namespaces.forEach(ns => {
+                            namespaces.forEach(ns => {
                                 const option = document.createElement('option');
                                 option.value = ns.name === '(기본)' ? '' : ns.name;
                                 option.textContent = `${ns.name} (${ns.vector_count.toLocaleString()}개)`;
@@ -1143,11 +1153,11 @@
                     });
 
                     namespaceList.innerHTML = '';
-                    data.data.namespaces.forEach(ns => {
+                    namespaces.forEach(ns => {
                         const tag = document.createElement('div');
                         tag.className = 'namespace-tag';
                         tag.innerHTML = `
-                            <span>${ns.name}</span>
+                            <span>${escapeHtml(ns.name || '')}</span>
                             <span class="count">${ns.vector_count.toLocaleString()}개</span>
                         `;
                         namespaceList.appendChild(tag);
@@ -1172,7 +1182,7 @@
             const { cleanAnswer, charts } = extractChartData(answerText);
 
             // Convert citation numbers [1], [2] to clickable links
-            let answerHtml = DOMPurify.sanitize(marked.parse(cleanAnswer));
+            let answerHtml = renderMarkdown(cleanAnswer);
             answerHtml = answerHtml.replace(/\[(\d+)\]/g, '<a href="#source-$1" class="citation" data-source="$1">[$1]</a>');
 
             let html = `
@@ -1345,7 +1355,7 @@
                                 // Update streaming content
                                 const contentEl = document.getElementById('aiAnswerContent');
                                 if (contentEl) {
-                                    contentEl.innerHTML = DOMPurify.sanitize(marked.parse(answerText)) + '<span class="streaming-cursor">▌</span>';
+                                    contentEl.innerHTML = renderMarkdown(answerText) + '<span class="streaming-cursor">▌</span>';
                                 }
                             } else if (event.type === 'done') {
                                 if (event.data && event.data.calculations) {
@@ -1424,19 +1434,22 @@
                         `;
 
                         data.data.results.forEach((result, index) => {
-                            const typeClass = 'type-' + result.file_type;
+                            const safeFileType = escapeHtml(result.file_type || '');
+                            const typeClass = 'type-' + safeFileType;
                             const card = document.createElement('div');
                             card.className = 'result-card';
+                            const safeFilename = escapeHtml(result.filename || result.source_file.split('/').pop() || '');
+                            const safeSourceFile = escapeHtml(result.source_file || '');
                             card.innerHTML = `
                                 <div class="result-header">
                                     <div class="result-meta">
-                                        <span class="${typeClass}">${result.file_type}</span>
-                                        <span>📄 ${result.filename || result.source_file.split('/').pop()}</span>
+                                        <span class="${typeClass}">${safeFileType}</span>
+                                        <span>📄 ${safeFilename}</span>
                                     </div>
                                     <div class="result-score">유사도: ${result.score}</div>
                                 </div>
                                 <div class="result-meta">
-                                    <span title="${result.source_file}">📁 ${result.source_file}</span>
+                                    <span title="${safeSourceFile}">📁 ${safeSourceFile}</span>
                                 </div>
                                 <div class="result-content">${escapeHtml(result.content)}</div>
                             `;
@@ -1525,7 +1538,7 @@
 
                     if (hints.length > 0) {
                         sourcesEl.innerHTML = hints.map(h =>
-                            `<code style="background: rgba(156,39,176,0.2); padding: 2px 6px; border-radius: 4px; margin: 2px;">${h}</code>`
+                            `<code style="background: rgba(156,39,176,0.2); padding: 2px 6px; border-radius: 4px; margin: 2px;">${escapeHtml(h)}</code>`
                         ).join(' ');
                     } else {
                         sourcesEl.textContent = '문서 없음';

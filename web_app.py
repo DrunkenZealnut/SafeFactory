@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """
-Pinecone Agent Web Interface
+SafeFactory Web Interface
 Flask-based web UI for Pinecone vector database operations with RAG support.
 """
 
 # SSL Certificate configuration (must be done before importing httpx/urllib3)
+import atexit
 import os
 import certifi
 os.environ['SSL_CERT_FILE'] = certifi.where()
@@ -15,8 +16,9 @@ import unicodedata
 from datetime import datetime, timezone
 from urllib.parse import urlparse, urljoin
 
-from flask import Flask, flash, redirect, render_template, request, send_from_directory, url_for
+from flask import Flask, abort, flash, redirect, render_template, request, send_from_directory, url_for
 from flask_login import LoginManager, current_user, login_required, login_user, logout_user
+from sqlalchemy.exc import IntegrityError
 from flask_wtf.csrf import CSRFProtect
 from dotenv import load_dotenv
 
@@ -26,10 +28,11 @@ load_dotenv()
 app = Flask(__name__)
 secret_key = os.getenv('SECRET_KEY')
 if not secret_key:
-    if os.getenv('FLASK_ENV') == 'production':
+    if os.getenv('FLASK_ENV') in ('production', 'prod'):
         raise ValueError('SECRET_KEY must be set in production')
-    secret_key = 'dev-only-insecure-key'
-    logging.warning('Using insecure development SECRET_KEY')
+    import secrets
+    secret_key = secrets.token_hex(32)
+    app.logger.warning('SECRET_KEY not set — using random key (sessions will reset on restart)')
 app.config['SECRET_KEY'] = secret_key
 
 # ========================================
@@ -43,8 +46,9 @@ csrf = CSRFProtect(app)
 basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'instance', 'app.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB request limit
 
-from models import db, User, SocialAccount, seed_categories
+from models import db, User, SocialAccount, seed_categories, seed_system_settings, ensure_provider_settings
 db.init_app(app)
 
 # ========================================
@@ -83,6 +87,12 @@ with app.app_context():
     os.makedirs(os.path.join(basedir, 'instance'), exist_ok=True)
     db.create_all()
     seed_categories()
+    seed_system_settings()
+    ensure_provider_settings()
+
+# Register explicit shutdown for singleton httpx clients
+from services.singletons import shutdown_all
+atexit.register(shutdown_all)
 
 
 # ========================================
@@ -92,6 +102,9 @@ with app.app_context():
 def _is_safe_redirect(target):
     """Validate that redirect target is same-origin (prevents open redirect)."""
     if not target:
+        return False
+    # Reject protocol-relative URLs and backslash tricks
+    if target.startswith('//') or target.startswith('\\'):
         return False
     ref_url = urlparse(request.host_url)
     test_url = urlparse(urljoin(request.host_url, target))
@@ -134,15 +147,30 @@ def _handle_oauth_callback(provider, user_info):
 
         # Upgrade placeholder email when a real one becomes available
         if real_email and user.email.endswith('@oauth.local'):
-            existing_by_email = User.query.filter_by(email=real_email).first()
-            if existing_by_email and existing_by_email.id != user.id:
-                # Merge: move social accounts to the real-email user, delete placeholder
-                for sa in user.social_accounts:
-                    sa.user_id = existing_by_email.id
-                db.session.delete(user)
-                user = existing_by_email
-            else:
-                user.email = real_email
+            try:
+                existing_by_email = User.query.filter_by(email=real_email).first()
+                if existing_by_email and existing_by_email.id != user.id:
+                    # Merge: move social accounts to the real-email user, delete placeholder
+                    for sa in user.social_accounts:
+                        sa.user_id = existing_by_email.id
+                    db.session.delete(user)
+                    db.session.flush()
+                    user = existing_by_email
+                else:
+                    user.email = real_email
+                    db.session.flush()
+            except IntegrityError:
+                db.session.rollback()
+                # Re-query both after rollback to get fresh state
+                social = SocialAccount.query.filter_by(
+                    provider=provider, provider_user_id=provider_user_id,
+                ).first()
+                user = User.query.filter_by(email=real_email).first() \
+                    or (social.user if social else None)
+                if not user:
+                    logging.error('OAuth merge failed: no user found after rollback')
+                    flash('로그인 처리 중 오류가 발생했습니다. 다시 시도해주세요.')
+                    return redirect(url_for('login'))
     else:
         # Find existing user by email or create new
         user = User.query.filter_by(email=email).first()
@@ -279,7 +307,7 @@ def logout():
 @app.route('/')
 def home():
     """Home page with domain selection (public)."""
-    return render_template('home.html')
+    return render_template('home.html', domains=DOMAIN_CONFIG)
 
 
 @app.route('/mypage')
@@ -331,6 +359,12 @@ def community():
     return render_template('community.html')
 
 
+@app.route('/news')
+def news():
+    """Labor safety news board page."""
+    return render_template('news.html')
+
+
 @app.route('/admin')
 @login_required
 def admin_page():
@@ -352,6 +386,17 @@ def serve_document(filepath):
         full_path_nfd = DOCUMENTS_PATH / filepath_nfd
         if full_path_nfd.exists():
             filepath = filepath_nfd
+            full_path = full_path_nfd
+
+    # Prevent symlink traversal outside DOCUMENTS_PATH
+    try:
+        resolved = full_path.resolve()
+        docs_resolved = DOCUMENTS_PATH.resolve()
+        if not str(resolved).startswith(str(docs_resolved) + os.sep) and resolved != docs_resolved:
+            abort(403)
+    except (OSError, ValueError):
+        abort(403)
+
     return send_from_directory(DOCUMENTS_PATH, filepath)
 
 
@@ -364,10 +409,10 @@ if __name__ == '__main__':
         print("Error: PINECONE_API_KEY not set")
         exit(1)
 
-    print("\U0001f680 Pinecone Agent Web Interface")
+    print("\U0001f680 SafeFactory Web Interface")
     print("=" * 40)
     print(f"Index: {os.getenv('PINECONE_INDEX_NAME', 'document-index')}")
     print("=" * 40)
     print("\n\U0001f310 http://localhost:5001 에서 접속하세요\n")
 
-    app.run(debug=True, host='0.0.0.0', port=5001)
+    app.run(debug=True, host='127.0.0.1', port=5001)

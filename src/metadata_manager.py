@@ -1,5 +1,5 @@
 """
-Metadata Manager for Pinecone Agent
+Metadata Manager for SafeFactory
 Manages metadata storage in SQLite database for tracking uploaded files.
 Uses the same instance/app.db as the web application.
 """
@@ -12,7 +12,7 @@ import sqlite3
 import threading
 import weakref
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict, Optional
 from pathlib import Path
 
@@ -67,10 +67,27 @@ class MetadataManager:
             conn.rollback()
             raise
 
+    def _migrate_table_name(self):
+        """Migrate old 'pinecone_agent' table to 'safe_factory' if needed."""
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='pinecone_agent'")
+                if cursor.fetchone():
+                    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='safe_factory'")
+                    if not cursor.fetchone():
+                        cursor.execute("ALTER TABLE pinecone_agent RENAME TO safe_factory")
+                        conn.commit()
+                        print("\u2713 Migrated table 'pinecone_agent' → 'safe_factory'")
+        except Exception as e:
+            print(f"\u2717 Failed to migrate table: {e}")
+
     def create_table_if_not_exists(self):
-        """Create pinecone_agent table if it doesn't exist."""
+        """Create safe_factory table if it doesn't exist."""
+        self._migrate_table_name()
+
         create_table_sql = """
-        CREATE TABLE IF NOT EXISTS pinecone_agent (
+        CREATE TABLE IF NOT EXISTS safe_factory (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             namespace TEXT NOT NULL,
             source_file TEXT NOT NULL,
@@ -91,10 +108,10 @@ class MetadataManager:
         """
 
         create_index_sqls = [
-            "CREATE INDEX IF NOT EXISTS idx_pa_namespace ON pinecone_agent(namespace);",
-            "CREATE INDEX IF NOT EXISTS idx_pa_source_file ON pinecone_agent(source_file);",
-            "CREATE INDEX IF NOT EXISTS idx_pa_file_hash ON pinecone_agent(file_hash);",
-            "CREATE INDEX IF NOT EXISTS idx_pa_status ON pinecone_agent(status);",
+            "CREATE INDEX IF NOT EXISTS idx_sf_namespace ON safe_factory(namespace);",
+            "CREATE INDEX IF NOT EXISTS idx_sf_source_file ON safe_factory(source_file);",
+            "CREATE INDEX IF NOT EXISTS idx_sf_file_hash ON safe_factory(file_hash);",
+            "CREATE INDEX IF NOT EXISTS idx_sf_status ON safe_factory(status);",
         ]
 
         try:
@@ -104,7 +121,7 @@ class MetadataManager:
                 for idx_sql in create_index_sqls:
                     cursor.execute(idx_sql)
                 conn.commit()
-            print("\u2713 Table 'pinecone_agent' is ready")
+            print("\u2713 Table 'safe_factory' is ready")
         except Exception as e:
             print(f"\u2717 Failed to create table: {e}")
 
@@ -132,7 +149,7 @@ class MetadataManager:
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
-                sql = "SELECT * FROM pinecone_agent WHERE namespace = ? AND source_file = ?"
+                sql = "SELECT * FROM safe_factory WHERE namespace = ? AND source_file = ?"
                 cursor.execute(sql, (namespace, source_file))
                 return self._row_to_dict(cursor.fetchone())
         except Exception as e:
@@ -167,18 +184,18 @@ class MetadataManager:
         if file_size is None:
             file_size = os.path.getsize(file_path) if os.path.exists(file_path) else 0
         last_modified = (
-            datetime.fromtimestamp(os.path.getmtime(file_path)).isoformat()
+            datetime.fromtimestamp(os.path.getmtime(file_path), tz=timezone.utc).isoformat()
             if os.path.exists(file_path) else None
         )
-        upload_date = datetime.now().isoformat() if status == 'completed' else None
+        upload_date = datetime.now(timezone.utc).isoformat() if status == 'completed' else None
         vector_ids_json = json.dumps(vector_ids) if vector_ids else None
-        now = datetime.now().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
 
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
                 sql = """
-                INSERT INTO pinecone_agent
+                INSERT INTO safe_factory
                     (namespace, source_file, file_type, file_hash, file_size,
                      chunk_count, vector_count, vector_ids, upload_date,
                      last_modified, status, error_message, created_at, updated_at)
@@ -213,10 +230,10 @@ class MetadataManager:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
                 if namespace:
-                    sql = "SELECT * FROM pinecone_agent WHERE namespace = ? ORDER BY upload_date DESC"
+                    sql = "SELECT * FROM safe_factory WHERE namespace = ? ORDER BY upload_date DESC"
                     cursor.execute(sql, (namespace,))
                 else:
-                    sql = "SELECT * FROM pinecone_agent ORDER BY upload_date DESC"
+                    sql = "SELECT * FROM safe_factory ORDER BY upload_date DESC"
                     cursor.execute(sql)
                 return [self._row_to_dict(row) for row in cursor.fetchall()]
         except Exception as e:
@@ -237,7 +254,7 @@ class MetadataManager:
                         COALESCE(SUM(file_size), 0) as total_size,
                         COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed,
                         COUNT(CASE WHEN status = 'failed' THEN 1 END) as failed
-                    FROM pinecone_agent WHERE namespace = ?
+                    FROM safe_factory WHERE namespace = ?
                     """
                     cursor.execute(sql, (namespace,))
                 else:
@@ -249,7 +266,7 @@ class MetadataManager:
                         COALESCE(SUM(file_size), 0) as total_size,
                         COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed,
                         COUNT(CASE WHEN status = 'failed' THEN 1 END) as failed
-                    FROM pinecone_agent
+                    FROM safe_factory
                     """
                     cursor.execute(sql)
                 result = cursor.fetchone()
@@ -263,7 +280,7 @@ class MetadataManager:
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
-                sql = "DELETE FROM pinecone_agent WHERE namespace = ? AND source_file = ?"
+                sql = "DELETE FROM safe_factory WHERE namespace = ? AND source_file = ?"
                 cursor.execute(sql, (namespace, source_file))
                 conn.commit()
             return True

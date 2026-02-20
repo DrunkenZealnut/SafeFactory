@@ -207,11 +207,14 @@ def build_domain_filter(query: str, namespace: str) -> Optional[dict]:
 
 def parse_mentions(query):
     """Parse @mentions from query and return (clean_query, filters)."""
-    mentions = re.findall(r'@([^\s@]+)', query)
-    clean_query = re.sub(r'@[^\s@]+', '', query).strip()
+    # Allow alphanumeric, Korean, underscore, hyphen, dot, slash
+    mentions = re.findall(r'@([\w가-힣._/-]+)', query)
+    clean_query = re.sub(r'@[\w가-힣._/-]+', '', query).strip()
 
     filters = []
     for mention in mentions:
+        if '..' in mention or mention.startswith('/'):
+            continue
         if mention.endswith('/'):
             filters.append({'type': 'folder', 'value': mention.rstrip('/')})
         elif '.' in mention:
@@ -223,6 +226,25 @@ def parse_mentions(query):
 
 
 def build_source_filter(filters):
-    """Build Pinecone filter from parsed mentions (post-filtering only)."""
-    # TODO: Implement source filtering logic based on parsed @mention filters
-    return None
+    """Build Pinecone metadata filter from parsed @mention filters.
+
+    Pinecone supports $eq, $in, $and, $or (no regex). This builds an $or
+    filter for file/keyword mentions where possible.
+    """
+    if not filters:
+        return None
+
+    conditions = []
+    for f in filters:
+        if f['type'] == 'file':
+            conditions.append({'filename': {'$eq': f['value']}})
+        elif f['type'] == 'folder':
+            conditions.append({'source_file': {'$eq': f['value']}})
+        elif f['type'] == 'keyword':
+            conditions.append({'source_file': {'$eq': f['value']}})
+
+    if not conditions:
+        return None
+    if len(conditions) == 1:
+        return conditions[0]
+    return {'$or': conditions}

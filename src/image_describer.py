@@ -42,10 +42,18 @@ class ImageDescriber:
             max_tokens: Maximum tokens for the response
         """
         # Create httpx client with explicit SSL certificate verification
-        http_client = httpx.Client(verify=certifi.where())
-        self.client = OpenAI(api_key=api_key, http_client=http_client, timeout=60.0)
+        self._http_client = httpx.Client(verify=certifi.where())
+        self.client = OpenAI(api_key=api_key, http_client=self._http_client, timeout=60.0)
         self.model = model
         self.max_tokens = max_tokens
+
+    def close(self):
+        """Close the underlying HTTP client."""
+        if hasattr(self, '_http_client'):
+            try:
+                self._http_client.close()
+            except Exception:
+                pass
 
     def _get_mime_type(self, extension: str) -> str:
         """Get MIME type from file extension."""

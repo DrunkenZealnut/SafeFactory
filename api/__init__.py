@@ -43,17 +43,21 @@ def init_api(app, csrf=None):
 
     # ------------------------------------------------------------------
     # CORS – configurable via CORS_ORIGINS env var (comma-separated)
+    # When not set, no CORS headers are added (same-origin only).
     # ------------------------------------------------------------------
     cors_origins = os.environ.get('CORS_ORIGINS', '').strip()
-    origins = [o.strip() for o in cors_origins.split(',') if o.strip()] if cors_origins else '*'
-
-    CORS(app, resources={
-        r"^/api/.+": {
-            "origins": origins,
-            "methods": ["GET", "POST", "OPTIONS"],
-            "allow_headers": ["Content-Type", "Authorization", "X-Request-ID"]
-        }
-    })
+    if cors_origins:
+        origins = [o.strip() for o in cors_origins.split(',') if o.strip()]
+        CORS(app, resources={
+            r"^/api/.+": {
+                "origins": origins,
+                "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+                "allow_headers": ["Content-Type", "Authorization", "X-Request-ID", "X-CSRFToken"],
+            }
+        })
+    else:
+        import logging as _log
+        _log.info('CORS_ORIGINS not set — cross-origin API access disabled (same-origin only)')
 
     # ------------------------------------------------------------------
     # Request-ID tracing

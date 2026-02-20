@@ -1,5 +1,6 @@
 """Shared RAG pipeline, LLM message builder, and image discovery."""
 
+import concurrent.futures
 import hashlib
 import logging
 import os
@@ -16,7 +17,6 @@ from services.domain_config import (
 from services.filters import parse_mentions, build_domain_filter
 from services.singletons import (
     get_agent,
-    get_openai_client,
     get_query_enhancer,
     get_context_optimizer,
     get_reranker_instance,
@@ -71,7 +71,7 @@ def run_rag_pipeline(data):
         top_k = 10
     use_enhancement = data.get('use_enhancement', True)
 
-    logging.info(f"[API/ask] Query: {query[:50]}..., Namespace: {namespace}, TopK: {top_k}, Enhanced: {use_enhancement}")
+    logging.info("[API/ask] Query: %.50s..., Namespace: %s, TopK: %d, Enhanced: %s", query, namespace, top_k, use_enhancement)
 
     if not query:
         raise ValueError('질문을 입력해주세요.')
@@ -92,7 +92,6 @@ def run_rag_pipeline(data):
         search_query = clean_query if clean_query else query
 
     agent = get_agent()
-    client = get_openai_client()
 
     # ========================================
     # Phase 1: Query Enhancement
@@ -103,25 +102,39 @@ def run_rag_pipeline(data):
     if use_enhancement:
         try:
             query_enhancer = get_query_enhancer()
+            domain = NAMESPACE_DOMAIN_MAP.get(namespace, 'semiconductor')
 
-            # Generate query variations for broader retrieval
-            enhanced_queries = query_enhancer.multi_query(search_query, num_variations=2)
-            logging.info(f"[Query Enhancement] Generated {len(enhanced_queries)} query variations")
+            # Run query enhancement calls in parallel for lower latency
+            with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                future_multi = executor.submit(query_enhancer.multi_query, search_query, 2)
+                future_hyde = (
+                    executor.submit(query_enhancer.hyde, search_query, domain)
+                    if len(search_query) >= 30 else None
+                )
+                future_keywords = executor.submit(query_enhancer.extract_keywords_fast, search_query)
 
-            # HyDE: generate hypothetical document for longer queries
-            if len(search_query) >= 30:
                 try:
-                    domain = NAMESPACE_DOMAIN_MAP.get(namespace, 'semiconductor')
-                    hyde_doc = query_enhancer.hyde(search_query, domain=domain)
-                    if hyde_doc and hyde_doc != search_query:
-                        enhanced_queries.append(hyde_doc)
-                        logging.info(f"[HyDE] Added hypothetical document query")
+                    enhanced_queries = future_multi.result(timeout=10)
                 except Exception as e:
-                    logging.warning("[HyDE] Failed: %s", e)
+                    logging.warning("[Query Enhancement] multi_query failed: %s", e)
+                    enhanced_queries = [search_query]
+                logging.info("[Query Enhancement] Generated %d query variations", len(enhanced_queries))
 
-            # Extract keywords for potential filtering
-            keywords = query_enhancer.extract_keywords(search_query)
-            logging.info(f"[Query Enhancement] Keywords: {keywords}")
+                if future_hyde:
+                    try:
+                        hyde_doc = future_hyde.result(timeout=10)
+                        if hyde_doc and hyde_doc != search_query:
+                            enhanced_queries.append(hyde_doc)
+                            logging.info("[HyDE] Added hypothetical document query")
+                    except Exception as e:
+                        logging.warning("[HyDE] Failed: %s", e)
+
+                try:
+                    keywords = future_keywords.result(timeout=10)
+                except Exception as e:
+                    logging.warning("[Query Enhancement] keywords failed: %s", e)
+                    keywords = []
+                logging.info("[Query Enhancement] Keywords: %s", keywords)
 
         except Exception as e:
             logging.warning("[Query Enhancement] Failed: %s, using original query", e)
@@ -171,7 +184,7 @@ def run_rag_pipeline(data):
             for r in results:
                 # Deduplicate by content hash
                 content = r.get('metadata', {}).get('content', '')
-                content_id = hashlib.md5(content[:200].encode()).hexdigest()
+                content_id = hashlib.sha256(content[:5000].encode()).hexdigest()
                 if content_id not in seen_ids:
                     seen_ids.add(content_id)
                     all_results.append(r)
@@ -179,7 +192,7 @@ def run_rag_pipeline(data):
             logging.warning("[Search] Failed for query '%.30s...': %s", eq, e)
 
     results = all_results
-    logging.info(f"[Search] Retrieved {len(results)} unique documents from {len(enhanced_queries)} queries")
+    logging.info("[Search] Retrieved %d unique documents from %d queries", len(results), len(enhanced_queries))
 
     # ========================================
     # Phase 3: Apply mention filters
@@ -210,7 +223,7 @@ def run_rag_pipeline(data):
                 filtered_results.append(r)
 
         results = filtered_results
-        logging.info(f"[Filter] After mention filtering: {len(results)} documents")
+        logging.info("[Filter] After mention filtering: %d documents", len(results))
 
     if not results:
         return {
@@ -236,28 +249,50 @@ def run_rag_pipeline(data):
                 keywords=keywords,
                 top_k=min(len(results), top_k * 2)
             )
-            logging.info(f"[Hybrid Search] Applied BM25 + keyword boosting")
+            logging.info("[Hybrid Search] Applied BM25 + keyword boosting")
         except Exception as e:
             logging.warning("[Hybrid Search] Failed: %s, using vector results only", e)
 
     # ========================================
-    # Phase 5: Reranking
+    # Phase 5: Reranking (hybrid: cross-encoder 70% + original score 30%)
     # ========================================
     if use_enhancement and len(results) > 3:
         try:
             reranker = get_reranker_instance()
-            results = reranker.rerank(
+            results = reranker.hybrid_rerank(
                 query=search_query,
                 docs=results,
                 top_k=min(len(results), top_k + 5)  # Keep extra for context optimization
             )
-            logging.info(f"[Reranking] Reranked to {len(results)} documents")
+            logging.info("[Reranking] Hybrid-reranked to %d documents", len(results))
         except Exception as e:
             logging.warning("[Reranking] Failed: %s, using original order", e)
 
     # ========================================
-    # Phase 6: Context Optimization
+    # Phase 6: Filtering, Context Optimization, and Reordering
     # ========================================
+    # Filter by minimum relevance score BEFORE reordering (to preserve Lost-in-Middle intent)
+    try:
+        min_score = float(data.get('min_score', MIN_RELEVANCE_SCORE))
+        min_score = max(0.0, min(1.0, min_score))
+    except (ValueError, TypeError):
+        min_score = MIN_RELEVANCE_SCORE
+    results = [r for r in results if r.get('rerank_score', r.get('combined_score', r.get('rrf_score', r.get('score', 0)))) >= min_score]
+
+    # Limit to top_k before reordering
+    results = results[:top_k]
+
+    # Early return if all results were filtered out by min_score
+    if not results:
+        return {
+            'early_response': True,
+            'data': {
+                'answer': '관련도가 충분한 문서를 찾지 못했습니다. 더 구체적인 키워드로 다시 질문해주세요.',
+                'sources': [],
+                'enhancement_used': use_enhancement
+            }
+        }
+
     if use_enhancement:
         try:
             context_optimizer = get_context_optimizer()
@@ -268,19 +303,9 @@ def run_rag_pipeline(data):
             # Reorder for LLM attention (Lost in the Middle prevention)
             results = context_optimizer.reorder_for_llm(results, strategy="lost_in_middle")
 
-            logging.info(f"[Context Optimization] Final context: {len(results)} documents")
+            logging.info("[Context Optimization] Final context: %d documents", len(results))
         except Exception as e:
             logging.warning("[Context Optimization] Failed: %s", e)
-
-    # Filter by minimum relevance score (per-request override via min_score)
-    try:
-        min_score = float(data.get('min_score', MIN_RELEVANCE_SCORE))
-    except (ValueError, TypeError):
-        min_score = MIN_RELEVANCE_SCORE
-    results = [r for r in results if r.get('rerank_score', r.get('rrf_score', r.get('score', 0))) >= min_score]
-
-    # Limit to top_k after all processing
-    results = results[:top_k]
 
     # ========================================
     # Phase 7: Build Context and Sources
@@ -339,12 +364,15 @@ def run_rag_pipeline(data):
         'enhanced_queries': enhanced_queries,
         'keywords': keywords,
         'use_enhancement': use_enhancement,
-        'client': client,
     }
 
 
-def build_llm_messages(query, sources, context, namespace):
-    """Build system prompt and user message for LLM call."""
+def build_llm_prompts(query, sources, context, namespace):
+    """Build separate system and user prompts for LLM call.
+
+    Returns:
+        tuple: (system_prompt, user_prompt)
+    """
     base_prompt = DOMAIN_PROMPTS.get(namespace, DEFAULT_SYSTEM_PROMPT)
     system_prompt = base_prompt + COT_INSTRUCTIONS + VISUAL_GUIDELINES
 
@@ -358,10 +386,17 @@ def build_llm_messages(query, sources, context, namespace):
 
 **중요 지침:**
 1. 각 정보의 출처를 [1], [2] 등의 인용 번호로 표시하세요
-2. 문서에 없는 내용은 추측하지 마세요
-3. 핵심 답변을 먼저 제시하고, 상세 설명을 이어가세요
-4. 기술 용어는 한글과 영문을 병기하세요"""
+2. 문서에 없는 내용은 추측하지 말고, "제공된 문서에서 해당 정보를 찾을 수 없습니다"라고 명시하세요
+3. 핵심 답변을 먼저 1-2문장으로 제시하고, 상세 설명을 이어가세요
+4. 기술 용어는 한글과 영문을 병기하세요
+5. 질문에 부분적으로만 답변 가능한 경우, 답변 가능한 부분을 먼저 제시하고 부족한 부분을 명시하세요"""
 
+    return system_prompt, user_prompt
+
+
+def build_llm_messages(query, sources, context, namespace):
+    """Build OpenAI-format messages for LLM call (kept for compatibility)."""
+    system_prompt, user_prompt = build_llm_prompts(query, sources, context, namespace)
     return [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt}

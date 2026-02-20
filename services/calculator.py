@@ -177,7 +177,7 @@ def handle_tool_calls(messages, response_message):
 
         safe_args = {k: '***' if k in ('amount', 'monthly_income', 'non_taxable', 'tax_free_monthly') else v
                      for k, v in function_args.items()}
-        logging.info(f"[Function Call] {function_name} with args: {safe_args}")
+        logging.info("[Function Call] %s with args: %s", function_name, safe_args)
         try:
             if function_name == "calculate_wage":
                 function_response = calculate_wage(**function_args)

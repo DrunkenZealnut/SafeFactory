@@ -304,8 +304,8 @@ class SemanticChunker:
             enable_contextual: Enable contextual chunking with document metadata
         """
         # Create httpx client with explicit SSL certificate verification
-        http_client = httpx.Client(verify=certifi.where())
-        self.client = OpenAI(api_key=openai_api_key, http_client=http_client, timeout=60.0)
+        self._http_client = httpx.Client(verify=certifi.where())
+        self.client = OpenAI(api_key=openai_api_key, http_client=self._http_client, timeout=60.0)
         self.model = model
         self.max_chunk_tokens = max_chunk_tokens
         self.min_chunk_tokens = min_chunk_tokens
@@ -313,6 +313,14 @@ class SemanticChunker:
         self.similarity_threshold = similarity_threshold
         self.enable_contextual = enable_contextual
         self.encoding = tiktoken.encoding_for_model("gpt-4o-mini")
+
+    def close(self):
+        """Close the underlying HTTP client."""
+        if hasattr(self, '_http_client'):
+            try:
+                self._http_client.close()
+            except Exception:
+                pass
 
     def _count_tokens(self, text: str) -> int:
         """Count tokens using tiktoken for accurate measurement."""
