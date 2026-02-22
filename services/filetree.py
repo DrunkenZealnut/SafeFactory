@@ -7,9 +7,9 @@ import unicodedata
 from pathlib import Path
 from threading import Lock
 
-logger = logging.getLogger(__name__)
-
 from services.domain_config import DOCUMENTS_PATH
+
+logger = logging.getLogger(__name__)
 
 _cache = {}
 _cache_lock = Lock()

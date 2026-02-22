@@ -109,7 +109,8 @@ def msds_identify():
             if parsed_mime in _ALLOWED_MIME:
                 mime_type = parsed_mime
             image_data = image_data[m.end():]
-        elif ',' in image_data:
+        elif image_data.startswith('data:') and ',' in image_data:
+            # Non-matching data URL format — extract base64 portion
             _, image_data = image_data.split(',', 1)
 
         # Use OpenAI Vision API to identify chemical

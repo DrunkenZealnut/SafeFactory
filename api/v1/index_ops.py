@@ -9,6 +9,12 @@ from api.v1.admin import admin_required
 from api.response import success_response, error_response
 from services.singletons import get_agent, get_uploader
 
+# Fallback queries for vector-based source discovery when SQLite metadata is empty.
+# Configurable for multi-language or domain-specific deployments.
+FALLBACK_SOURCE_QUERIES = os.environ.get(
+    'SOURCE_FALLBACK_QUERIES', '문서,정보',
+).split(',')
+
 
 @v1_bp.route('/stats')
 def api_stats():
@@ -86,7 +92,7 @@ def api_sources():
         # Fallback: vector search if metadata unavailable or returned nothing
         if not files:
             all_results = []
-            for query in ["문서", "정보"]:
+            for query in FALLBACK_SOURCE_QUERIES:
                 results = agent.search(query=query, top_k=50, namespace=namespace)
                 all_results.extend(results)
 

@@ -1,8 +1,9 @@
 """
 한국 임금계산기 (급여명세서 계산)
-- 연봉/월급 기반 실수령액 계산
+- 연봉/월급 기반 실수령액 계산 (세전→세후)
+- 세후 역산: 희망 실수령액으로부터 필요 세전 급여 산출
 - 4대보험료 및 근로소득세 자동 계산
-- 2025년 기준 요율 적용
+- 2026년 기준 요율 적용 (참고: https://www.4insure.or.kr)
 """
 
 from dataclasses import dataclass
@@ -11,17 +12,17 @@ from typing import Optional
 
 @dataclass
 class InsuranceRates:
-    """4대보험 요율 (2025년 기준)"""
-    # 국민연금: 총 9%, 근로자 4.5%
-    national_pension_employee: float = 0.045
-    national_pension_employer: float = 0.045
+    """4대보험 요율 (2026년 기준, 참고: https://www.4insure.or.kr)"""
+    # 국민연금: 총 9.5%, 근로자 4.75%
+    national_pension_employee: float = 0.0475
+    national_pension_employer: float = 0.0475
 
-    # 건강보험: 총 7.09%, 근로자 3.545%
-    health_insurance_employee: float = 0.03545
-    health_insurance_employer: float = 0.03545
+    # 건강보험: 총 7.19%, 근로자 3.595%
+    health_insurance_employee: float = 0.03595
+    health_insurance_employer: float = 0.03595
 
-    # 장기요양보험: 건강보험료의 12.95%
-    long_term_care_rate: float = 0.1295
+    # 장기요양보험: 건강보험료의 13.14% (0.9448% ÷ 7.19%)
+    long_term_care_rate: float = 0.1314
 
     # 고용보험: 근로자 0.9%, 사업주 0.9%~1.65% (규모별)
     employment_insurance_employee: float = 0.009
@@ -81,11 +82,11 @@ class WageCalculator:
     def calculate_national_pension(self, monthly_salary: int) -> tuple[int, int]:
         """
         국민연금 계산
-        - 기준소득월액 상한: 6,170,000원 (2025년)
-        - 기준소득월액 하한: 390,000원
+        - 기준소득월액 상한: 6,370,000원 (2025.7~2026.6)
+        - 기준소득월액 하한: 400,000원
         """
-        MIN_BASE = 390000
-        MAX_BASE = 6170000
+        MIN_BASE = 400000
+        MAX_BASE = 6370000
 
         base_salary = max(MIN_BASE, min(monthly_salary, MAX_BASE))
 
@@ -207,6 +208,63 @@ class WageCalculator:
         """
         local_tax = int(income_tax * 0.1)
         return (local_tax // 10) * 10  # 10원 단위로 절사
+
+    def calculate_from_net(self, target_net_monthly: int,
+                            tax_free_monthly: int = 0,
+                            dependents: int = 1,
+                            children_8_to_20: int = 0,
+                            company_size: str = 'small') -> dict:
+        """세후(실수령) 금액으로부터 필요 세전(월급) 역산 (이분탐색).
+
+        Args:
+            target_net_monthly: 희망 월 실수령액(세후)
+            tax_free_monthly: 월 비과세액 (식대 등, 최대 20만원)
+            dependents: 부양가족 수 (본인 포함)
+            children_8_to_20: 8세~20세 자녀 수
+            company_size: 회사 규모
+
+        Returns:
+            calculate_from_monthly() 결과에 '역산정보' 키 추가
+
+        Raises:
+            ValueError: target_net_monthly가 양수가 아닌 경우
+        """
+        if target_net_monthly <= 0:
+            raise ValueError("희망 실수령액은 양수여야 합니다.")
+
+        low = target_net_monthly
+        high = int(target_net_monthly * 2.5)
+
+        best_result = None
+        best_diff = float('inf')
+
+        for _ in range(60):
+            mid = (low + high) // 2
+            result = self.calculate_from_monthly(
+                mid, tax_free_monthly, dependents, children_8_to_20, company_size
+            )
+            net = result['실수령액']['월_실수령액']
+            diff = abs(net - target_net_monthly)
+
+            if diff < best_diff:
+                best_diff = diff
+                best_result = result
+
+            if diff <= 100:
+                break
+            elif net < target_net_monthly:
+                low = mid + 1
+            else:
+                high = mid - 1
+
+        best_result['역산정보'] = {
+            '희망_실수령액': target_net_monthly,
+            '필요_세전_월급': best_result['입력정보']['월급여'],
+            '필요_세전_연봉': best_result['입력정보']['월급여'] * 12,
+            '실제_실수령액': best_result['실수령액']['월_실수령액'],
+            '오차': best_result['실수령액']['월_실수령액'] - target_net_monthly,
+        }
+        return best_result
 
     def calculate_from_annual(self, annual_salary: int,
                                tax_free_monthly: int = 0,

@@ -10,6 +10,8 @@ from typing import List, Optional
 from dataclasses import dataclass
 from openai import OpenAI
 
+from src import HttpClientMixin
+
 # Set SSL certificate environment variables
 os.environ.setdefault('SSL_CERT_FILE', certifi.where())
 os.environ.setdefault('REQUESTS_CA_BUNDLE', certifi.where())
@@ -25,7 +27,7 @@ class EmbeddingResult:
     token_count: Optional[int] = None
 
 
-class EmbeddingGenerator:
+class EmbeddingGenerator(HttpClientMixin):
     """Generates embeddings for text using OpenAI API."""
 
     MODELS = {
@@ -62,13 +64,6 @@ class EmbeddingGenerator:
         else:
             self.dimensions = self.MODELS[model]
 
-    def close(self):
-        """Close the underlying HTTP client."""
-        if hasattr(self, '_http_client'):
-            try:
-                self._http_client.close()
-            except Exception:
-                pass
 
     def generate(self, text: str) -> EmbeddingResult:
         """

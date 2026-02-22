@@ -197,11 +197,9 @@ def api_community_post_detail(post_id):
     try:
         Post.query.filter_by(id=post_id).update({Post.view_count: Post.view_count + 1})
         db.session.commit()
-        db.session.refresh(post)
+        post.view_count = (post.view_count or 0) + 1
     except Exception:
         db.session.rollback()
-
-    data = post.to_dict(include_content=True)
 
     # Load all comments in a single query, build tree in memory
     all_comments = (
@@ -211,6 +209,11 @@ def api_community_post_detail(post_id):
         .order_by(Comment.created_at.asc())
         .all()
     )
+
+    # Pre-compute counts to avoid N+1 property queries
+    lc = PostLike.query.filter_by(post_id=post_id).count()
+    cc = len(all_comments)
+    data = post.to_dict(include_content=True, _like_count=lc, _comment_count=cc)
     comment_map = {}
     for c in all_comments:
         cd = {
@@ -287,7 +290,7 @@ def api_community_create_post():
         db.session.commit()
 
         return success_response(
-            data=post.to_dict(include_content=True),
+            data=post.to_dict(include_content=True, _like_count=0, _comment_count=0),
             message='게시글이 작성되었습니다.',
         )
     except Exception:
@@ -330,8 +333,10 @@ def api_community_update_post(post_id):
         post.category_id = data['category_id']
 
     db.session.commit()
+    lc = PostLike.query.filter_by(post_id=post_id).count()
+    cc = Comment.query.filter_by(post_id=post_id, is_deleted=False).count()
     return success_response(
-        data=post.to_dict(include_content=True),
+        data=post.to_dict(include_content=True, _like_count=lc, _comment_count=cc),
         message='게시글이 수정되었습니다.',
     )
 
@@ -423,14 +428,14 @@ def api_community_toggle_like(post_id):
         like = PostLike(post_id=post_id, user_id=current_user.id)
         db.session.add(like)
         db.session.commit()
-        db.session.refresh(post)
-        return success_response(data={'liked': True, 'like_count': post.like_count})
+        lc = PostLike.query.filter_by(post_id=post_id).count()
+        return success_response(data={'liked': True, 'like_count': lc})
     except IntegrityError:
         db.session.rollback()
         PostLike.query.filter_by(post_id=post_id, user_id=current_user.id).delete()
         db.session.commit()
-        db.session.refresh(post)
-        return success_response(data={'liked': False, 'like_count': post.like_count})
+        lc = PostLike.query.filter_by(post_id=post_id).count()
+        return success_response(data={'liked': False, 'like_count': lc})
 
 
 # ---------------------------------------------------------------------------

@@ -571,7 +571,7 @@ def _full_pinecone_sync(uploader, namespaces):
     Takes 15-30+ minutes for large indexes.
     """
 
-    from concurrent.futures import ThreadPoolExecutor
+    from concurrent.futures import ThreadPoolExecutor, as_completed
 
     created = 0
     updated = 0
@@ -588,7 +588,7 @@ def _full_pinecone_sync(uploader, namespaces):
             ns_exec.submit(_enumerate_namespace_sources, uploader, ns): ns
             for ns in active_ns
         }
-        for future in ns_futures:
+        for future in as_completed(ns_futures):
             ns_name = ns_futures[future]
             try:
                 source_file_vectors = future.result()
@@ -630,6 +630,8 @@ def _full_pinecone_sync(uploader, namespaces):
             except Exception:
                 db.session.rollback()
                 logging.exception('Sync commit failed for namespace %s', ns_name)
+            finally:
+                del source_file_vectors
 
     _log_action('sync_documents', details={
         'mode': 'full', 'created': created, 'updated': updated, 'skipped': skipped,

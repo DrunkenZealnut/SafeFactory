@@ -24,6 +24,7 @@ def main():
     parser = argparse.ArgumentParser(description='Create admin user')
     parser.add_argument('--email', required=True, help='Admin email address')
     parser.add_argument('--name', required=True, help='Admin display name')
+    parser.add_argument('--force', action='store_true', help='Skip confirmation when promoting existing user')
     args = parser.parse_args()
 
     if not _EMAIL_RE.match(args.email):
@@ -41,6 +42,11 @@ def main():
                 if existing.role == 'admin':
                     print(f"Admin already exists: {args.email}")
                 else:
+                    if not args.force:
+                        confirm = input(f"Promote '{existing.name}' ({args.email}) to admin? [y/N]: ")
+                        if confirm.lower() != 'y':
+                            print("Cancelled.")
+                            return
                     existing.role = 'admin'
                     db.session.commit()
                     print(f"Updated to admin: {args.email} (existing name '{existing.name}' preserved)")

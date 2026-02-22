@@ -5,6 +5,7 @@ import hashlib
 import logging
 import os
 import unicodedata
+from datetime import datetime
 
 from services.domain_config import (
     DOCUMENTS_PATH,
@@ -225,7 +226,7 @@ def run_rag_pipeline(data):
         results = filtered_results
         logging.info("[Filter] After mention filtering: %d documents", len(results))
 
-    if not results:
+    if not results and namespace != 'laborlaw':
         return {
             'early_response': True,
             'data': {
@@ -282,8 +283,8 @@ def run_rag_pipeline(data):
     # Limit to top_k before reordering
     results = results[:top_k]
 
-    # Early return if all results were filtered out by min_score
-    if not results:
+    # Early return if all results were filtered out by min_score (laborlaw bypasses this)
+    if not results and namespace != 'laborlaw':
         return {
             'early_response': True,
             'data': {
@@ -353,7 +354,7 @@ def run_rag_pipeline(data):
 
     context = "\n\n---\n\n".join(context_parts)
 
-    return {
+    result = {
         'early_response': False,
         'query': query,
         'namespace': namespace,
@@ -366,9 +367,28 @@ def run_rag_pipeline(data):
         'use_enhancement': use_enhancement,
     }
 
+    # Laborlaw: classify question and run calculator if applicable
+    if namespace == 'laborlaw':
+        try:
+            from services.labor_classifier import classify_labor_question
+            from services.labor_calculator import run_labor_calculation
+            classification = classify_labor_question(query)
+            result['labor_classification'] = classification
+            if classification['type'] in ('calculation', 'hybrid'):
+                calc_result = run_labor_calculation(classification)
+                if calc_result:
+                    result['labor_calc_result'] = calc_result
+        except Exception as e:
+            logging.warning("[LaborLaw] Classification/calculation failed: %s", e)
 
-def build_llm_prompts(query, sources, context, namespace):
+    return result
+
+
+def build_llm_prompts(query, sources, context, namespace, calc_result=None):
     """Build separate system and user prompts for LLM call.
+
+    Args:
+        calc_result: Optional dict from run_labor_calculation() with 'formatted' key.
 
     Returns:
         tuple: (system_prompt, user_prompt)
@@ -377,12 +397,27 @@ def build_llm_prompts(query, sources, context, namespace):
     system_prompt = base_prompt + COT_INSTRUCTIONS + VISUAL_GUIDELINES
 
     user_prompt = f"""## 질문
-{query}
+{query}"""
+
+    # Inject precise calculation results for laborlaw
+    if calc_result and calc_result.get('formatted'):
+        user_prompt += f"""
+
+## 시스템 계산 결과 (정확한 수치)
+{calc_result['formatted']}
+
+위 계산 결과는 {datetime.now().year}년 기준 공식 요율로 정밀 계산된 수치입니다.
+이 수치를 답변에 그대로 사용하고, 직접 재계산하지 마세요."""
+
+    if sources:
+        user_prompt += f"""
 
 ## 참고 문서 ({len(sources)}개)
-{context}
+{context}"""
 
-위 문서들을 참고하여 질문에 대해 종합적으로 답변해주세요.
+    user_prompt += """
+
+위 정보를 참고하여 질문에 대해 종합적으로 답변해주세요.
 
 **중요 지침:**
 1. 각 정보의 출처를 [1], [2] 등의 인용 번호로 표시하세요
@@ -394,9 +429,9 @@ def build_llm_prompts(query, sources, context, namespace):
     return system_prompt, user_prompt
 
 
-def build_llm_messages(query, sources, context, namespace):
+def build_llm_messages(query, sources, context, namespace, calc_result=None):
     """Build OpenAI-format messages for LLM call (kept for compatibility)."""
-    system_prompt, user_prompt = build_llm_prompts(query, sources, context, namespace)
+    system_prompt, user_prompt = build_llm_prompts(query, sources, context, namespace, calc_result)
     return [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt}

@@ -230,6 +230,12 @@ def build_source_filter(filters):
 
     Pinecone supports $eq, $in, $and, $or (no regex). This builds an $or
     filter for file/keyword mentions where possible.
+
+    NOTE: folder/keyword filters use $eq (exact match only) because Pinecone
+    does not support substring or prefix operators ($contains, $startswith).
+    Partial matching (e.g. ``@폴더명`` matching ``폴더명/하위/파일.md``) is
+    handled downstream by the RAG pipeline's Phase 3 post-retrieval filtering,
+    which applies Python ``in`` checks against the ``source_file`` field.
     """
     if not filters:
         return None
@@ -239,8 +245,10 @@ def build_source_filter(filters):
         if f['type'] == 'file':
             conditions.append({'filename': {'$eq': f['value']}})
         elif f['type'] == 'folder':
+            # Exact match only — partial/prefix matching deferred to Phase 3
             conditions.append({'source_file': {'$eq': f['value']}})
         elif f['type'] == 'keyword':
+            # Exact match only — partial matching deferred to Phase 3
             conditions.append({'source_file': {'$eq': f['value']}})
 
     if not conditions:

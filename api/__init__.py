@@ -49,7 +49,7 @@ def init_api(app, csrf=None):
     if cors_origins:
         origins = [o.strip() for o in cors_origins.split(',') if o.strip()]
         CORS(app, resources={
-            r"^/api/.+": {
+            r"/api/.*": {
                 "origins": origins,
                 "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
                 "allow_headers": ["Content-Type", "Authorization", "X-Request-ID", "X-CSRFToken"],

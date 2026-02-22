@@ -10,12 +10,14 @@ import httpx
 from typing import Optional
 from openai import OpenAI
 
+from src import HttpClientMixin
+
 # Set SSL certificate environment variables
 os.environ.setdefault('SSL_CERT_FILE', certifi.where())
 os.environ.setdefault('REQUESTS_CA_BUNDLE', certifi.where())
 
 
-class ImageDescriber:
+class ImageDescriber(HttpClientMixin):
     """Generates text descriptions for images using OpenAI Vision API."""
 
     DEFAULT_PROMPT = """이 이미지를 자세히 분석하고 설명해주세요. 다음 항목들을 포함해주세요:
@@ -47,13 +49,6 @@ class ImageDescriber:
         self.model = model
         self.max_tokens = max_tokens
 
-    def close(self):
-        """Close the underlying HTTP client."""
-        if hasattr(self, '_http_client'):
-            try:
-                self._http_client.close()
-            except Exception:
-                pass
 
     def _get_mime_type(self, extension: str) -> str:
         """Get MIME type from file extension."""

@@ -75,6 +75,8 @@ init_oauth(app)
 from services.domain_config import DOCUMENTS_PATH, DOMAIN_CONFIG
 
 # Register API blueprints and CORS (pass csrf so compat routes are exempted)
+app.jinja_env.globals['now'] = lambda: datetime.now(timezone.utc)
+
 from api import init_api
 init_api(app, csrf=csrf)
 

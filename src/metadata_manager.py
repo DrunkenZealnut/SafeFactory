@@ -51,6 +51,10 @@ class MetadataManager:
 
         Connections are cached per-thread and reused for the thread's
         lifetime, which is safe for SQLite.
+
+        NOTE: This context manager does NOT auto-commit on success.
+        Callers performing writes must call ``conn.commit()`` explicitly.
+        On exception the transaction is rolled back automatically.
         """
         conn = getattr(self._local, 'connection', None)
         if conn is None:

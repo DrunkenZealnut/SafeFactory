@@ -24,6 +24,7 @@ _pdf_index = {}          # lm_code -> Path
 _pdf_index_lock = threading.Lock()
 _pdf_index_ts = 0.0
 _PDF_INDEX_TTL = 300     # seconds
+_HEARTBEAT_INTERVAL = 15  # SSE heartbeat interval (seconds)
 
 
 def _get_pdf_index():
@@ -227,7 +228,8 @@ def api_ask():
         # ========================================
         # Phase 8: Generate Answer via LLM (OpenAI or Gemini)
         # ========================================
-        messages = build_llm_messages(query, sources, context, namespace)
+        calc_result = pipeline.get('labor_calc_result')
+        messages = build_llm_messages(query, sources, context, namespace, calc_result)
         provider = get_setting('llm_answer_provider', 'openai')
         model = get_setting('llm_answer_model', 'gpt-4o-mini')
         if not _VALID_MODEL_RE.match(model):
@@ -245,7 +247,7 @@ def api_ask():
             gemini_resp = gemini.models.generate_content(
                 model=model, contents=user_msg, config=config,
             )
-            answer = gemini_resp.text
+            answer = gemini_resp.text or ''
         elif provider == 'anthropic':
             client = get_anthropic_client()
             system_msg = next((m['content'] for m in messages if m['role'] == 'system'), '')
@@ -257,7 +259,7 @@ def api_ask():
                 temperature=temperature,
                 max_tokens=answer_max_tokens,
             )
-            answer = response.content[0].text
+            answer = response.content[0].text if response.content else ''
         else:
             client = get_openai_client()
             response = client.chat.completions.create(
@@ -278,7 +280,7 @@ def api_ask():
             'images': related_images,
             'enhancement_used': use_enhancement,
             'query_variations': enhanced_queries if use_enhancement else None,
-            'keywords_extracted': keywords if use_enhancement else None
+            'keywords_extracted': keywords if use_enhancement else None,
         })
 
     except Exception:
@@ -312,7 +314,8 @@ def api_ask_stream():
     keywords = pipeline['keywords']
     use_enhancement = pipeline['use_enhancement']
 
-    messages = build_llm_messages(query, sources, context, namespace)
+    calc_result = pipeline.get('labor_calc_result')
+    messages = build_llm_messages(query, sources, context, namespace, calc_result)
     provider = get_setting('llm_answer_provider', 'openai')
     model = get_setting('llm_answer_model', 'gpt-4o-mini')
     if not _VALID_MODEL_RE.match(model):
@@ -326,6 +329,18 @@ def api_ask_stream():
     def generate():
         try:
             related_images = _collect_related_images(sources)
+
+            # Send calculation result event if available (before metadata)
+            if calc_result:
+                calc_event = json.dumps({
+                    'type': 'calculation',
+                    'data': {
+                        'calc_type': calc_result.get('calc_type'),
+                        'input_summary': calc_result.get('input_summary'),
+                        'formatted': calc_result.get('formatted'),
+                    }
+                }, ensure_ascii=False)
+                yield f"data: {calc_event}\n\n"
 
             # Send metadata event first (sources, images, query info)
             metadata_event = json.dumps({
@@ -344,6 +359,16 @@ def api_ask_stream():
 
             # Dynamic max_tokens: scale with source count for complex multi-doc answers
             answer_max_tokens = min(4000, 1500 + len(sources) * 200)
+            last_heartbeat = time.monotonic()
+
+            def _maybe_heartbeat():
+                """Yield an SSE comment to keep the connection alive."""
+                nonlocal last_heartbeat
+                now = time.monotonic()
+                if now - last_heartbeat >= _HEARTBEAT_INTERVAL:
+                    last_heartbeat = now
+                    return ": heartbeat\n\n"
+                return None
 
             if provider == 'gemini':
                 # Stream LLM response via Gemini
@@ -356,6 +381,11 @@ def api_ask_stream():
                     if chunk.text:
                         token_event = json.dumps({'type': 'token', 'data': chunk.text}, ensure_ascii=False)
                         yield f"data: {token_event}\n\n"
+                        last_heartbeat = time.monotonic()
+                    else:
+                        hb = _maybe_heartbeat()
+                        if hb:
+                            yield hb
             elif provider == 'anthropic':
                 # Stream LLM response via Anthropic Claude
                 client = get_anthropic_client()
@@ -371,6 +401,7 @@ def api_ask_stream():
                     for text in stream.text_stream:
                         token_event = json.dumps({'type': 'token', 'data': text}, ensure_ascii=False)
                         yield f"data: {token_event}\n\n"
+                        last_heartbeat = time.monotonic()
             else:
                 # Stream LLM response via OpenAI
                 client = get_openai_client()
@@ -386,6 +417,11 @@ def api_ask_stream():
                         token = chunk.choices[0].delta.content
                         token_event = json.dumps({'type': 'token', 'data': token}, ensure_ascii=False)
                         yield f"data: {token_event}\n\n"
+                        last_heartbeat = time.monotonic()
+                    else:
+                        hb = _maybe_heartbeat()
+                        if hb:
+                            yield hb
 
             # Send done event
             done_event = json.dumps({

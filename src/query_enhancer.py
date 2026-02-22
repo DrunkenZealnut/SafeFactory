@@ -11,12 +11,14 @@ import httpx
 from typing import List, Optional
 from openai import OpenAI
 
+from src import HttpClientMixin
+
 # Set SSL certificate environment variables
 os.environ.setdefault('SSL_CERT_FILE', certifi.where())
 os.environ.setdefault('REQUESTS_CA_BUNDLE', certifi.where())
 
 
-class QueryEnhancer:
+class QueryEnhancer(HttpClientMixin):
     """
     Enhances user queries for better retrieval results.
 
@@ -58,13 +60,6 @@ class QueryEnhancer:
             self._http_client = httpx.Client(verify=certifi.where())
             self.client = OpenAI(api_key=openai_api_key, http_client=self._http_client, timeout=60.0)
 
-    def close(self):
-        """Close the underlying HTTP client."""
-        if hasattr(self, '_http_client'):
-            try:
-                self._http_client.close()
-            except Exception:
-                pass
 
 
 
@@ -83,7 +78,7 @@ class QueryEnhancer:
             resp = self._gemini.models.generate_content(
                 model=self.model, contents=user_msg, config=config,
             )
-            return resp.text
+            return resp.text or ''
         elif self.provider == 'anthropic':
             system_msg = next((m['content'] for m in messages if m['role'] == 'system'), '')
             user_msgs = [m for m in messages if m['role'] != 'system']
@@ -94,7 +89,7 @@ class QueryEnhancer:
                 temperature=temp,
                 max_tokens=max_tokens,
             )
-            return resp.content[0].text
+            return resp.content[0].text if resp.content else ''
         else:
             resp = self.client.chat.completions.create(
                 model=self.model,

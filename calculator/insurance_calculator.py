@@ -1,7 +1,7 @@
 """
 한국 4대보험료 계산기
 - 국민연금, 건강보험, 장기요양보험, 고용보험, 산재보험
-- 2025년 기준 요율 적용
+- 2026년 기준 요율 적용
 - 참고: https://www.nodong.kr/insure_cal
 """
 
@@ -71,33 +71,33 @@ class IndustryType(Enum):
 
 
 @dataclass
-class InsuranceRates2025:
-    """2025년 4대보험 요율"""
+class InsuranceRates2026:
+    """2026년 4대보험 요율 (참고: https://www.4insure.or.kr)"""
 
     # === 국민연금 ===
-    # 총 9%, 근로자/사업주 각 4.5%
-    national_pension_total: float = 0.09
-    national_pension_employee: float = 0.045
-    national_pension_employer: float = 0.045
-    # 기준소득월액 상한/하한 (2025년)
-    national_pension_max_income: int = 6_170_000
-    national_pension_min_income: int = 390_000
+    # 총 9.5%, 근로자/사업주 각 4.75%
+    national_pension_total: float = 0.095
+    national_pension_employee: float = 0.0475
+    national_pension_employer: float = 0.0475
+    # 기준소득월액 상한/하한 (2025.7.1~2026.6.30)
+    national_pension_max_income: int = 6_370_000
+    national_pension_min_income: int = 400_000
 
     # === 건강보험 ===
-    # 총 7.09%, 근로자/사업주 각 3.545%
-    health_insurance_total: float = 0.0709
-    health_insurance_employee: float = 0.03545
-    health_insurance_employer: float = 0.03545
-    # 보수월액 상한/하한 (2025년)
-    health_insurance_max_income: int = 119_625_106  # 월 상한 (연 14억 3,550만원 / 12)
-    health_insurance_min_income: int = 279_266  # 월 하한
+    # 총 7.19%, 근로자/사업주 각 3.595%
+    health_insurance_total: float = 0.0719
+    health_insurance_employee: float = 0.03595
+    health_insurance_employer: float = 0.03595
+    # 보수월액 상한/하한 (2026년)
+    health_insurance_max_income: int = 127_725_730
+    health_insurance_min_income: int = 280_528
     # 보험료 상한/하한
-    health_insurance_max_premium: int = 8_481_420  # 월 상한 (근로자+사업주)
-    health_insurance_min_premium: int = 19_780  # 월 하한 (근로자+사업주)
+    health_insurance_max_premium: int = 9_183_460  # 월 상한 (근로자+사업주)
+    health_insurance_min_premium: int = 20_160  # 월 하한 (근로자+사업주)
 
     # === 장기요양보험 ===
-    # 건강보험료의 12.95%
-    long_term_care_rate: float = 0.1295
+    # 건강보험료의 13.14% (장기요양보험료율 0.9448% ÷ 건강보험료율 7.19%)
+    long_term_care_rate: float = 0.1314
 
     # === 고용보험 ===
     # 실업급여: 근로자 0.9%, 사업주 0.9%
@@ -121,8 +121,8 @@ class InsuranceRates2025:
 class InsuranceCalculator:
     """4대보험료 계산기"""
 
-    def __init__(self, rates: Optional[InsuranceRates2025] = None):
-        self.rates = rates or InsuranceRates2025()
+    def __init__(self, rates: Optional[InsuranceRates2026] = None):
+        self.rates = rates or InsuranceRates2026()
 
     def truncate(self, amount: float, unit: int = 10) -> int:
         """금액 절사 (기본 10원 단위)"""

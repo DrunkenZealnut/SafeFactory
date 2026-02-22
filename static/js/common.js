@@ -35,8 +35,13 @@ function escapeHtml(text) {
  */
 function renderMarkdown(text) {
     if (typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
-        var html = marked.parse(text || '');
-        return DOMPurify.sanitize(html, { ADD_ATTR: ['target'] });
+        try {
+            var html = marked.parse(text || '');
+            return DOMPurify.sanitize(html, { ADD_ATTR: ['target'] });
+        } catch (e) {
+            console.error('Markdown parsing failed:', e);
+            return escapeHtml(text || '').replace(/\n/g, '<br>');
+        }
     }
     if (typeof marked !== 'undefined') {
         console.warn('DOMPurify not loaded, markdown disabled for security');

@@ -245,7 +245,8 @@ def invalidate_reranker():
     """Reset Reranker so it is re-created with the latest setting."""
     global _reranker
     with _lock:
-        _reranker = None
+        old, _reranker = _reranker, None
+    _close_if_possible(old)
 
 
 def shutdown_all():
@@ -255,6 +256,6 @@ def shutdown_all():
     httpx.Client connections are properly released.
     """
     with _lock:
-        to_close = [_query_enhancer, _context_optimizer]
+        to_close = [_query_enhancer, _context_optimizer, _reranker]
     for inst in to_close:
         _close_if_possible(inst)

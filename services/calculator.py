@@ -3,7 +3,10 @@
 import json
 import logging
 
-from calculator import WageCalculator, InsuranceCalculator, CompanySize, IndustryType
+from calculator import (
+    WageCalculator, InsuranceCalculator, CompanySize, IndustryType,
+    RetirementPayCalculator, AnnualLeaveCalculator, IncomeTaxCalculator,
+)
 
 
 def calculate_wage(
@@ -69,6 +72,68 @@ def calculate_insurance(
     )
 
     return result
+
+
+def calculate_retirement_pay(
+    start_date: str,
+    end_date: str,
+    monthly_basic_pay,
+    monthly_other_pay=0,
+    annual_bonus: int = 0,
+    annual_leave_pay: int = 0,
+    excluded_days_avg: int = 0,
+    excluded_days_service: int = 0,
+    ordinary_daily_wage: int | None = None,
+) -> dict:
+    """퇴직금 계산 (고용노동부 공식 기준)"""
+    try:
+        calc = RetirementPayCalculator(
+            start_date=start_date,
+            end_date=end_date,
+            monthly_basic_pay=monthly_basic_pay,
+            monthly_other_pay=monthly_other_pay,
+            annual_bonus=annual_bonus,
+            annual_leave_pay=annual_leave_pay,
+            excluded_days_avg=excluded_days_avg,
+            excluded_days_service=excluded_days_service,
+            ordinary_daily_wage=ordinary_daily_wage,
+        )
+        return calc.calculate()
+    except ValueError as e:
+        return {"error": str(e)}
+
+
+def calculate_annual_leave(
+    hire_date: str,
+    end_date: str | None = None,
+) -> dict:
+    """연차유급휴가 계산 (근로기준법 제60조 기준)"""
+    try:
+        calc = AnnualLeaveCalculator(
+            hire_date=hire_date,
+            end_date=end_date,
+        )
+        return calc.calculate()
+    except ValueError as e:
+        return {"error": str(e)}
+
+
+def calculate_income_tax(
+    monthly_salary: int,
+    non_taxable: int = 0,
+    dependents: int = 1,
+    children_8_to_20: int = 0,
+    withholding_rate: int = 100,
+) -> dict:
+    """근로소득세 계산 (국세청 간이세액표 산출 공식 기준)"""
+    calc = IncomeTaxCalculator(
+        monthly_salary=monthly_salary,
+        non_taxable=non_taxable,
+        dependents=dependents,
+        children_8_to_20=children_8_to_20,
+        withholding_rate=withholding_rate,
+    )
+    return calc.calculate()
 
 
 # GPT Function definitions for Function Calling
@@ -148,15 +213,143 @@ CALCULATOR_FUNCTIONS = [
                 "required": ["monthly_income"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "calculate_retirement_pay",
+            "description": "퇴직금 계산 (고용노동부 공식 기준). 입사일/퇴직일, 퇴직 전 3개월 임금, 상여금, 연차수당을 바탕으로 1일 평균임금과 퇴직금을 산출합니다.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "start_date": {
+                        "type": "string",
+                        "description": "입사일자 (YYYY-MM-DD)"
+                    },
+                    "end_date": {
+                        "type": "string",
+                        "description": "퇴직일자 (YYYY-MM-DD, 마지막 근무일의 다음 날)"
+                    },
+                    "monthly_basic_pay": {
+                        "oneOf": [
+                            {"type": "integer", "description": "3개월 동일 기본급 (원)"},
+                            {"type": "array", "items": {"type": "integer"}, "minItems": 3, "maxItems": 3, "description": "퇴직 전 3개월 기본급 각각 [월1, 월2, 월3] (원)"}
+                        ],
+                        "description": "퇴직 전 3개월 기본급. 정수면 3개월 동일 적용, 배열이면 각 월별 입력"
+                    },
+                    "monthly_other_pay": {
+                        "oneOf": [
+                            {"type": "integer"},
+                            {"type": "array", "items": {"type": "integer"}, "minItems": 3, "maxItems": 3}
+                        ],
+                        "description": "퇴직 전 3개월 기타수당 (기본값 0)",
+                        "default": 0
+                    },
+                    "annual_bonus": {
+                        "type": "integer",
+                        "description": "연간 상여금 총액 (원)",
+                        "default": 0
+                    },
+                    "annual_leave_pay": {
+                        "type": "integer",
+                        "description": "연차수당 (원)",
+                        "default": 0
+                    },
+                    "excluded_days_avg": {
+                        "type": "integer",
+                        "description": "미산입기간 일수 (평균임금 산정기간 제외, 예: 육아휴직)",
+                        "default": 0
+                    },
+                    "excluded_days_service": {
+                        "type": "integer",
+                        "description": "근무제외기간 일수 (근속기간 제외, 예: 개인휴직)",
+                        "default": 0
+                    },
+                    "ordinary_daily_wage": {
+                        "type": "integer",
+                        "description": "1일 통상임금 (원). 평균임금보다 크면 통상임금 기준 적용"
+                    }
+                },
+                "required": ["start_date", "end_date", "monthly_basic_pay"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "calculate_annual_leave",
+            "description": "연차유급휴가 계산 (근로기준법 제60조 기준). 입사일과 기준일(또는 퇴직일)로 연도별 연차 발생일수를 계산합니다. 1년 미만 월차, 가산휴가(3년 이상 근속 시 매 2년 +1일, 최대 25일)를 포함합니다.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "hire_date": {
+                        "type": "string",
+                        "description": "입사일자 (YYYY-MM-DD)"
+                    },
+                    "end_date": {
+                        "type": "string",
+                        "description": "기준일자 또는 퇴직일자 (YYYY-MM-DD). 미입력 시 오늘 날짜 적용"
+                    }
+                },
+                "required": ["hire_date"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "calculate_income_tax",
+            "description": "근로소득세 계산 (국세청 간이세액표 산출 공식 기준). 월급여, 부양가족 수, 자녀 수를 입력하면 소득세와 지방소득세를 계산합니다. 소득공제, 과세표준, 산출세액, 세액공제 전 과정을 상세히 보여줍니다.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "monthly_salary": {
+                        "type": "integer",
+                        "description": "월 급여 총액 (원 단위)"
+                    },
+                    "non_taxable": {
+                        "type": "integer",
+                        "description": "월 비과세 소득 (식대 등, 원 단위)",
+                        "default": 0
+                    },
+                    "dependents": {
+                        "type": "integer",
+                        "description": "공제대상 가족 수 (본인 포함, 1~11)",
+                        "default": 1
+                    },
+                    "children_8_to_20": {
+                        "type": "integer",
+                        "description": "8세~20세 자녀 수 (자녀세액공제 대상)",
+                        "default": 0
+                    },
+                    "withholding_rate": {
+                        "type": "integer",
+                        "enum": [80, 100, 120],
+                        "description": "원천징수 비율 (80%, 100%, 120% 중 택1)",
+                        "default": 100
+                    }
+                },
+                "required": ["monthly_salary"]
+            }
+        }
     }
 ]
+
+
+_SENSITIVE_KEYS = frozenset({
+    'amount', 'monthly_income', 'non_taxable', 'tax_free_monthly',
+    'monthly_salary', 'monthly_basic_pay', 'monthly_other_pay',
+    'annual_bonus', 'annual_leave_pay', 'ordinary_daily_wage',
+})
 
 
 def handle_tool_calls(messages, response_message):
     """Execute tool calls and return (calculation_results, updated_messages).
 
-    Note: Mutates ``messages`` in place by appending tool call/response entries.
+    Creates a shallow copy of *messages* so the caller's original list is not
+    modified.  The returned ``updated_messages`` contains the appended entries.
     """
+    messages = list(messages)
     calculation_results = []
     messages.append(response_message)
 
@@ -175,7 +368,7 @@ def handle_tool_calls(messages, response_message):
             })
             continue
 
-        safe_args = {k: '***' if k in ('amount', 'monthly_income', 'non_taxable', 'tax_free_monthly') else v
+        safe_args = {k: '***' if k in _SENSITIVE_KEYS else v
                      for k, v in function_args.items()}
         logging.info("[Function Call] %s with args: %s", function_name, safe_args)
         try:
@@ -183,6 +376,12 @@ def handle_tool_calls(messages, response_message):
                 function_response = calculate_wage(**function_args)
             elif function_name == "calculate_insurance":
                 function_response = calculate_insurance(**function_args)
+            elif function_name == "calculate_retirement_pay":
+                function_response = calculate_retirement_pay(**function_args)
+            elif function_name == "calculate_annual_leave":
+                function_response = calculate_annual_leave(**function_args)
+            elif function_name == "calculate_income_tax":
+                function_response = calculate_income_tax(**function_args)
             else:
                 function_response = {"error": "Unknown function"}
         except Exception as e:

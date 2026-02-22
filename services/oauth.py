@@ -39,6 +39,7 @@ def init_oauth(app):
             client_secret=kakao_secret,
             authorize_url='https://kauth.kakao.com/oauth/authorize',
             access_token_url='https://kauth.kakao.com/oauth/token',
+            userinfo_endpoint='https://kapi.kakao.com/v2/user/me',
             token_endpoint_auth_method='client_secret_post',
             client_kwargs={'scope': 'profile_nickname profile_image'},
         )

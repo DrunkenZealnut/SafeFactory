@@ -14,6 +14,8 @@ from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass
 from openai import OpenAI
 
+from src import HttpClientMixin
+
 # Set SSL certificate environment variables
 os.environ.setdefault('SSL_CERT_FILE', certifi.where())
 os.environ.setdefault('REQUESTS_CA_BUNDLE', certifi.where())
@@ -273,7 +275,7 @@ def _distribute_lines_by_blocks(
     return result
 
 
-class SemanticChunker:
+class SemanticChunker(HttpClientMixin):
     """
     Splits text into semantically meaningful chunks.
     Uses a combination of structural analysis and embedding similarity.
@@ -314,13 +316,6 @@ class SemanticChunker:
         self.enable_contextual = enable_contextual
         self.encoding = tiktoken.encoding_for_model("gpt-4o-mini")
 
-    def close(self):
-        """Close the underlying HTTP client."""
-        if hasattr(self, '_http_client'):
-            try:
-                self._http_client.close()
-            except Exception:
-                pass
 
     def _count_tokens(self, text: str) -> int:
         """Count tokens using tiktoken for accurate measurement."""

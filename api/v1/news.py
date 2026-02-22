@@ -4,7 +4,7 @@ import ipaddress
 import logging
 import re
 import socket
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import requests as http_requests
 from flask import request
@@ -108,6 +108,9 @@ def _fetch_og_metadata(url, timeout=5):
             redirect_url = resp.headers.get('Location')
             if not redirect_url:
                 return None
+            # Handle relative redirects
+            if not redirect_url.startswith(('http://', 'https://')):
+                redirect_url = urljoin(url, redirect_url)
             resp = _safe_get(redirect_url, headers, timeout)
             if resp is None:
                 return None

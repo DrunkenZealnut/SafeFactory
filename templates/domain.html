@@ -1040,6 +1040,8 @@
                                 <option value="10" selected>10개</option>
                                 <option value="15">15개</option>
                                 <option value="20">20개</option>
+                                <option value="30">30개</option>
+                                <option value="50">50개</option>
                             </select>
                         </div>
                         <div class="search-input-group" style="display: flex; align-items: flex-end;">
@@ -1318,7 +1320,23 @@
         let answerHtml = renderMarkdown(cleanAnswer);
         answerHtml = answerHtml.replace(/\[(\d+)\]/g, '<a href="#source-$1" class="citation" data-source="$1">[$1]</a>');
 
-        let html = `
+        // Calculation results block (shown before AI answer)
+        let calcHtml = '';
+        if (calculations && calculations.formatted) {
+            calcHtml = `
+                <div class="ai-answer-container" style="border-color: rgba(76, 175, 80, 0.3); background: rgba(76, 175, 80, 0.08); margin-bottom: 15px;">
+                    <div class="ai-answer-header" style="color: #66bb6a;">
+                        <span>📊</span> 자동 계산 결과
+                        <span style="font-size: 0.75rem; color: #888; margin-left: auto;">${escapeHtml(calculations.input_summary || '')}</span>
+                    </div>
+                    <div class="ai-answer-content">
+                        ${renderMarkdown(calculations.formatted)}
+                    </div>
+                </div>
+            `;
+        }
+
+        let html = calcHtml + `
             <div class="ai-answer-container">
                 <div class="ai-answer-header">
                     <span>🤖</span> AI 답변
@@ -1481,7 +1499,7 @@
                         if (event.type === 'metadata') {
                             metadata = event.data;
                             loading.classList.remove('active');
-                        } else if (event.type === 'calculations') {
+                        } else if (event.type === 'calculation' || event.type === 'calculations') {
                             calculations = event.data;
                         } else if (event.type === 'token') {
                             answerText += event.data;

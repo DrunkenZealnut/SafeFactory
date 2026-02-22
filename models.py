@@ -1,13 +1,14 @@
 """SQLAlchemy models for user authentication, social login, and community."""
 
 import base64
-import hashlib
 import logging
 import os
 import threading
 from datetime import datetime, timezone
 
 from cryptography.fernet import Fernet, InvalidToken
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.primitives import hashes
 from sqlalchemy.exc import IntegrityError
 from urllib.parse import urlparse
 
@@ -43,8 +44,14 @@ def _get_fernet():
                     logging.warning('SECRET_KEY not set — token encryption disabled')
                     _fernet_initialized = True
                     return None
-                # Derive a 32-byte key via SHA-256 and base64-encode for Fernet
-                key = base64.urlsafe_b64encode(hashlib.sha256(secret.encode()).digest())
+                # Derive key using PBKDF2 (fixed salt for deterministic derivation)
+                kdf = PBKDF2HMAC(
+                    algorithm=hashes.SHA256(),
+                    length=32,
+                    salt=b'safefactory_token_encryption',
+                    iterations=100_000,
+                )
+                key = base64.urlsafe_b64encode(kdf.derive(secret.encode()))
                 _fernet_instance = Fernet(key)
                 _fernet_initialized = True
     return _fernet_instance

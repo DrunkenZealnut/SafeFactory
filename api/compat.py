@@ -30,9 +30,9 @@ def register_compat_routes(app, csrf=None):
             post_views.append(view_func)
 
     # Index operations
-    _add('/api/stats', 'compat_stats', api_stats)
-    _add('/api/namespaces', 'compat_namespaces', api_namespaces)
-    _add('/api/sources', 'compat_sources', api_sources)
+    _add('/api/stats', 'compat_stats', api_stats, methods=['GET'])
+    _add('/api/namespaces', 'compat_namespaces', api_namespaces, methods=['GET'])
+    _add('/api/sources', 'compat_sources', api_sources, methods=['GET'])
     _add('/api/delete', 'compat_delete', api_delete, methods=['POST'])
 
     # Search & RAG
@@ -47,15 +47,15 @@ def register_compat_routes(app, csrf=None):
     _add('/api/msds/identify', 'compat_msds_identify', msds_identify, methods=['POST'])
 
     # Health & configuration
-    _add('/api/health', 'compat_health', api_health)
-    _add('/api/domains', 'compat_domains', api_domains)
+    _add('/api/health', 'compat_health', api_health, methods=['GET'])
+    _add('/api/domains', 'compat_domains', api_domains, methods=['GET'])
 
     # Calculator
     _add('/api/calculate/wage', 'compat_calc_wage', api_calculate_wage, methods=['POST'])
     _add('/api/calculate/insurance', 'compat_calc_insurance', api_calculate_insurance, methods=['POST'])
 
     # Auth
-    _add('/api/auth/me', 'compat_auth_me', api_auth_me)
+    _add('/api/auth/me', 'compat_auth_me', api_auth_me, methods=['GET'])
     _add('/api/auth/logout', 'compat_auth_logout', api_auth_logout, methods=['POST'])
 
     # Exempt all POST view functions from CSRF

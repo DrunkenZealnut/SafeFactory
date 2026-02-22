@@ -64,8 +64,8 @@ def load_files(folder_path: str) -> List[ProcessedFile]:
         if not file_path.is_file():
             continue
 
-        # Skip SafeFactory folder
-        if 'SafeFactory' in str(file_path):
+        # Skip SafeFactory folder (case-insensitive)
+        if 'safefactory' in str(file_path).lower():
             continue
 
         ext = file_path.suffix.lower()

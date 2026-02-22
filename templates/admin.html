@@ -666,6 +666,9 @@
                         <option value="name">이름순</option>
                         <option value="login">최근 로그인순</option>
                     </select>
+                    <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;">
+                        <input type="checkbox" id="mask-email" checked> 이메일 마스킹
+                    </label>
                 </div>
                 <div class="table-wrapper">
                     <table>
@@ -1401,9 +1404,11 @@
     // ---------------------------------------------------------------------------
     // Categories
     // ---------------------------------------------------------------------------
+    let _categoryCache = [];
     async function loadCategories() {
         try {
             const { data } = await apiFetch('/categories');
+            _categoryCache = data;
             const tb = document.getElementById('cat-table');
             tb.innerHTML = data.map(c => {
                 const safeColor = /^#[0-9A-Fa-f]{6}$/.test(c.color) ? c.color : '#888888';
@@ -1417,7 +1422,7 @@
                 <td><span class="badge badge-${c.is_active?'active':'inactive'}">${c.is_active?'활성':'비활성'}</span></td>
                 <td>
                     <div class="btn-group">
-                        <button class="btn btn-sm edit-cat-btn" data-category="${escHtml(JSON.stringify(c))}">수정</button>
+                        <button class="btn btn-sm edit-cat-btn" data-category-id="${c.id}">수정</button>
                         ${c.is_active ? `<button class="btn btn-danger btn-sm deactivate-cat-btn" data-id="${c.id}">비활성화</button>` : ''}
                     </div>
                 </td>
@@ -1441,7 +1446,8 @@
     document.addEventListener('click', e => {
         const editBtn = e.target.closest('.edit-cat-btn');
         if (editBtn) {
-            const c = JSON.parse(editBtn.dataset.category);
+            const c = _categoryCache.find(cat => String(cat.id) === editBtn.dataset.categoryId);
+            if (!c) { showToast('카테고리 정보를 찾을 수 없습니다.', true); return; }
             document.getElementById('cat-modal-title').textContent = '카테고리 수정';
             document.getElementById('cat-edit-id').value = c.id;
             document.getElementById('cat-name').value = c.name;
@@ -1645,6 +1651,12 @@
     // ---------------------------------------------------------------------------
     // Users
     // ---------------------------------------------------------------------------
+    function maskEmail(email) {
+        const [local, domain] = email.split('@');
+        if (!domain) return '***';
+        const visible = local.slice(0, Math.min(2, local.length));
+        return visible + '***@' + domain;
+    }
     let userPage = 1;
     async function loadUsers(page = 1) {
         userPage = page;
@@ -1662,7 +1674,7 @@
                 tb.innerHTML = data.users.map(u => `<tr>
                     <td>${u.id}</td>
                     <td>${escHtml(u.name)}</td>
-                    <td>${escHtml(u.email)}</td>
+                    <td>${document.getElementById('mask-email').checked ? escHtml(maskEmail(u.email)) : escHtml(u.email)}</td>
                     <td><span class="badge badge-${u.role}">${u.role}</span></td>
                     <td><span class="badge badge-${u.is_active?'active':'inactive'}">${u.is_active?'활성':'비활성'}</span></td>
                     <td>${(u.providers||[]).join(', ') || '-'}</td>
@@ -1703,6 +1715,7 @@
 
     document.getElementById('user-search').addEventListener('input', debounce(() => loadUsers(1), 400));
     document.getElementById('user-sort').addEventListener('change', () => loadUsers(1));
+    document.getElementById('mask-email').addEventListener('change', () => loadUsers(userPage));
 
     // ---------------------------------------------------------------------------
     // Stats
