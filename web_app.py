@@ -48,7 +48,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'in
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB request limit
 
-from models import db, User, SocialAccount, seed_categories, seed_system_settings, ensure_provider_settings
+from models import db, User, SocialAccount, seed_categories, seed_system_settings, ensure_provider_settings, ensure_calculator_settings
 db.init_app(app)
 
 # ========================================
@@ -91,6 +91,7 @@ with app.app_context():
     seed_categories()
     seed_system_settings()
     ensure_provider_settings()
+    ensure_calculator_settings()
 
 # Register explicit shutdown for singleton httpx clients
 from services.singletons import shutdown_all

@@ -27,6 +27,13 @@ _PDF_INDEX_TTL = 300     # seconds
 _HEARTBEAT_INTERVAL = 15  # SSE heartbeat interval (seconds)
 
 
+def _get_answer_max_tokens(namespace: str, source_count: int) -> int:
+    """Return LLM max_tokens budget based on domain and source count."""
+    if namespace == 'laborlaw':
+        return min(6000, 2000 + source_count * 250)
+    return min(4000, 1500 + source_count * 200)
+
+
 def _get_pdf_index():
     """Return a dict mapping LM codes to PDF paths, rebuilt every TTL seconds."""
     global _pdf_index, _pdf_index_ts
@@ -229,7 +236,12 @@ def api_ask():
         # Phase 8: Generate Answer via LLM (OpenAI or Gemini)
         # ========================================
         calc_result = pipeline.get('labor_calc_result')
-        messages = build_llm_messages(query, sources, context, namespace, calc_result)
+        law_refs_formatted = pipeline.get('law_references_formatted')
+        labor_classification = pipeline.get('labor_classification')
+        legal_analysis = pipeline.get('legal_analysis')
+        messages = build_llm_messages(query, sources, context, namespace,
+                                      calc_result, law_refs_formatted,
+                                      labor_classification, legal_analysis)
         provider = get_setting('llm_answer_provider', 'openai')
         model = get_setting('llm_answer_model', 'gpt-4o-mini')
         if not _VALID_MODEL_RE.match(model):
@@ -239,7 +251,7 @@ def api_ask():
             temperature = float(get_setting('llm_answer_temperature', '0.3'))
         except (ValueError, TypeError):
             temperature = 0.3
-        answer_max_tokens = min(4000, 1500 + len(sources) * 200)
+        answer_max_tokens = _get_answer_max_tokens(namespace, len(sources))
 
         if provider == 'gemini':
             gemini = get_gemini_client()
@@ -271,6 +283,7 @@ def api_ask():
             answer = response.choices[0].message.content
 
         related_images = _collect_related_images(sources)
+        law_refs_raw = pipeline.get('law_references')
 
         return success_response(data={
             'query': query,
@@ -281,6 +294,7 @@ def api_ask():
             'enhancement_used': use_enhancement,
             'query_variations': enhanced_queries if use_enhancement else None,
             'keywords_extracted': keywords if use_enhancement else None,
+            'law_references': law_refs_raw if law_refs_raw else None,
         })
 
     except Exception:
@@ -315,7 +329,13 @@ def api_ask_stream():
     use_enhancement = pipeline['use_enhancement']
 
     calc_result = pipeline.get('labor_calc_result')
-    messages = build_llm_messages(query, sources, context, namespace, calc_result)
+    law_refs_formatted = pipeline.get('law_references_formatted')
+    law_refs_raw = pipeline.get('law_references')
+    labor_classification = pipeline.get('labor_classification')
+    legal_analysis = pipeline.get('legal_analysis')
+    messages = build_llm_messages(query, sources, context, namespace,
+                                  calc_result, law_refs_formatted,
+                                  labor_classification, legal_analysis)
     provider = get_setting('llm_answer_provider', 'openai')
     model = get_setting('llm_answer_model', 'gpt-4o-mini')
     if not _VALID_MODEL_RE.match(model):
@@ -330,6 +350,7 @@ def api_ask_stream():
         try:
             related_images = _collect_related_images(sources)
 
+            # Laborlaw gets higher token budget for richer analysis
             # Send calculation result event if available (before metadata)
             if calc_result:
                 calc_event = json.dumps({
@@ -352,13 +373,14 @@ def api_ask_stream():
                     'images': related_images,
                     'enhancement_used': use_enhancement,
                     'query_variations': enhanced_queries if use_enhancement else None,
-                    'keywords_extracted': keywords if use_enhancement else None
+                    'keywords_extracted': keywords if use_enhancement else None,
+                    'law_references': law_refs_raw if law_refs_raw else None,
                 }
             }, ensure_ascii=False)
             yield f"data: {metadata_event}\n\n"
 
             # Dynamic max_tokens: scale with source count for complex multi-doc answers
-            answer_max_tokens = min(4000, 1500 + len(sources) * 200)
+            answer_max_tokens = _get_answer_max_tokens(namespace, len(sources))
             last_heartbeat = time.monotonic()
 
             def _maybe_heartbeat():

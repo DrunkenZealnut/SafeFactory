@@ -44,7 +44,7 @@ _PAT_NET_AMOUNT_MAN = re.compile(
 _PAT_NET_AMOUNT_WON = re.compile(
     r'(?:세후|실수령|실수령액|수령액|순수익)\s*([\d,]+)\s*원'
 )
-_PAT_HOURLY = re.compile(r'시급\s*([\d,]+)\s*원?')
+_PAT_HOURLY = re.compile(r'시급\s*[은이가도는]?\s*([\d,]+)\s*원?')
 _PAT_DAILY_WAGE = re.compile(r'일급\s*([\d,]+)\s*(만\s*)?원')
 _PAT_DAILY_HOURS = re.compile(r'(?:하루|1일|일)\s*(\d+)\s*시간')
 _PAT_OVERTIME_HOURS = re.compile(r'연장\s*(\d+)\s*시간')
@@ -58,6 +58,17 @@ _PAT_WELFARE = re.compile(r'(?:식대|교통비|복리후생)\s*([\d,]+)\s*(?:�
 _PAT_SALARY_TYPE_ANNUAL = re.compile(r'연봉')
 _PAT_SALARY_TYPE_MONTHLY = re.compile(r'월급|월[\s]?급여|월소득')
 _PAT_DATE = re.compile(r'(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})')
+# Work schedule parsing
+_PAT_TIME_RANGE = re.compile(
+    r'(\d{1,2})\s*시\s*(\d{1,2})?\s*분?\s*'
+    r'[~에부터까지\-]\s*'
+    r'(\d{1,2})\s*시\s*(\d{1,2})?\s*분?'
+)
+_PAT_BREAK_MIN = re.compile(r'(?:휴식|쉬는\s*시간|휴게)\s*(\d+)\s*분')
+_PAT_LUNCH_MIN = re.compile(r'점심\s*(?:시간)?\s*(\d+)\s*분')
+_PAT_DOUBLE_BREAK = re.compile(r'오전\s*(?:오후|,\s*오후)\s*(\d+)\s*분')
+_PAT_WORK_DAYS = re.compile(r'주\s*(\d)\s*일')
+_MONTHLY_WAGE_KEYWORDS = ('월급', '월소득', '월 급여', '한달', '한 달')
 _PAT_HIRE_DATE = re.compile(r'입사\s*(?:일|날짜|일자)?\s*(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})')
 _PAT_WITHHOLDING = re.compile(r'(?:원천징수|원천)\s*(\d+)\s*%')
 
@@ -127,6 +138,43 @@ def classify_labor_question(query: str) -> dict:
     m = _PAT_HOURLY.search(q)
     if m:
         params['hourly_wage'] = _parse_number(m.group(1))
+
+    # Work schedule → daily actual hours → weekly hours
+    m_time = _PAT_TIME_RANGE.search(q)
+    if m_time:
+        start_h, start_m = int(m_time.group(1)), int(m_time.group(2) or 0)
+        end_h, end_m = int(m_time.group(3)), int(m_time.group(4) or 0)
+        total_min = (end_h * 60 + end_m) - (start_h * 60 + start_m)
+        # 야간 근무: 종료 시간이 시작 시간보다 이른 경우 24시간 추가
+        if total_min <= 0:
+            total_min += 24 * 60
+
+        # 휴식시간 파싱
+        break_total = 0
+        # "오전 오후 N분" 패턴 → 2회 처리
+        m_double = _PAT_DOUBLE_BREAK.search(q)
+        if m_double:
+            break_total += int(m_double.group(1)) * 2
+        else:
+            for bm in _PAT_BREAK_MIN.finditer(q):
+                break_total += int(bm.group(1))
+        m_lunch = _PAT_LUNCH_MIN.search(q)
+        if m_lunch:
+            break_total += int(m_lunch.group(1))
+
+        actual_min = total_min - break_total
+        params['daily_work_minutes'] = actual_min
+        params['daily_break_minutes'] = break_total
+        params['schedule_start'] = f"{start_h:02d}:{start_m:02d}"
+        params['schedule_end'] = f"{end_h:02d}:{end_m:02d}"
+
+        # 주당 근무일수 (기본 5일)
+        m_days = _PAT_WORK_DAYS.search(q)
+        work_days = int(m_days.group(1)) if m_days else 5
+        params['work_days_per_week'] = work_days
+
+        if 'weekly_hours' not in params:
+            params['weekly_hours'] = round(actual_min / 60 * work_days, 2)
 
     # Daily wage
     m = _PAT_DAILY_WAGE.search(q)
@@ -222,6 +270,10 @@ def classify_labor_question(query: str) -> dict:
             calc_type = 'severance'
         elif _has_any(ql, _INSURANCE_KEYWORDS) and has_numbers:
             calc_type = 'insurance'
+        elif params.get('hourly_wage') and params.get('weekly_hours') and _has_any(ql, _MONTHLY_WAGE_KEYWORDS + _CALC_KEYWORDS):
+            calc_type = 'monthly_wage'
+        elif params.get('hourly_wage') and params.get('daily_work_minutes'):
+            calc_type = 'monthly_wage'
         elif _has_any(ql, _WEEKLY_PAY_KEYWORDS) and (params.get('hourly_wage') or params.get('weekly_hours')):
             calc_type = 'weekly_holiday'
         elif _has_any(ql, _OVERTIME_KEYWORDS) and has_numbers:

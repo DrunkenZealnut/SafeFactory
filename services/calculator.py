@@ -7,6 +7,11 @@ from calculator import (
     WageCalculator, InsuranceCalculator, CompanySize, IndustryType,
     RetirementPayCalculator, AnnualLeaveCalculator, IncomeTaxCalculator,
 )
+from calculator.rates import (
+    get_wage_insurance_rates,
+    get_insurance_rates,
+    get_income_tax_rates,
+)
 
 
 def calculate_wage(
@@ -18,7 +23,7 @@ def calculate_wage(
     company_size: str = 'small'
 ) -> dict:
     """임금 계산 (실수령액, 4대보험료, 세금)"""
-    calc = WageCalculator()
+    calc = WageCalculator(rates=get_wage_insurance_rates())
 
     if salary_type == '연봉':
         result = calc.calculate_from_annual(
@@ -49,7 +54,7 @@ def calculate_insurance(
     industry_code: str = 'OTHERS'
 ) -> dict:
     """4대보험료 계산 (국민연금, 건강보험, 장기요양보험, 고용보험, 산재보험)"""
-    calc = InsuranceCalculator()
+    calc = InsuranceCalculator(rates=get_insurance_rates())
 
     size_map = {
         'UNDER_150': CompanySize.UNDER_150,
@@ -132,6 +137,7 @@ def calculate_income_tax(
         dependents=dependents,
         children_8_to_20=children_8_to_20,
         withholding_rate=withholding_rate,
+        insurance_rates=get_income_tax_rates(),
     )
     return calc.calculate()
 

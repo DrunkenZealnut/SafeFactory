@@ -1635,12 +1635,64 @@ _ALL_LLM_MODELS = []
 for _pinfo in _PROVIDER_MODELS.values():
     _ALL_LLM_MODELS.extend([m['value'] for m in _pinfo['llm_models']])
 
+# Calculator setting validation rules
+_CALC_RATE_KEYS = {
+    'calc.np_rate', 'calc.hi_rate', 'calc.ltc_rate',
+    'calc.ei_employee', 'calc.ei_employer_base',
+    'calc.ei_under_150', 'calc.ei_priority', 'calc.ei_150_to_999', 'calc.ei_over_1000',
+    'calc.ia_commute', 'calc.ia_wage_claim', 'calc.ia_asbestos',
+}
+_CALC_AMOUNT_KEYS = {
+    'calc.np_max_income', 'calc.np_min_income',
+    'calc.hi_max_income', 'calc.hi_min_income',
+    'calc.hi_max_premium', 'calc.hi_min_premium',
+    'calc.min_wage_2026', 'calc.min_wage_2025',
+}
+_CALC_YEAR_KEYS = {'calc.min_wage_year', 'calc.rates_year'}
+
+
+def _validate_calc_setting(key: str, value: str) -> str | None:
+    """Validate a calculator setting value. Returns error message or None."""
+    if key in _CALC_RATE_KEYS:
+        try:
+            v = float(value)
+            if not (0.0 <= v <= 1.0):
+                return f"'{key}' 요율은 0~1 범위여야 합니다. (입력: {value})"
+        except ValueError:
+            return f"'{key}' 요율은 숫자여야 합니다. (입력: {value})"
+    elif key in _CALC_AMOUNT_KEYS:
+        try:
+            v = int(value)
+            if v < 0:
+                return f"'{key}' 금액은 0 이상이어야 합니다. (입력: {value})"
+        except ValueError:
+            return f"'{key}' 금액은 정수여야 합니다. (입력: {value})"
+    elif key in _CALC_YEAR_KEYS:
+        try:
+            v = int(value)
+            if not (2020 <= v <= 2099):
+                return f"'{key}' 연도는 2020~2099 범위여야 합니다. (입력: {value})"
+        except ValueError:
+            return f"'{key}' 연도는 정수여야 합니다. (입력: {value})"
+    return None
+
+
 # Whitelist of allowed setting keys
 _ALLOWED_SETTING_KEYS = {
     'llm_answer_model', 'llm_answer_temperature', 'llm_answer_provider',
     'llm_query_model', 'llm_query_provider',
     'llm_context_model', 'llm_context_provider',
     'embedding_model', 'reranker_type',
+    # Calculator rates
+    'calc.np_rate', 'calc.np_max_income', 'calc.np_min_income',
+    'calc.hi_rate', 'calc.hi_max_income', 'calc.hi_min_income',
+    'calc.hi_max_premium', 'calc.hi_min_premium',
+    'calc.ltc_rate',
+    'calc.ei_employee', 'calc.ei_employer_base',
+    'calc.ei_under_150', 'calc.ei_priority', 'calc.ei_150_to_999', 'calc.ei_over_1000',
+    'calc.ia_commute', 'calc.ia_wage_claim', 'calc.ia_asbestos',
+    'calc.min_wage_year', 'calc.min_wage_2026', 'calc.min_wage_2025',
+    'calc.rates_updated_at', 'calc.rates_year',
 }
 
 # Valid values per key (empty means any value accepted)
@@ -1712,6 +1764,12 @@ def admin_settings_update():
             except ValueError:
                 return error_response('Temperature는 숫자여야 합니다.', 400)
 
+        # Calculator rate validation
+        if key.startswith('calc.'):
+            err = _validate_calc_setting(key, value)
+            if err:
+                return error_response(err, 400)
+
         setting = SystemSetting.query.filter_by(key=key).first()
         if setting:
             if setting.value != value:
@@ -1753,6 +1811,21 @@ def admin_settings_update():
         data={'updated': len(updated)},
         message=f'{len(updated)}개 설정이 변경되었습니다.',
     )
+
+
+@v1_bp.route('/admin/calculator-rates', methods=['GET'])
+@admin_required
+def admin_calculator_rates():
+    """Return current calculator rates with freshness info."""
+    from calculator.rates import get_all_rates, get_rates_freshness
+
+    rates = get_all_rates()
+    freshness = get_rates_freshness()
+
+    return success_response(data={
+        'rates': rates,
+        'freshness': freshness,
+    })
 
 
 @v1_bp.route('/admin/settings/models', methods=['GET'])

@@ -7,8 +7,13 @@ from calculator.insurance_calculator import InsuranceCalculator, CompanySize
 from calculator.minimum_wage import (
     calculate_minimum_wage,
     calculate_minimum_wage_daily,
-    CURRENT_MIN_HOURLY,
-    CURRENT_YEAR,
+)
+from calculator.rates import (
+    get_wage_insurance_rates,
+    get_insurance_rates,
+    get_income_tax_rates,
+    get_minimum_wage,
+    get_current_wage_year,
 )
 from calculator.retirement_calculator import RetirementPayCalculator
 from calculator.annual_leave_calculator import AnnualLeaveCalculator
@@ -71,6 +76,8 @@ def run_labor_calculation(classification: dict) -> dict | None:
             return _run_annual_leave(params)
         elif calc_type == 'income_tax':
             return _run_income_tax(params)
+        elif calc_type == 'monthly_wage':
+            return _run_monthly_wage(params)
     except Exception as e:
         logging.warning(
             "[LaborCalculator] %s calculation failed: %s",
@@ -92,7 +99,7 @@ def _run_wage(params: dict) -> dict | None:
     children = params.get('children', 0)
     tax_free_original, tax_free, tax_free_adjusted = _cap_tax_free(params.get('welfare_cash', 0))
 
-    calc = WageCalculator()
+    calc = WageCalculator(rates=get_wage_insurance_rates())
     if salary_type == '연봉':
         result = calc.calculate_from_annual(
             annual_salary=amount,
@@ -161,7 +168,7 @@ def _run_wage_reverse(params: dict) -> dict | None:
     # 연봉으로 입력된 경우 월 기준으로 변환
     target_monthly_net = net_amount // 12 if salary_type == '연봉' else net_amount
 
-    calc = WageCalculator()
+    calc = WageCalculator(rates=get_wage_insurance_rates())
     result = calc.calculate_from_net(
         target_net_monthly=target_monthly_net,
         tax_free_monthly=tax_free,
@@ -222,7 +229,7 @@ def _run_insurance(params: dict) -> dict | None:
     monthly = amount // 12 if salary_type == '연봉' else amount
     tax_free_original, tax_free, tax_free_adjusted = _cap_tax_free(params.get('welfare_cash', 0))
 
-    calc = InsuranceCalculator()
+    calc = InsuranceCalculator(rates=get_insurance_rates())
     result = calc.calculate_all(
         monthly_income=monthly,
         non_taxable=tax_free,
@@ -272,7 +279,7 @@ def _run_minimum_wage(params: dict) -> dict | None:
     welfare = params.get('welfare_cash', 0)
     overtime_hours = params.get('overtime_hours', 0)
 
-    legal_min = CURRENT_MIN_HOURLY
+    legal_min = get_minimum_wage()
 
     # --- 일급제 계산 ---
     if wage_type == 'daily' or daily_wage:
@@ -297,7 +304,7 @@ def _run_minimum_wage(params: dict) -> dict | None:
 | 연장 근로시간 | {result['연장_근로시간']}시간 |
 | 나의 일급 | {_fmt(result['나의_일급'])}원 |
 | 나의 환산 시급 | {_fmt(result['나의_환산_시급'])}원 |
-| {CURRENT_YEAR}년 법정 최저시급 | {_fmt(result['법정_최저시급'])}원 |
+| {get_current_wage_year()}년 법정 최저시급 | {_fmt(result['법정_최저시급'])}원 |
 | 법정 최저일급 (기본) | {_fmt(result['법정_최저일급_기본'])}원 |
 | 법정 최저일급 (연장포함) | {_fmt(result['법정_최저일급_연장포함'])}원 |
 | **판정** | **{result['위반_여부']}** |
@@ -339,7 +346,7 @@ def _run_minimum_wage(params: dict) -> dict | None:
 | 월 소정근로시간 | {result['월_근로시간']}시간 |
 | 최저임금 산입 총액 | {_fmt(result['최저임금_산입총액'])}원 |
 | 나의 환산 시급 | {_fmt(result['나의_환산_시급'])}원 |
-| {CURRENT_YEAR}년 법정 최저시급 | {_fmt(result['법정_최저시급'])}원 |
+| {get_current_wage_year()}년 법정 최저시급 | {_fmt(result['법정_최저시급'])}원 |
 | 적용 최저시급 | {_fmt(result['적용_법정_최저시급'])}원 |
 | **판정** | **{result['위반_여부']}** |
 | 차액(시급) | {_fmt(result['차액_시급'])}원 |
@@ -410,7 +417,7 @@ def _run_weekly_holiday(params: dict) -> dict | None:
         return None
 
     if not hourly:
-        hourly = CURRENT_MIN_HOURLY
+        hourly = get_minimum_wage()
     if not weekly_hours:
         weekly_hours = 40
 
@@ -651,6 +658,7 @@ def _run_income_tax(params: dict) -> dict | None:
         dependents=dependents,
         children_8_to_20=children,
         withholding_rate=withholding_rate,
+        insurance_rates=get_income_tax_rates(),
     )
     result = calc.calculate()
 
@@ -705,5 +713,123 @@ def _run_income_tax(params: dict) -> dict | None:
         'calc_type': 'income_tax',
         'input_summary': input_summary,
         'result': result,
+        'formatted': formatted,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Monthly wage from hourly rate + work schedule (시급→월급 종합 계산)
+# ---------------------------------------------------------------------------
+def _run_monthly_wage(params: dict) -> dict | None:
+    """시급 + 주당근로시간 → 월급(세전/세후) 종합 계산."""
+    hourly = params.get('hourly_wage')
+    weekly_hours = params.get('weekly_hours')
+    if not hourly or hourly <= 0 or not weekly_hours or weekly_hours <= 0:
+        return None
+
+    work_days = params.get('work_days_per_week', 5)
+    daily_min = params.get('daily_work_minutes')
+    break_min = params.get('daily_break_minutes', 0)
+    schedule_start = params.get('schedule_start', '')
+    schedule_end = params.get('schedule_end', '')
+
+    # 1) 주휴수당 계산
+    weekly_holiday_hours = min((weekly_hours / 40) * 8, 8)
+    weekly_holiday_pay = round(hourly * weekly_holiday_hours)
+
+    # 2) 월 환산 (4.345주)
+    monthly_basic = round(hourly * weekly_hours * 4.345)
+    monthly_holiday = round(weekly_holiday_pay * 4.345)
+    monthly_gross = monthly_basic + monthly_holiday
+
+    # 3) 월 소정근로시간
+    monthly_work_hours = round((weekly_hours + weekly_holiday_hours) / 7 * 365 / 12, 1)
+
+    # 4) 최저임금 확인
+    legal_min = get_minimum_wage()
+    wage_ok = '적합' if hourly >= legal_min else '위반'
+
+    # 5) 4대보험 + 소득세 공제 (WageCalculator)
+    dependents = params.get('dependents', 1)
+    children = params.get('children', 0)
+    tax_free = min(params.get('welfare_cash', 0), TAX_FREE_CAP)
+
+    calc = WageCalculator(rates=get_wage_insurance_rates())
+    wage_result = calc.calculate_from_monthly(
+        monthly_salary=monthly_gross,
+        tax_free_monthly=tax_free,
+        dependents=dependents,
+        children_8_to_20=children,
+    )
+    ded = wage_result['근로자_공제내역']
+    net = wage_result['실수령액']
+
+    # 입력 요약
+    if daily_min and schedule_start:
+        h, m = divmod(daily_min, 60)
+        input_summary = (
+            f"시급 {_fmt(hourly)}원, {schedule_start}~{schedule_end} "
+            f"(실 {h}시간 {m}분, 휴식 {break_min}분), 주 {work_days}일"
+        )
+    else:
+        input_summary = f"시급 {_fmt(hourly)}원, 주 {weekly_hours}시간"
+
+    # 포맷팅
+    formatted = f"""### 월급 계산 결과 ({input_summary})
+
+**근무 조건**
+
+| 항목 | 값 |
+|------|-----|"""
+
+    if daily_min and schedule_start:
+        h, m = divmod(daily_min, 60)
+        formatted += f"""
+| 근무시간 | {schedule_start} ~ {schedule_end} |
+| 휴식시간 | {break_min}분 |
+| 일 실근로시간 | {h}시간 {m}분 ({daily_min / 60:.2f}h) |"""
+
+    formatted += f"""
+| 주당 근로시간 | {weekly_hours}시간 (주 {work_days}일) |
+| 시급 | {_fmt(hourly)}원 |
+| 최저임금 확인 | {wage_ok} (법정 {_fmt(legal_min)}원) |
+
+**월급 산출**
+
+| 항목 | 금액 |
+|------|------|
+| 월 기본급 | {_fmt(monthly_basic)}원 |
+| 주휴시간 | {weekly_holiday_hours:.2f}시간/주 |
+| 월 주휴수당 | {_fmt(monthly_holiday)}원 |
+| **월 총급여 (세전)** | **{_fmt(monthly_gross)}원** |
+| 월 소정근로시간 | {monthly_work_hours}시간 |
+
+**공제 내역 (4대보험 + 소득세)**
+
+| 항목 | 금액 |
+|------|------|
+| 국민연금 | -{_fmt(ded['국민연금'])}원 |
+| 건강보험 | -{_fmt(ded['건강보험'])}원 |
+| 장기요양보험 | -{_fmt(ded['장기요양보험'])}원 |
+| 고용보험 | -{_fmt(ded['고용보험'])}원 |
+| 소득세 | -{_fmt(ded['소득세'])}원 |
+| 지방소득세 | -{_fmt(ded['지방소득세'])}원 |
+| **공제합계** | **-{_fmt(ded['공제합계'])}원** |
+| **월 실수령액** | **{_fmt(net['월_실수령액'])}원** |
+| 연 실수령액 (추정) | {_fmt(net['연_실수령액_추정'])}원 |"""
+
+    return {
+        'calc_type': 'monthly_wage',
+        'input_summary': input_summary,
+        'result': {
+            'monthly_basic': monthly_basic,
+            'monthly_holiday': monthly_holiday,
+            'monthly_gross': monthly_gross,
+            'monthly_work_hours': monthly_work_hours,
+            'weekly_holiday_hours': weekly_holiday_hours,
+            'deductions': ded,
+            'net': net,
+            'minimum_wage_check': wage_ok,
+        },
         'formatted': formatted,
     }

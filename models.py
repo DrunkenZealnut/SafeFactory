@@ -609,6 +609,54 @@ def ensure_provider_settings():
                 logging.warning("Failed to ensure provider setting %s: %s", key, e)
 
 
+def ensure_calculator_settings():
+    """Add calculator rate settings if they don't exist yet (safe for existing DBs)."""
+    new_keys = [
+        # 국민연금
+        ('calc.np_rate', '0.0475', '국민연금 근로자 요율', 'calculator'),
+        ('calc.np_max_income', '6370000', '국민연금 기준소득월액 상한', 'calculator'),
+        ('calc.np_min_income', '400000', '국민연금 기준소득월액 하한', 'calculator'),
+        # 건강보험
+        ('calc.hi_rate', '0.03595', '건강보험 근로자 요율', 'calculator'),
+        ('calc.hi_max_income', '127725730', '건강보험 보수월액 상한', 'calculator'),
+        ('calc.hi_min_income', '280528', '건강보험 보수월액 하한', 'calculator'),
+        ('calc.hi_max_premium', '9183460', '건강보험료 월 상한', 'calculator'),
+        ('calc.hi_min_premium', '20160', '건강보험료 월 하한', 'calculator'),
+        # 장기요양보험
+        ('calc.ltc_rate', '0.1314', '장기요양보험 요율 (건강보험료 대비)', 'calculator'),
+        # 고용보험
+        ('calc.ei_employee', '0.009', '고용보험 근로자 요율', 'calculator'),
+        ('calc.ei_employer_base', '0.009', '고용보험 사업주 기본 요율', 'calculator'),
+        ('calc.ei_under_150', '0.0025', '고용안정 150인 미만', 'calculator'),
+        ('calc.ei_priority', '0.0045', '고용안정 우선지원대상', 'calculator'),
+        ('calc.ei_150_to_999', '0.0065', '고용안정 150~999인', 'calculator'),
+        ('calc.ei_over_1000', '0.0085', '고용안정 1000인 이상', 'calculator'),
+        # 산재보험 부가금
+        ('calc.ia_commute', '0.006', '출퇴근재해 요율', 'calculator'),
+        ('calc.ia_wage_claim', '0.0006', '임금채권부담금 요율', 'calculator'),
+        ('calc.ia_asbestos', '0.0003', '석면피해구제분담금 요율', 'calculator'),
+        # 최저임금
+        ('calc.min_wage_year', '2026', '현행 최저임금 적용 연도', 'calculator'),
+        ('calc.min_wage_2026', '10320', '2026년 최저시급 (원)', 'calculator'),
+        ('calc.min_wage_2025', '10030', '2025년 최저시급 (원)', 'calculator'),
+        # 메타
+        ('calc.rates_updated_at', '2026-01-01', '요율 마지막 확인일', 'calculator'),
+        ('calc.rates_year', '2026', '적용 요율 기준년도', 'calculator'),
+    ]
+    for key, value, desc, category in new_keys:
+        if not SystemSetting.query.filter_by(key=key).first():
+            try:
+                db.session.add(SystemSetting(
+                    key=key, value=value, description=desc, category=category,
+                ))
+                db.session.commit()
+            except IntegrityError:
+                db.session.rollback()
+            except Exception as e:
+                db.session.rollback()
+                logging.warning("Failed to ensure calculator setting %s: %s", key, e)
+
+
 # ---------------------------------------------------------------------------
 # News models
 # ---------------------------------------------------------------------------

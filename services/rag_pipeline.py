@@ -28,6 +28,56 @@ from services.singletons import (
 MIN_RELEVANCE_SCORE = float(os.environ.get('MIN_RELEVANCE_SCORE', '0.3'))
 
 
+def _run_legal_analysis_pass(query, classification, law_refs_text, context):
+    """First LLM pass: produce a structured legal analysis for complex labor law questions.
+
+    Uses a lightweight model (gemini-2.0-flash) to analyze the legal aspects
+    before the main generation pass. Only called for legal/hybrid questions.
+
+    Returns:
+        str: Structured analysis text, or empty string on failure.
+    """
+    from services.singletons import get_gemini_client
+    from google.genai import types as genai_types
+
+    q_type = classification.get('type', 'legal')
+    calc_type = classification.get('calc_type', '')
+
+    # Build a concise context snippet (first 1500 chars to stay within budget)
+    context_snippet = ''
+    if law_refs_text:
+        context_snippet += f"[법령 참조]\n{law_refs_text[:800]}\n\n"
+    if context:
+        context_snippet += f"[검색된 문서 발췌]\n{context[:700]}"
+
+    analysis_prompt = f"""당신은 한국 노동법 분석가입니다. 다음 질문을 분석하고 구조화된 분석을 작성하세요.
+
+질문: {query}
+분류: {q_type}, 계산유형: {calc_type or '없음'}
+
+{context_snippet}
+
+아래 5개 항목을 각각 1-2문장으로 간결하게 분석하세요:
+
+1. **적용 법률**: 이 질문에 적용되는 핵심 법률과 조문
+2. **쟁점 분석**: 사용자 상황에서의 핵심 쟁점(논점)
+3. **예외/특례**: 고려해야 할 예외 조항이나 특례
+4. **위반 가능성**: 법 위반 가능성 여부와 근거
+5. **행동 지침**: 사용자에게 안내해야 할 실질적 행동 (구제방법, 신고, 기한)"""
+
+    client = get_gemini_client()
+    config = genai_types.GenerateContentConfig(
+        temperature=0.1,
+        max_output_tokens=600,
+    )
+    resp = client.models.generate_content(
+        model='gemini-2.0-flash',
+        contents=analysis_prompt,
+        config=config,
+    )
+    return resp.text or ''
+
+
 def find_related_images(source_file: str) -> list:
     """Find related images from the same document folder."""
     images = []
@@ -367,8 +417,9 @@ def run_rag_pipeline(data):
         'use_enhancement': use_enhancement,
     }
 
-    # Laborlaw: classify question and run calculator if applicable
+    # Laborlaw: classify question, run calculator, search law API, and run analysis pass
     if namespace == 'laborlaw':
+        classification = None
         try:
             from services.labor_classifier import classify_labor_question
             from services.labor_calculator import run_labor_calculation
@@ -381,14 +432,45 @@ def run_rag_pipeline(data):
         except Exception as e:
             logging.warning("[LaborLaw] Classification/calculation failed: %s", e)
 
+        # Search for relevant law references via public API
+        try:
+            from services.law_api import search_labor_laws, format_law_references
+            law_refs = search_labor_laws(query, classification)
+            if law_refs:
+                result['law_references'] = law_refs
+                source_count = len(result.get('sources', []))
+                result['law_references_formatted'] = format_law_references(
+                    law_refs, start_index=source_count + 1)
+        except Exception as e:
+            logging.warning("[LaborLaw] Law API search failed: %s", e)
+
+        # Multi-step reasoning: run analysis pass for legal/hybrid questions
+        if (classification and classification.get('type') in ('legal', 'hybrid')
+                and len(query) > 20):
+            try:
+                analysis = _run_legal_analysis_pass(
+                    query, classification,
+                    result.get('law_references_formatted', ''),
+                    result.get('context', ''))
+                if analysis:
+                    result['legal_analysis'] = analysis
+                    logging.info("[LaborLaw] Analysis pass completed (%d chars)", len(analysis))
+            except Exception as e:
+                logging.warning("[LaborLaw] Analysis pass failed: %s", e)
+
     return result
 
 
-def build_llm_prompts(query, sources, context, namespace, calc_result=None):
+def build_llm_prompts(query, sources, context, namespace, calc_result=None,
+                      law_references=None, labor_classification=None,
+                      legal_analysis=None):
     """Build separate system and user prompts for LLM call.
 
     Args:
         calc_result: Optional dict from run_labor_calculation() with 'formatted' key.
+        law_references: Optional formatted string of relevant law references from the Law API.
+        labor_classification: Optional dict from classify_labor_question() with 'type' and 'calc_type'.
+        legal_analysis: Optional string from _run_legal_analysis_pass() with structured analysis.
 
     Returns:
         tuple: (system_prompt, user_prompt)
@@ -409,11 +491,88 @@ def build_llm_prompts(query, sources, context, namespace, calc_result=None):
 위 계산 결과는 {datetime.now().year}년 기준 공식 요율로 정밀 계산된 수치입니다.
 이 수치를 답변에 그대로 사용하고, 직접 재계산하지 마세요."""
 
+    # Inject compliance warnings for detected violations
+    if calc_result:
+        result_data = calc_result.get('result') or {}
+        violation = str(result_data.get('위반_여부', ''))
+        if '위반' in violation:
+            user_prompt += """
+
+## ⚠️ 법 위반 감지
+시스템 분석 결과 법 위반 가능성이 감지되었습니다.
+답변에 반드시 다음을 포함하세요:
+1. 위반 사실과 법적 근거를 명확히 설명
+2. 사업주의 벌칙/제재 내용 (형사처벌, 과태료 등)
+3. 근로자가 취할 수 있는 구제 방법 (고용노동부 신고 1350, 노동위원회 등)
+4. 관련 소멸시효 및 기한 안내"""
+
+    # Inject relevant law references from Law API
+    if law_references:
+        # Extract citation numbers from formatted law references
+        import re as _re
+        _law_nums = _re.findall(r'^\[(\d+)\]', law_references, _re.MULTILINE)
+        _law_range = ', '.join(f'[{n}]' for n in _law_nums) if _law_nums else ''
+
+        user_prompt += f"""
+
+## 관련 법령 정보
+{law_references}
+
+**법령 인용 필수 규칙 (반드시 준수):**
+- 위에 제공된 법령 {_law_range} 각각을 답변 본문에서 최소 1회 이상 인용하세요.
+- 각 법령 조문의 핵심 내용을 답변에 포함하고 해당 인용 번호를 표기하세요.
+- 예: "최저임금의 정의는 ... [6]", "최저임금 결정기준은 ... [7]" 등
+- 모든 법령 번호({_law_range})가 답변에 빠짐없이 등장해야 합니다."""
+
+    # Inject multi-step analysis result for legal/hybrid questions
+    if legal_analysis:
+        user_prompt += f"""
+
+## 사전 법률 분석 (1차 분석 결과)
+{legal_analysis}
+
+위 분석을 참고하여 종합적이고 실용적인 답변을 작성하세요."""
+
     if sources:
         user_prompt += f"""
 
 ## 참고 문서 ({len(sources)}개)
 {context}"""
+
+    # Inject classification-aware analysis mode instructions for laborlaw
+    if namespace == 'laborlaw' and labor_classification:
+        q_type = labor_classification.get('type', 'legal')
+
+        if q_type == 'legal':
+            user_prompt += """
+
+## 분석 모드: 법률 해석
+이 질문은 법률 해석이 필요한 질문입니다. 다음을 수행하세요:
+1. 관련 법조항이 이 상황에 어떻게 적용되는지 분석하세요
+2. 예외 조항이나 특례가 적용될 수 있는지 검토하세요
+3. 실제로 어떻게 행동해야 하는지 구체적 조언을 포함하세요 (신고처, 기한, 서류 등)
+4. 위반 사항이 감지되면 적극적으로 경고하세요
+5. 관련될 수 있는 다른 법률도 언급하세요"""
+
+        elif q_type == 'calculation':
+            user_prompt += """
+
+## 분석 모드: 계산 분석
+시스템 계산 결과를 기반으로 다음도 분석하세요:
+1. 계산 결과의 의미를 쉽게 설명하세요
+2. 최저임금 위반, 초과근로 등 법적 이슈가 있는지 체크하세요
+3. 절세나 최적화할 수 있는 팁이 있으면 제안하세요
+4. 비과세 한도, 보험료 상한 등 사용자에게 유리한 정보를 안내하세요"""
+
+        elif q_type == 'hybrid':
+            user_prompt += """
+
+## 분석 모드: 복합 분석
+계산과 법률 해석이 모두 필요한 질문입니다:
+1. 시스템 계산 결과를 먼저 제시하세요
+2. 해당 계산 결과의 법적 적합성을 분석하세요
+3. 위반 사항이 있으면 정확한 법적 근거와 함께 경고하세요
+4. 구체적인 조치 방법을 안내하세요"""
 
     user_prompt += """
 
@@ -429,9 +588,14 @@ def build_llm_prompts(query, sources, context, namespace, calc_result=None):
     return system_prompt, user_prompt
 
 
-def build_llm_messages(query, sources, context, namespace, calc_result=None):
+def build_llm_messages(query, sources, context, namespace, calc_result=None,
+                       law_references=None, labor_classification=None,
+                       legal_analysis=None):
     """Build OpenAI-format messages for LLM call (kept for compatibility)."""
-    system_prompt, user_prompt = build_llm_prompts(query, sources, context, namespace, calc_result)
+    system_prompt, user_prompt = build_llm_prompts(
+        query, sources, context, namespace, calc_result, law_references,
+        labor_classification, legal_analysis
+    )
     return [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt}

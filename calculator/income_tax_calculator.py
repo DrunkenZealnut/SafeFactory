@@ -135,12 +135,27 @@ class IncomeTaxCalculator:
         dependents: int = 1,
         children_8_to_20: int = 0,
         withholding_rate: int = 100,
+        insurance_rates: dict | None = None,
     ):
         self.monthly_salary = int(monthly_salary)
         self.non_taxable = int(non_taxable)
         self.dependents = max(1, min(int(dependents), 11))
         self.children = max(0, int(children_8_to_20))
         self.withholding_rate = max(80, min(int(withholding_rate), 120))
+
+        # Insurance rates for tax deduction calculation
+        if insurance_rates is not None:
+            self._np_rate = insurance_rates.get('np_rate', _NP_RATE)
+            self._np_max_base = insurance_rates.get('np_max_base', _NP_MAX_BASE)
+            self._hi_rate = insurance_rates.get('hi_rate', _HI_RATE)
+            self._ltc_ratio = insurance_rates.get('ltc_ratio', _LTC_RATIO)
+            self._ei_rate = insurance_rates.get('ei_rate', _EI_RATE)
+        else:
+            self._np_rate = _NP_RATE
+            self._np_max_base = _NP_MAX_BASE
+            self._hi_rate = _HI_RATE
+            self._ltc_ratio = _LTC_RATIO
+            self._ei_rate = _EI_RATE
 
     def calculate(self) -> dict:
         """근로소득세 상세 산출 결과를 반환."""
@@ -162,13 +177,13 @@ class IncomeTaxCalculator:
         personal_deduction = 1_500_000 * self.dependents
 
         # 5) 국민연금 공제
-        np_monthly = min(taxable_monthly, _NP_MAX_BASE)
-        np_annual = int(np_monthly * _NP_RATE) * 12
+        np_monthly = min(taxable_monthly, self._np_max_base)
+        np_annual = int(np_monthly * self._np_rate) * 12
 
         # 6) 건강보험 + 장기요양보험 + 고용보험 공제
-        hi_monthly = int(taxable_monthly * _HI_RATE)
-        ltc_monthly = int(hi_monthly * _LTC_RATIO)
-        ei_monthly = int(taxable_monthly * _EI_RATE)
+        hi_monthly = int(taxable_monthly * self._hi_rate)
+        ltc_monthly = int(hi_monthly * self._ltc_ratio)
+        ei_monthly = int(taxable_monthly * self._ei_rate)
         insurance_annual = (hi_monthly + ltc_monthly + ei_monthly) * 12
 
         # 7) 과세표준

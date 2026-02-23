@@ -309,6 +309,31 @@
             font-weight: 600;
         }
 
+        .copy-md-btn {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #aaa;
+            font-size: 0.75rem;
+            font-weight: 400;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .copy-md-btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+        .copy-md-btn.copied {
+            color: #66bb6a;
+            border-color: rgba(76, 175, 80, 0.4);
+        }
+
         .ai-answer-content {
             color: #e0e0e0;
             line-height: 1.8;
@@ -1060,6 +1085,21 @@
         // Active chart instances for cleanup
         let activeCharts = [];
 
+        // Copy markdown to clipboard
+        function copyMarkdown(btnEl, markdownText) {
+            navigator.clipboard.writeText(markdownText).then(() => {
+                btnEl.classList.add('copied');
+                btnEl.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> 복사됨';
+                showToast('Markdown이 클립보드에 복사되었습니다.');
+                setTimeout(() => {
+                    btnEl.classList.remove('copied');
+                    btnEl.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Markdown 복사';
+                }, 2000);
+            }).catch(() => {
+                showToast('복사에 실패했습니다.', 'error');
+            });
+        }
+
         // Tab functionality
         document.querySelectorAll('.tab').forEach(tab => {
             tab.addEventListener('click', () => {
@@ -1193,6 +1233,7 @@
                         <div class="ai-answer-header" style="color: #66bb6a;">
                             <span>📊</span> 자동 계산 결과
                             <span style="font-size: 0.75rem; color: #888; margin-left: auto;">${escapeHtml(calculations.input_summary || '')}</span>
+                            <button class="copy-md-btn" onclick="copyMarkdown(this, _lastCalcMd)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Markdown 복사</button>
                         </div>
                         <div class="ai-answer-content">
                             ${renderMarkdown(calculations.formatted)}
@@ -1201,10 +1242,15 @@
                 `;
             }
 
+            // Store raw markdown for copy
+            window._lastCalcMd = (calculations && calculations.formatted) || '';
+            window._lastAnswerMd = cleanAnswer || '';
+
             let html = calcHtml + `
                 <div class="ai-answer-container">
                     <div class="ai-answer-header">
                         <span>🤖</span> AI 답변
+                        <button class="copy-md-btn" onclick="copyMarkdown(this, _lastAnswerMd)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Markdown 복사</button>
                     </div>
                     <div class="ai-answer-content" id="aiAnswerContent">
                         ${answerHtml}
@@ -1234,11 +1280,12 @@
             }
 
             // Add sources section
-            if (metadata.sources && metadata.sources.length > 0) {
+            const sourceCount = (metadata.sources && metadata.sources.length) || 0;
+            if (sourceCount > 0) {
                 html += `
                     <div class="sources-section">
                         <div class="sources-header">
-                            <span>📚</span> 참고 문서 (${metadata.source_count || metadata.sources.length}개)
+                            <span>📚</span> 참고 문서 (${metadata.source_count || sourceCount}개)
                         </div>
                 `;
                 metadata.sources.forEach((source, index) => {
@@ -1262,6 +1309,44 @@
                             </div>
                             ${metaTags ? `<div class="source-item-meta">${metaTags}</div>` : ''}
                             <div class="source-item-preview">${escapeHtml(contentPreview)}</div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            }
+
+            // Add law references section (show all, highlight cited ones)
+            if (metadata.law_references && metadata.law_references.length > 0) {
+                // Extract citation numbers from answer text
+                const citedNums = new Set();
+                const citationMatches = answerText.match(/\[(\d+)\]/g);
+                if (citationMatches) {
+                    citationMatches.forEach(m => citedNums.add(parseInt(m.slice(1, -1))));
+                }
+
+                html += `
+                    <div class="sources-section">
+                        <div class="sources-header">
+                            <span>⚖️</span> 관련 법령 (${metadata.law_references.length}개)
+                        </div>
+                `;
+                metadata.law_references.forEach((ref, index) => {
+                    const refIndex = sourceCount + index + 1;
+                    const isCited = citedNums.has(refIndex);
+                    let lawName = ref.name || '';
+                    if (lawName.includes('[')) lawName = lawName.substring(0, lawName.indexOf('[')).trim();
+                    const article = ref.article || '';
+                    const articleText = ref.article_text || '';
+                    const opacity = isCited ? '1' : '0.6';
+                    const border = isCited ? 'border-left: 3px solid #ff9800; padding-left: 12px;' : '';
+
+                    html += `
+                        <div class="source-item" id="source-${refIndex}" style="opacity: ${opacity}; ${border}">
+                            <div class="source-item-header">
+                                <span class="source-item-file" style="color: #ff9800;">[${refIndex}] ${escapeHtml(lawName)}</span>
+                                <span class="source-item-score" style="color: #ff9800;">${escapeHtml(article)}</span>
+                            </div>
+                            ${articleText ? `<div class="source-item-preview">${escapeHtml(articleText).substring(0, 300)}</div>` : ''}
                         </div>
                     `;
                 });
