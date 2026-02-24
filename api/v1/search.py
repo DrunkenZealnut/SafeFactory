@@ -6,6 +6,7 @@ import re
 import threading
 import time
 import unicodedata
+from pathlib import Path
 from urllib.parse import quote
 from flask import request, Response, stream_with_context
 
@@ -472,8 +473,9 @@ def api_ask_stream():
 def api_pdf_resolve():
     """Resolve a source_file path to its corresponding PDF URL.
 
-    Extracts the LM code from the source markdown path and searches
-    the ``documents/ncs/pdfs/`` directory tree for a matching PDF.
+    For NCS documents, extracts the LM code and searches ``documents/ncs/pdfs/``.
+    For other domains (laborlaw, field-training, etc.), looks for a sibling PDF
+    with the same stem as the source markdown file.
     """
     try:
         data = request.get_json(silent=True)
@@ -484,47 +486,51 @@ def api_pdf_resolve():
         if not source_file:
             return error_response('source_file이 필요합니다.', 400)
 
-        # Extract LM code (e.g. LM1903060409)
-        lm_match = re.search(r'(LM\d+)', source_file)
-        if not lm_match:
-            return success_response(data={'found': False, 'pdf_url': None})
-
-        lm_code = lm_match.group(1)
-
-        # Extract category from source path: ncs/data/<category>/LM.../...
-        parts = source_file.replace('\\', '/').split('/')
-        category = None
-        for i, part in enumerate(parts):
-            if part == 'data' and i + 1 < len(parts):
-                category = parts[i + 1]
-                break
-
-        pdfs_dir = DOCUMENTS_PATH / 'ncs' / 'pdfs'
         found_pdf = None
 
-        # Search category subdirectory first (both NFC and NFD normalizations)
-        if category:
-            for norm_form in ('NFC', 'NFD'):
-                category_dir = pdfs_dir / unicodedata.normalize(norm_form, category)
-                try:
-                    if category_dir.exists():
-                        for pdf_file in category_dir.iterdir():
-                            if pdf_file.suffix.lower() == '.pdf' and lm_code in pdf_file.name:
-                                found_pdf = pdf_file
-                                break
-                except PermissionError:
-                    logging.warning("[API/pdf/resolve] Permission denied: %s", category_dir)
-                    continue
-                if found_pdf:
+        # --- Strategy 1: NCS documents (LM code) ---
+        lm_match = re.search(r'(LM\d+)', source_file)
+        if lm_match:
+            lm_code = lm_match.group(1)
+
+            # Extract category from source path: ncs/data/<category>/LM.../...
+            parts = source_file.replace('\\', '/').split('/')
+            category = None
+            for i, part in enumerate(parts):
+                if part == 'data' and i + 1 < len(parts):
+                    category = parts[i + 1]
                     break
 
-        # Fallback: lookup from cached PDF index (avoids rglob on every request)
+            pdfs_dir = DOCUMENTS_PATH / 'ncs' / 'pdfs'
+
+            # Search category subdirectory first (both NFC and NFD normalizations)
+            if category:
+                for norm_form in ('NFC', 'NFD'):
+                    category_dir = pdfs_dir / unicodedata.normalize(norm_form, category)
+                    try:
+                        if category_dir.exists():
+                            for pdf_file in category_dir.iterdir():
+                                if pdf_file.suffix.lower() == '.pdf' and lm_code in pdf_file.name:
+                                    found_pdf = pdf_file
+                                    break
+                    except PermissionError:
+                        logging.warning("[API/pdf/resolve] Permission denied: %s", category_dir)
+                        continue
+                    if found_pdf:
+                        break
+
+            # Fallback: lookup from cached PDF index (avoids rglob on every request)
+            if not found_pdf:
+                pdf_index = _get_pdf_index()
+                found_pdf = pdf_index.get(lm_code)
+
+        # --- Strategy 2: Generic — sibling PDF with same stem ---
         if not found_pdf:
-            pdf_index = _get_pdf_index()
-            found_pdf = pdf_index.get(lm_code)
+            found_pdf = _resolve_sibling_pdf(source_file)
 
         if found_pdf:
-            relative_path = found_pdf.relative_to(DOCUMENTS_PATH)
+            resolved_pdf = Path(found_pdf).resolve()
+            relative_path = resolved_pdf.relative_to(DOCUMENTS_PATH.resolve())
             # Encode each path component individually to handle special characters (#, ?, &, spaces)
             encoded_parts = '/'.join(quote(part, safe='') for part in relative_path.parts)
             pdf_url = f'/documents/{encoded_parts}'
@@ -534,8 +540,60 @@ def api_pdf_resolve():
                 'filename': found_pdf.name,
             })
 
+        logging.info("[API/pdf/resolve] PDF not found for source_file=%s", source_file)
         return success_response(data={'found': False, 'pdf_url': None})
 
     except Exception:
         logging.exception('[API/pdf/resolve] Error')
         return error_response('PDF 조회 중 오류가 발생했습니다.', 500)
+
+
+def _resolve_sibling_pdf(source_file: str):
+    """Find a PDF in the same directory as the source markdown file.
+
+    Handles both absolute paths and paths relative to DOCUMENTS_PATH.
+    Tries NFC and NFD unicode normalizations for macOS compatibility.
+    """
+    normalized = source_file.replace('\\', '/')
+
+    # Build candidate base path under DOCUMENTS_PATH
+    # source_file may be absolute or relative; extract the portion under documents/
+    docs_str = str(DOCUMENTS_PATH.resolve())
+    docs_name = DOCUMENTS_PATH.name  # e.g., "documents"
+
+    if docs_str in normalized:
+        # Absolute path containing full DOCUMENTS_PATH
+        relative = normalized.split(docs_str, 1)[1].lstrip('/')
+    elif '/documents/' in normalized:
+        # Path containing /documents/ segment (e.g., "/some/path/documents/laborlaw/...")
+        relative = normalized.split('/documents/', 1)[1]
+    elif normalized.startswith(docs_name + '/') or normalized.startswith('./' + docs_name + '/'):
+        # Relative path starting with "documents/" or "./documents/" — strip to avoid duplication
+        relative = normalized.split(docs_name + '/', 1)[1]
+    else:
+        # Already relative to DOCUMENTS_PATH (e.g., "laborlaw/laws/...")
+        relative = normalized
+
+    source_path = DOCUMENTS_PATH / relative
+    logging.debug("[PDF/sibling] source_file=%s → relative=%s → source_path=%s",
+                  source_file, relative, source_path)
+
+    # Replace .md extension with .pdf
+    if source_path.suffix.lower() in ('.md', '.markdown'):
+        pdf_path = source_path.with_suffix('.pdf')
+    else:
+        pdf_path = source_path.parent / (source_path.stem + '.pdf')
+
+    # Try NFC and NFD normalizations
+    for norm_form in ('NFC', 'NFD'):
+        candidate = Path(unicodedata.normalize(norm_form, str(pdf_path)))
+        try:
+            if candidate.exists():
+                # Verify it's under DOCUMENTS_PATH and return resolved path
+                resolved = candidate.resolve()
+                if str(resolved).startswith(str(DOCUMENTS_PATH.resolve())):
+                    return resolved
+        except (OSError, ValueError):
+            continue
+
+    return None

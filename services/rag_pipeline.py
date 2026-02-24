@@ -384,6 +384,7 @@ def run_rag_pipeline(data):
                 'file_type': file_type,
                 'score': round(score, 4) if isinstance(score, float) else score,
                 'content_preview': content[:200] + '...' if len(content) > 200 else content,
+                'content_text': content[:3000],
                 'image_url': image_url,
                 'ncs_category': metadata.get('ncs_category', ''),
                 'ncs_document_title': metadata.get('ncs_document_title', ''),

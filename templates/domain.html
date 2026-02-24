@@ -22,7 +22,7 @@
         integrity="sha384-80VlBZnyAwkkqtSfg5NhPyZff6nU4K/qniLBL8Jnm4KDv6jZhLiYtJbhglg/i9ww"
         crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"
-        integrity="sha384-IIdvx9utVbG20X/hvcHPpj9PRjgL4mWPUIR56BAmP74jVU1NmVh0bqKLOZMvGIc7"
+        integrity="sha384-9nhczxUqK87bcKHh20fSQcTGD4qq5GhayNYSYWqwBkINBhOfQLg/P5HG5lF1urn4"
         crossorigin="anonymous"></script>
 <script defer src="/static/js/common.js"></script>
 {% endblock %}
@@ -1416,6 +1416,8 @@
 
         // Add sources section
         const sourceCount = (metadata.sources && metadata.sources.length) || 0;
+        // Store source content for fallback when PDF is unavailable
+        window._sourceContents = {};
         if (sourceCount > 0) {
             html += `
                 <div class="sources-section">
@@ -1424,6 +1426,7 @@
                     </div>
             `;
             metadata.sources.forEach((source, index) => {
+                window._sourceContents[index] = source.content_text || source.content_preview || '';
                 const sourceFile = source.source_file || 'Unknown';
                 const score = source.score !== undefined ? source.score : 0;
                 const contentPreview = source.content_preview || '';
@@ -1439,7 +1442,7 @@
                 html += `
                     <div class="source-item" id="source-${index + 1}">
                         <div class="source-item-header">
-                            <span class="source-item-file clickable" data-source-file="${escapeHtml(sourceFile)}" onclick="openPdfViewer(this)" title="PDF 원본 보기">[${index + 1}] ${escapeHtml(sourceFile.split('/').pop())}</span>
+                            <span class="source-item-file clickable" data-source-file="${escapeHtml(sourceFile)}" data-source-index="${index}" onclick="openPdfViewer(this)" title="원본 문서 보기">[${index + 1}] ${escapeHtml(sourceFile.split('/').pop())}</span>
                             <span class="source-item-score">유사도: ${score}</span>
                         </div>
                         ${metaTags ? `<div class="source-item-meta">${metaTags}</div>` : ''}
@@ -1779,12 +1782,13 @@
         const sourceFile = el.getAttribute('data-source-file');
         if (!sourceFile) return;
 
+        const sourceIndex = el.getAttribute('data-source-index');
         const modal = document.getElementById('pdfModal');
         const body = document.getElementById('pdfModalBody');
         const title = document.getElementById('pdfModalTitle');
 
         title.textContent = sourceFile.split('/').pop();
-        body.innerHTML = '<div class="pdf-modal-loading">PDF를 찾는 중...</div>';
+        body.innerHTML = '<div class="pdf-modal-loading">문서를 찾는 중...</div>';
         modal.classList.add('active');
 
         fetch('/api/pdf/resolve', {
@@ -1799,11 +1803,11 @@
                 try {
                     const url = new URL(pdfUrl, window.location.origin);
                     if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-                        body.innerHTML = '<div class="pdf-modal-loading">유효하지 않은 PDF URL입니다.</div>';
+                        showTextFallback(body, sourceIndex);
                         return;
                     }
                 } catch (e) {
-                    body.innerHTML = '<div class="pdf-modal-loading">유효하지 않은 PDF URL입니다.</div>';
+                    showTextFallback(body, sourceIndex);
                     return;
                 }
                 title.textContent = data.data.filename || sourceFile.split('/').pop();
@@ -1813,13 +1817,28 @@
                 body.innerHTML = '';
                 body.appendChild(iframe);
             } else {
-                body.innerHTML = '<div class="pdf-modal-loading">해당 소스 파일의 PDF를 찾을 수 없습니다.</div>';
+                showTextFallback(body, sourceIndex);
             }
         })
         .catch(err => {
             console.error('PDF resolve error:', err);
-            body.innerHTML = '<div class="pdf-modal-loading">PDF 로드 중 오류가 발생했습니다.</div>';
+            showTextFallback(body, sourceIndex);
         });
+    }
+
+    function showTextFallback(body, sourceIndex) {
+        const content = (window._sourceContents && window._sourceContents[sourceIndex]) || '';
+        if (content) {
+            body.innerHTML = `
+                <div style="padding: 24px; overflow-y: auto; height: 100%;">
+                    <div style="background: rgba(255,152,0,0.1); border: 1px solid rgba(255,152,0,0.3); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 0.85rem; color: #bbb;">
+                        PDF 원본 파일이 서버에 없어 텍스트 내용을 표시합니다.
+                    </div>
+                    <div class="ai-answer-content" style="font-size: 0.9rem; line-height: 1.7; color: #ddd;">${renderMarkdown(content)}</div>
+                </div>`;
+        } else {
+            body.innerHTML = '<div class="pdf-modal-loading">해당 소스 파일의 내용을 표시할 수 없습니다.</div>';
+        }
     }
 
     function closePdfModal() {
