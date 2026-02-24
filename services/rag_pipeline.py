@@ -390,6 +390,7 @@ def run_rag_pipeline(data):
                 'ncs_document_title': metadata.get('ncs_document_title', ''),
                 'ncs_section_type': metadata.get('ncs_section_type', ''),
                 'ncs_code': metadata.get('ncs_code', ''),
+                'page_id': metadata.get('page_id'),
             }
             # Laborlaw domain metadata
             for key in ('content_type', 'law_name', 'law_number', 'law_date',

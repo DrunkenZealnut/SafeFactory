@@ -1442,7 +1442,7 @@
                 html += `
                     <div class="source-item" id="source-${index + 1}">
                         <div class="source-item-header">
-                            <span class="source-item-file clickable" data-source-file="${escapeHtml(sourceFile)}" data-source-index="${index}" onclick="openPdfViewer(this)" title="원본 문서 보기">[${index + 1}] ${escapeHtml(sourceFile.split('/').pop())}</span>
+                            <span class="source-item-file clickable" data-source-file="${escapeHtml(sourceFile)}" data-source-index="${index}" data-page-id="${source.page_id || ''}" onclick="openPdfViewer(this)" title="원본 문서 보기">[${index + 1}] ${escapeHtml(sourceFile.split('/').pop())}</span>
                             <span class="source-item-score">유사도: ${score}</span>
                         </div>
                         ${metaTags ? `<div class="source-item-meta">${metaTags}</div>` : ''}
@@ -1783,6 +1783,7 @@
         if (!sourceFile) return;
 
         const sourceIndex = el.getAttribute('data-source-index');
+        const pageId = el.getAttribute('data-page-id');
         const modal = document.getElementById('pdfModal');
         const body = document.getElementById('pdfModalBody');
         const title = document.getElementById('pdfModalTitle');
@@ -1812,7 +1813,9 @@
                 }
                 title.textContent = data.data.filename || sourceFile.split('/').pop();
                 const iframe = document.createElement('iframe');
-                iframe.src = pdfUrl;
+                // PDF page_id is 0-based in metadata, but PDF viewers use 1-based page numbers
+                const pageNum = pageId ? parseInt(pageId) + 1 : null;
+                iframe.src = pageNum ? pdfUrl + '#page=' + pageNum : pdfUrl;
                 body.innerHTML = '';
                 body.appendChild(iframe);
             } else {
