@@ -1813,7 +1813,6 @@
                 title.textContent = data.data.filename || sourceFile.split('/').pop();
                 const iframe = document.createElement('iframe');
                 iframe.src = pdfUrl;
-                iframe.setAttribute('sandbox', 'allow-same-origin allow-scripts');
                 body.innerHTML = '';
                 body.appendChild(iframe);
             } else {
