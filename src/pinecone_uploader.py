@@ -125,12 +125,18 @@ class PineconeUploader:
         """
         vector_id = self.generate_id(content, source_file, chunk_index)
 
+        # Pinecone metadata 전체 40,960 byte 한도 준수
+        # 한국어는 UTF-8에서 3바이트/문자이므로 바이트 기반으로 트런케이션
+        content_bytes = (content or "").encode("utf-8")
+        safe_content = content_bytes[:32768].decode("utf-8", errors="ignore")   # content: 32KB
+        safe_preview = content_bytes[:3000].decode("utf-8", errors="ignore")    # preview: ~1000 한국어 문자
+
         # Combine metadata
         full_metadata = {
             "source_file": source_file,
             "chunk_index": chunk_index,
-            "content": content[:40000],          # 전문 저장 (Pinecone 40KB 한도)
-            "content_preview": content[:1000],    # UI 미리보기용
+            "content": safe_content,              # 전문 저장 (바이트 기반 32KB 트런케이션)
+            "content_preview": safe_preview,      # UI 미리보기용 (~1000자)
             "content_length": len(content),
             **(metadata or {})
         }

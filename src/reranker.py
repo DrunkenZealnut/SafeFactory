@@ -8,6 +8,10 @@ import logging
 from typing import List, Dict, Any, Optional, Tuple
 import numpy as np
 
+# Tunable reranking parameters (override via environment variables)
+RERANK_WEIGHT = float(os.environ.get("RERANK_WEIGHT", "0.7"))
+ORIGINAL_WEIGHT = float(os.environ.get("ORIGINAL_WEIGHT", "0.3"))
+
 # Try to import sentence-transformers for cross-encoder
 try:
     from sentence_transformers import CrossEncoder
@@ -200,8 +204,8 @@ class Reranker:
         query: str,
         docs: List[Dict[str, Any]],
         top_k: int = 10,
-        rerank_weight: float = 0.7,
-        original_weight: float = 0.3
+        rerank_weight: float = RERANK_WEIGHT,
+        original_weight: float = ORIGINAL_WEIGHT
     ) -> List[Dict[str, Any]]:
         """
         Combine cross-encoder and original scores for final ranking.
@@ -311,8 +315,8 @@ class PineconeReranker:
         query: str,
         docs: List[Dict[str, Any]],
         top_k: int = 10,
-        rerank_weight: float = 0.7,
-        original_weight: float = 0.3
+        rerank_weight: float = RERANK_WEIGHT,
+        original_weight: float = ORIGINAL_WEIGHT
     ) -> List[Dict[str, Any]]:
         """Combine Pinecone rerank scores with original retrieval scores."""
         reranked = self.rerank(query, docs, top_k=len(docs))

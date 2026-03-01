@@ -26,6 +26,21 @@ from services.singletons import (
 )
 
 MIN_RELEVANCE_SCORE = float(os.environ.get('MIN_RELEVANCE_SCORE', '0.3'))
+MIN_TOKEN_COUNT = int(os.environ.get('MIN_TOKEN_COUNT', '30'))
+TOP_K_MENTION_MULT = int(os.environ.get('TOP_K_MENTION_MULT', '3'))
+TOP_K_NO_BM25_MULT = int(os.environ.get('TOP_K_NO_BM25_MULT', '4'))
+TOP_K_DEFAULT_MULT = int(os.environ.get('TOP_K_DEFAULT_MULT', '2'))
+
+
+def _get_num_variations(query: str) -> int:
+    """쿼리 길이에 따라 멀티쿼리 변형 수를 동적으로 결정."""
+    length = len(query)
+    if length < 15:
+        return 1   # 짧은 키워드 쿼리 — 변형 불필요
+    elif length < 40:
+        return 2   # 일반 쿼리
+    else:
+        return 3   # 긴 복잡한 쿼리
 
 
 def _run_legal_analysis_pass(query, classification, law_refs_text, context):
@@ -157,7 +172,8 @@ def run_rag_pipeline(data):
 
             # Run query enhancement calls in parallel for lower latency
             with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-                future_multi = executor.submit(query_enhancer.multi_query, search_query, 2)
+                num_variations = _get_num_variations(search_query)
+                future_multi = executor.submit(query_enhancer.multi_query, search_query, num_variations)
                 future_hyde = (
                     executor.submit(query_enhancer.hyde, search_query, domain)
                     if len(search_query) >= 30 else None
@@ -200,11 +216,11 @@ def run_rag_pipeline(data):
     # Search with multiple query variations and merge results
     # When BM25 is skipped, fetch more candidates so the reranker has a wider pool
     if mention_filters:
-        search_top_k = top_k * 3
+        search_top_k = top_k * TOP_K_MENTION_MULT
     elif skip_bm25:
-        search_top_k = top_k * 4  # Wider recall when relying on reranker alone
+        search_top_k = top_k * TOP_K_NO_BM25_MULT  # Wider recall when relying on reranker alone
     else:
-        search_top_k = top_k * 2  # Fetch more for filtering/reranking
+        search_top_k = top_k * TOP_K_DEFAULT_MULT  # Fetch more for filtering/reranking
     is_all_namespace = (namespace == 'all')
     all_results = []
     seen_ids = set()
@@ -329,6 +345,10 @@ def run_rag_pipeline(data):
     except (ValueError, TypeError):
         min_score = MIN_RELEVANCE_SCORE
     results = [r for r in results if r.get('rerank_score', r.get('combined_score', r.get('rrf_score', r.get('score', 0)))) >= min_score]
+
+    # Filter out noise chunks that are too short (token_count below threshold)
+    results = [r for r in results
+               if r.get('metadata', {}).get('token_count', MIN_TOKEN_COUNT + 1) >= MIN_TOKEN_COUNT]
 
     # Limit to top_k before reordering
     results = results[:top_k]

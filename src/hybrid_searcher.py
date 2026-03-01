@@ -18,6 +18,12 @@ except ImportError:
     BM25_AVAILABLE = False
     logging.warning("rank-bm25 not installed. Hybrid search disabled.")
 
+# Tunable search parameters (override via environment variables)
+RRF_K = int(os.environ.get("RRF_K", "60"))
+KEYWORD_BOOST = float(os.environ.get("KEYWORD_BOOST", "0.1"))
+TITLE_BOOST = float(os.environ.get("TITLE_BOOST", "3.0"))    # document_title 매칭 배수
+SECTION_BOOST = float(os.environ.get("SECTION_BOOST", "2.0"))  # section_title 매칭 배수
+
 
 @dataclass
 class HybridResult:
@@ -39,7 +45,7 @@ class HybridSearcher:
 
     def __init__(
         self,
-        rrf_k: int = 60,
+        rrf_k: int = RRF_K,
         vector_weight: float = 0.5,
         bm25_weight: float = 0.5
     ):
@@ -284,7 +290,7 @@ class HybridSearcher:
         vector_results: List[Dict[str, Any]],
         keywords: List[str],
         top_k: int = 10,
-        keyword_boost: float = 0.1
+        keyword_boost: float = KEYWORD_BOOST
     ) -> List[Dict[str, Any]]:
         """
         Hybrid search with additional keyword boosting.
@@ -294,7 +300,9 @@ class HybridSearcher:
             vector_results: Results from vector search
             keywords: Keywords to boost
             top_k: Number of results
-            keyword_boost: Boost factor per keyword match
+            keyword_boost: Base boost factor per keyword match in content
+                           (TITLE_BOOST × boost for document_title matches,
+                            SECTION_BOOST × boost for section_title matches)
 
         Returns:
             Search results with keyword boosting
@@ -305,19 +313,24 @@ class HybridSearcher:
         if not keywords:
             return results
 
-        # Apply keyword boosting
+        # Apply keyword boosting — content, document_title, section_title
         keywords_lower = [k.lower() for k in keywords]
 
         for doc in results:
-            content = doc.get('metadata', {}).get('content', '').lower()
+            metadata = doc.get('metadata', {})
+            content = metadata.get('content', '').lower()
+            doc_title = metadata.get('document_title', '').lower()
+            section_title = metadata.get('section_title', '').lower()
             boost = 0
 
             for keyword in keywords_lower:
                 if keyword in content:
                     boost += keyword_boost
-                    # Extra boost for title/header matches
-                    if content.startswith(keyword):
-                        boost += keyword_boost
+                # Title-level boosting (higher weight for document/section titles)
+                if keyword in doc_title:
+                    boost += keyword_boost * TITLE_BOOST
+                if keyword in section_title:
+                    boost += keyword_boost * SECTION_BOOST
 
             doc['keyword_boost'] = boost
             doc['boosted_score'] = doc.get('rrf_score', 0) + boost

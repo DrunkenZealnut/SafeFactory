@@ -36,16 +36,18 @@ class FileLoader:
     MARKDOWN_EXTENSIONS = {'.md', '.markdown'}
     JSON_EXTENSIONS = {'.json'}
 
-    def __init__(self, folder_path: str, recursive: bool = True):
+    def __init__(self, folder_path: str, recursive: bool = True, skip_images: bool = False):
         """
         Initialize the FileLoader.
 
         Args:
             folder_path: Path to the folder to scan
             recursive: Whether to scan subdirectories
+            skip_images: Whether to skip image files (speeds up processing)
         """
         self.folder_path = Path(folder_path)
         self.recursive = recursive
+        self.skip_images = skip_images
 
         if not self.folder_path.exists():
             raise ValueError(f"Folder does not exist: {folder_path}")
@@ -145,9 +147,13 @@ class FileLoader:
         pattern = '**/*' if self.recursive else '*'
 
         for file_path in self.folder_path.glob(pattern):
-            if file_path.is_file() and self._get_file_type(file_path):
+            file_type = self._get_file_type(file_path)
+            if file_path.is_file() and file_type:
                 # Skip _meta.json files (PDF structure metadata, not user content)
                 if file_path.name.endswith('_meta.json'):
+                    continue
+                # Skip images if requested
+                if self.skip_images and file_type == FileType.IMAGE:
                     continue
                 yield file_path
 

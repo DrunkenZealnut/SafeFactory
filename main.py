@@ -50,6 +50,10 @@ def main():
                                help="중분류 (예: machinery, hazmat, wage, accident)")
     process_parser.add_argument("--subcategory", type=str, default=None,
                                help="소분류 (예: crane, chemical, minimum_wage, compensation)")
+    process_parser.add_argument("--skip-images", action="store_true",
+                               help="이미지 파일 건너뜀 (Vision API 호출 없음, 마크다운만 처리)")
+    process_parser.add_argument("--force", action="store_true",
+                               help="변경 여부 무시하고 모든 파일 강제 재처리")
 
     # Search command
     search_parser = subparsers.add_parser("search", help="Pinecone에서 검색")
@@ -139,7 +143,9 @@ def main():
             recursive=not args.no_recursive,
             batch_size=args.batch_size,
             verbose=True,
-            extra_metadata=extra_metadata
+            extra_metadata=extra_metadata,
+            skip_images=args.skip_images,
+            force=args.force
         )
 
         print("\n" + "="*50)

@@ -191,18 +191,36 @@ def build_field_training_filter(query: str) -> Optional[dict]:
     return filters if filters else None
 
 
-def build_domain_filter(query: str, namespace: str) -> Optional[dict]:
-    """Build Pinecone metadata filter based on domain namespace and query patterns."""
+def build_domain_filter(query: str, namespace: str,
+                        source_collection: Optional[str] = None) -> Optional[dict]:
+    """Build Pinecone metadata filter based on domain namespace and query patterns.
+
+    Args:
+        query: Search query string
+        namespace: Pinecone namespace (laborlaw, field-training, all, or empty for NCS)
+        source_collection: Optional source_collection value to filter by (e.g. 'ncs', 'laborlaw',
+                           'field_training', 'safety_guide'). When provided, only chunks from
+                           that collection are returned.
+    """
     if not query:
-        return None
-    if namespace == 'laborlaw':
-        return build_laborlaw_filter(query)
+        base_filter = None
+    elif namespace == 'laborlaw':
+        base_filter = build_laborlaw_filter(query)
     elif namespace == 'field-training':
-        return build_field_training_filter(query)
+        base_filter = build_field_training_filter(query)
     elif namespace == 'all':
-        return None
+        base_filter = None
     else:
-        return build_ncs_filter(query)
+        base_filter = build_ncs_filter(query)
+
+    if not source_collection:
+        return base_filter
+
+    # Merge source_collection condition (flat dict implicit $and in Pinecone)
+    collection_cond = {"source_collection": {"$eq": source_collection}}
+    if base_filter is None:
+        return collection_cond
+    return {**base_filter, **collection_cond}
 
 
 def parse_mentions(query):

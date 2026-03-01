@@ -9,7 +9,7 @@
     /* ===== Hero Section ===== */
     .hero {
         text-align: center;
-        padding: 56px 24px 32px;
+        padding: 56px 24px 48px;
         position: relative;
     }
     .hero::before {
@@ -172,25 +172,6 @@
         background: rgba(124,58,237,0.05);
     }
 
-    /* ===== Stats Bar ===== */
-    .stats-bar {
-        display: flex;
-        justify-content: center;
-        gap: 40px;
-        padding: 24px 0 0;
-        margin-bottom: 48px;
-    }
-    .stat-item { text-align: center; }
-    .stat-value {
-        font-size: 24px;
-        font-weight: 800;
-        background: linear-gradient(135deg, var(--sf-purple-lighter), var(--sf-purple-light));
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-    }
-    .stat-label { font-size: 12px; color: var(--sf-text-4); margin-top: 2px; }
-
     /* ===== Domain Cards ===== */
     .domains-section {
         max-width: 1280px;
@@ -237,9 +218,6 @@
     .domain-card-body { padding: 26px 22px; }
 
     .card-top {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
         margin-bottom: 14px;
     }
     .card-icon-wrap {
@@ -251,19 +229,6 @@
         justify-content: center;
         font-size: 24px;
     }
-    .card-doc-count {
-        font-size: 11px;
-        color: var(--sf-text-4);
-        background: rgba(255,255,255,0.03);
-        border: 1px solid var(--sf-border);
-        border-radius: 8px;
-        padding: 4px 10px;
-    }
-    .card-doc-count .num {
-        color: var(--sf-purple-light);
-        font-weight: 700;
-    }
-
     .card-title {
         font-size: 18px;
         font-weight: 700;
@@ -273,24 +238,8 @@
         font-size: 13px;
         color: var(--sf-text-3);
         line-height: 1.6;
-        margin-bottom: 14px;
-        min-height: 42px;
-    }
-    .card-tags {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
         margin-bottom: 16px;
     }
-    .card-tag {
-        font-size: 11px;
-        font-weight: 500;
-        padding: 4px 11px;
-        border-radius: 8px;
-        transition: filter 0.2s;
-    }
-    .card-tag:hover { filter: brightness(1.3); }
-
     .card-action {
         display: flex;
         align-items: center;
@@ -318,37 +267,31 @@
     .dc-semi:hover { box-shadow: 0 12px 40px rgba(59,130,246,0.1); }
     .dc-semi .card-icon-wrap { background: rgba(59,130,246,0.12); }
     .dc-semi .card-title { color: #60a5fa; }
-    .dc-semi .card-tag { background: rgba(59,130,246,0.1); color: #93c5fd; border: 1px solid rgba(59,130,246,0.15); }
 
     .dc-labor .domain-card-bar { background: linear-gradient(90deg, var(--sf-amber), #fbbf24); }
     .dc-labor:hover { box-shadow: 0 12px 40px rgba(245,158,11,0.1); }
     .dc-labor .card-icon-wrap { background: rgba(245,158,11,0.12); }
     .dc-labor .card-title { color: #fbbf24; }
-    .dc-labor .card-tag { background: rgba(245,158,11,0.1); color: #fde68a; border: 1px solid rgba(245,158,11,0.15); }
 
     .dc-field .domain-card-bar { background: linear-gradient(90deg, var(--sf-red), #f87171); }
     .dc-field:hover { box-shadow: 0 12px 40px rgba(239,68,68,0.1); }
     .dc-field .card-icon-wrap { background: rgba(239,68,68,0.12); }
     .dc-field .card-title { color: #f87171; }
-    .dc-field .card-tag { background: rgba(239,68,68,0.1); color: #fca5a5; border: 1px solid rgba(239,68,68,0.15); }
 
     .dc-safe .domain-card-bar { background: linear-gradient(90deg, var(--sf-violet), #a78bfa); }
     .dc-safe:hover { box-shadow: 0 12px 40px rgba(139,92,246,0.1); }
     .dc-safe .card-icon-wrap { background: rgba(139,92,246,0.12); }
     .dc-safe .card-title { color: var(--sf-purple-lighter); }
-    .dc-safe .card-tag { background: rgba(139,92,246,0.1); color: var(--sf-purple-lighter); border: 1px solid rgba(139,92,246,0.15); }
 
     .dc-msds .domain-card-bar { background: linear-gradient(90deg, var(--sf-green), #34d399); }
     .dc-msds:hover { box-shadow: 0 12px 40px rgba(16,185,129,0.1); }
     .dc-msds .card-icon-wrap { background: rgba(16,185,129,0.12); }
     .dc-msds .card-title { color: #34d399; }
-    .dc-msds .card-tag { background: rgba(16,185,129,0.1); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.15); }
 
     .dc-comm .domain-card-bar { background: linear-gradient(90deg, var(--sf-cyan), #22d3ee); }
     .dc-comm:hover { box-shadow: 0 12px 40px rgba(6,182,212,0.1); }
     .dc-comm .card-icon-wrap { background: rgba(6,182,212,0.12); }
     .dc-comm .card-title { color: #22d3ee; }
-    .dc-comm .card-tag { background: rgba(6,182,212,0.1); color: #67e8f9; border: 1px solid rgba(6,182,212,0.15); }
 
     /* ===== Bottom Row ===== */
     .bottom-row {
@@ -506,15 +449,12 @@
         .hero-title { font-size: 30px; }
         .domain-grid { grid-template-columns: repeat(2, 1fr); }
         .bottom-row { grid-template-columns: 1fr; }
-        .stats-bar { gap: 24px; flex-wrap: wrap; }
     }
     @media (max-width: 600px) {
         .hero { padding: 36px 16px 20px; }
         .hero-title { font-size: 24px; }
         .hero-subtitle { font-size: 14px; }
         .domain-grid { grid-template-columns: 1fr; }
-        .stats-bar { gap: 16px; }
-        .stat-value { font-size: 20px; }
         .search-domain-select { display: none; }
     }
 </style>
@@ -523,7 +463,7 @@
 {% block content %}
 <!-- Hero Section -->
 <section class="hero">
-    <div class="hero-badge"><span class="pulse"></span> {{ domains|length + 1 }}개 전문 분야 &middot; AI 실시간 검색</div>
+    <div class="hero-badge"><span class="pulse"></span> AI 실시간 검색</div>
     <h1 class="hero-title">무엇이든 물어보세요<br>AI가 전문 문서에서 찾아드립니다</h1>
     <p class="hero-subtitle">
         반도체 기술부터 노동법, 산업안전까지 &mdash;<br>
@@ -554,25 +494,6 @@
         </div>
     </div>
 
-    <!-- Stats Bar -->
-    <div class="stats-bar">
-        <div class="stat-item">
-            <div class="stat-value" id="statDocs">--</div>
-            <div class="stat-label">전체 문서</div>
-        </div>
-        <div class="stat-item">
-            <div class="stat-value">{{ domains|length + 1 }}</div>
-            <div class="stat-label">전문 분야</div>
-        </div>
-        <div class="stat-item">
-            <div class="stat-value">24/7</div>
-            <div class="stat-label">AI 서비스</div>
-        </div>
-        <div class="stat-item">
-            <div class="stat-value">&lt; 3초</div>
-            <div class="stat-label">평균 응답</div>
-        </div>
-    </div>
 </section>
 
 <!-- Domain Cards -->
@@ -585,15 +506,9 @@
             <div class="domain-card-body">
                 <div class="card-top">
                     <div class="card-icon-wrap">🔬</div>
-                    <div class="card-doc-count">📄 <span class="num" id="docCount-semiconductor">--</span>개 문서</div>
                 </div>
                 <div class="card-title">반도체 기술</div>
                 <div class="card-desc">반도체 공정, 아키텍처, 제조 기술 관련 전문 문서 검색 및 AI 질의응답</div>
-                <div class="card-tags">
-                    {% for f in domains.semiconductor.features %}
-                    <span class="card-tag">{{ f }}</span>
-                    {% endfor %}
-                </div>
                 <div class="card-action">
                     <span class="card-action-label">🤖 AI 질문하기</span>
                     <span class="card-action-arrow">→</span>
@@ -607,15 +522,9 @@
             <div class="domain-card-body">
                 <div class="card-top">
                     <div class="card-icon-wrap">⚖️</div>
-                    <div class="card-doc-count">📄 <span class="num" id="docCount-laborlaw">--</span>개 문서</div>
                 </div>
                 <div class="card-title">노동법</div>
                 <div class="card-desc">근로기준법, 판례, 임금 및 보험료 계산 · 노동법 관련 AI 법률 상담</div>
-                <div class="card-tags">
-                    {% for f in domains.laborlaw.features %}
-                    <span class="card-tag">{{ f }}</span>
-                    {% endfor %}
-                </div>
                 <div class="card-action">
                     <span class="card-action-label">🤖 AI 질문하기</span>
                     <span class="card-action-arrow">→</span>
@@ -629,15 +538,9 @@
             <div class="domain-card-body">
                 <div class="card-top">
                     <div class="card-icon-wrap">🏭</div>
-                    <div class="card-doc-count">📄 <span class="num" id="docCount-field-training">--</span>개 문서</div>
                 </div>
                 <div class="card-title">현장실습 안전교육</div>
                 <div class="card-desc">직업계고 현장실습 안전보건 가이드 · 장비별 위험요인 및 안전수칙</div>
-                <div class="card-tags">
-                    {% for f in domains['field-training'].features %}
-                    <span class="card-tag">{{ f }}</span>
-                    {% endfor %}
-                </div>
                 <div class="card-action">
                     <span class="card-action-label">🤖 AI 질문하기</span>
                     <span class="card-action-arrow">→</span>
@@ -651,15 +554,9 @@
             <div class="domain-card-body">
                 <div class="card-top">
                     <div class="card-icon-wrap">🛡️</div>
-                    <div class="card-doc-count">📄 <span class="num" id="docCount-safeguide">--</span>개 문서</div>
                 </div>
                 <div class="card-title">안전보건 가이드</div>
                 <div class="card-desc">안전보건공단 공식 안전보건 교육자료 · 산업 현장 안전수칙 및 예방대책</div>
-                <div class="card-tags">
-                    {% for f in domains.safeguide.features %}
-                    <span class="card-tag">{{ f }}</span>
-                    {% endfor %}
-                </div>
                 <div class="card-action">
                     <span class="card-action-label">🤖 AI 질문하기</span>
                     <span class="card-action-arrow">→</span>
@@ -673,15 +570,9 @@
             <div class="domain-card-body">
                 <div class="card-top">
                     <div class="card-icon-wrap">🧪</div>
-                    <div class="card-doc-count">📄 <span class="num" id="docCount-msds">--</span>개 문서</div>
                 </div>
                 <div class="card-title">MSDS 화학물질</div>
                 <div class="card-desc">산업안전보건공단 물질안전보건자료 · 화학물질 안전정보 검색</div>
-                <div class="card-tags">
-                    {% for f in domains.msds.features %}
-                    <span class="card-tag">{{ f }}</span>
-                    {% endfor %}
-                </div>
                 <div class="card-action">
                     <span class="card-action-label">🤖 AI 질문하기</span>
                     <span class="card-action-arrow">→</span>
@@ -695,16 +586,9 @@
             <div class="domain-card-body">
                 <div class="card-top">
                     <div class="card-icon-wrap">💬</div>
-                    <div class="card-doc-count">🧑‍🤝‍🧑 커뮤니티</div>
                 </div>
                 <div class="card-title">커뮤니티</div>
                 <div class="card-desc">질문, 정보공유, 자유게시판 · 함께 소통하는 커뮤니티 공간</div>
-                <div class="card-tags">
-                    <span class="card-tag">질문/답변</span>
-                    <span class="card-tag">정보공유</span>
-                    <span class="card-tag">자유게시판</span>
-                    <span class="card-tag">공지사항</span>
-                </div>
                 <div class="card-action">
                     <span class="card-action-label">💬 커뮤니티 입장</span>
                     <span class="card-action-arrow">→</span>
@@ -755,15 +639,6 @@
 {% block scripts %}
 <script src="/static/js/common.js"></script>
 <script>
-// Namespace → domain key mapping
-const NAMESPACE_MAP = {
-    '': 'semiconductor',
-    'laborlaw': 'laborlaw',
-    'field-training': 'field-training',
-    'safeguide': 'safeguide',
-    'msds': 'msds'
-};
-
 // Domain key → default route mapping
 const DOMAIN_ROUTES = {
     '': '/semiconductor',
@@ -789,35 +664,6 @@ function handleSearch(e) {
     const route = DOMAIN_ROUTES[domain] || '/semiconductor';
     window.location.href = route + '?q=' + encodeURIComponent(query);
     return false;
-}
-
-// Load stats from API
-async function loadStats() {
-    try {
-        const resp = await fetch('/api/stats');
-        const data = await resp.json();
-        if (data.success && data.data) {
-            // Total documents
-            const total = data.data.total_vectors || 0;
-            document.getElementById('statDocs').textContent = total.toLocaleString();
-
-            // Per-namespace counts
-            const namespaces = data.data.namespaces;
-            const entries = Array.isArray(namespaces)
-                ? namespaces.map(ns => [ns.name || ns.namespace || '', ns])
-                : Object.entries(namespaces || {});
-            for (const [ns, info] of entries) {
-                const norm = (ns === '(기본)') ? '' : ns;
-                const domainKey = NAMESPACE_MAP[norm];
-                if (domainKey) {
-                    const el = document.getElementById('docCount-' + domainKey);
-                    if (el) el.textContent = (info.vector_count || 0).toLocaleString();
-                }
-            }
-        }
-    } catch (e) {
-        console.error('Stats load error:', e);
-    }
 }
 
 // Load news preview
@@ -892,7 +738,6 @@ async function loadCommunityPreview() {
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
-    loadStats();
     loadCommunityPreview();
     loadNewsPreview();
 });

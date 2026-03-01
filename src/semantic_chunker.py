@@ -857,6 +857,19 @@ class SemanticChunker(HttpClientMixin):
         is_ncs = bool(re.search(r'LM\d{10}', source_file))
         is_laborlaw = '/laborlaw/' in normalized_source
         is_field_training = '/현장실습/' in normalized_source or '카드북' in normalized_source
+        is_safety_guide = '/안전보건공단/' in normalized_source
+
+        # Determine top-level source collection for Pinecone filtering
+        if is_ncs:
+            source_collection = 'ncs'
+        elif is_field_training:
+            source_collection = 'field_training'
+        elif is_safety_guide:
+            source_collection = 'safety_guide'
+        elif is_laborlaw:
+            source_collection = 'laborlaw'
+        else:
+            source_collection = 'general'
 
         ncs_metadata = self._extract_ncs_metadata(source_file, text) if is_ncs else {}
         laborlaw_metadata = self._extract_laborlaw_metadata(source_file, text) if is_laborlaw else {}
@@ -947,6 +960,7 @@ class SemanticChunker(HttpClientMixin):
                 'chunk_index': i,
                 'total_chunks': len(overlapped_segments),
                 'chunk_id': chunk_id,
+                'source_collection': source_collection,
                 'document_title': document_title,
                 'section_title': section_title,
                 'has_context': self.enable_contextual,

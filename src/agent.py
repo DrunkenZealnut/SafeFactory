@@ -223,7 +223,9 @@ class PineconeAgent:
         recursive: bool = True,
         batch_size: int = 50,
         verbose: bool = True,
-        extra_metadata: Optional[Dict] = None
+        extra_metadata: Optional[Dict] = None,
+        skip_images: bool = False,
+        force: bool = False
     ) -> ProcessingResult:
         """
         Process all files in a folder and upload to Pinecone.
@@ -236,12 +238,13 @@ class PineconeAgent:
             verbose: Whether to show progress
             extra_metadata: Additional metadata to attach to all vectors
                            (e.g. domain, category, subcategory)
+            skip_images: Whether to skip image files (Vision API processing)
 
         Returns:
             ProcessingResult with statistics
         """
         # Initialize file loader
-        loader = FileLoader(folder_path, recursive=recursive)
+        loader = FileLoader(folder_path, recursive=recursive, skip_images=skip_images)
         summary = loader.get_file_summary()
 
         if verbose:
@@ -264,7 +267,7 @@ class PineconeAgent:
         for loaded_file in files_iterator:
             try:
                 # Check if metadata tracking is enabled and file hasn't changed
-                if self.metadata_manager:
+                if self.metadata_manager and not force:
                     file_path = str(Path(loaded_file.path).resolve())
                     current_hash = MetadataManager.calculate_file_hash(file_path)
 
@@ -340,6 +343,8 @@ class PineconeAgent:
                 embeddings = self.embedding_generator.generate_batch(batch_texts)
 
                 for chunk, emb_result in zip(batch_chunks, embeddings):
+                    if emb_result is None:
+                        continue  # 개별 청크 임베딩 실패 (token too long 등) → 건너뜀
                     vector = self.pinecone_uploader.prepare_vector(
                         embedding=emb_result.embedding,
                         content=chunk.content,

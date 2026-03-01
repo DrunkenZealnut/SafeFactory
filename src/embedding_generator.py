@@ -4,6 +4,7 @@ Generates embeddings using OpenAI's text-embedding models.
 """
 
 import os
+import time
 import certifi
 import httpx
 from typing import List, Optional
@@ -99,11 +100,69 @@ class EmbeddingGenerator(HttpClientMixin):
             token_count=token_count
         )
 
+    def _call_api(self, batch: List[str]) -> List[EmbeddingResult]:
+        """Single OpenAI embeddings API call for a batch."""
+        if self.model.startswith("text-embedding-3") and self.dimensions != self.MODELS[self.model]:
+            response = self.client.embeddings.create(
+                model=self.model,
+                input=batch,
+                dimensions=self.dimensions
+            )
+        else:
+            response = self.client.embeddings.create(
+                model=self.model,
+                input=batch
+            )
+        return [
+            EmbeddingResult(
+                text=batch[j],
+                embedding=data.embedding,
+                model=self.model,
+                dimensions=len(data.embedding),
+                token_count=None
+            )
+            for j, data in enumerate(response.data)
+        ]
+
+    def _embed_batch_with_retry(self, batch: List[str], max_retries: int = 3) -> List[EmbeddingResult]:
+        """Embed a batch with exponential backoff for rate limits.
+        Falls back to per-item processing on persistent or non-retryable errors."""
+        for attempt in range(max_retries + 1):
+            try:
+                return self._call_api(batch)
+            except Exception as e:
+                err_str = str(e)
+                is_rate_limit = '429' in err_str or 'rate_limit' in err_str.lower()
+
+                if is_rate_limit and attempt < max_retries:
+                    wait = 2 ** (attempt + 1)  # 2, 4, 8 초
+                    print(f"  ⚠️ Rate limit, {wait}초 후 재시도 ({attempt + 1}/{max_retries})...")
+                    time.sleep(wait)
+                elif len(batch) > 1:
+                    # 배치 전체 실패 시 개별 처리로 폴백 (token too long 등 대응)
+                    print(f"  ⚠️ 배치 오류, 개별 처리 전환: {str(e)[:100]}")
+                    return self._embed_individually(batch)
+                else:
+                    print(f"  ✗ 임베딩 실패 (건너뜀): {str(e)[:100]}")
+                    return []
+        return []
+
+    def _embed_individually(self, batch: List[str]) -> List[Optional[EmbeddingResult]]:
+        """Embed items one by one. Returns None placeholder for failures (preserves alignment)."""
+        results: List[Optional[EmbeddingResult]] = []
+        for text in batch:
+            try:
+                results.append(self.generate(text))
+            except Exception as e:
+                print(f"  ✗ 개별 항목 임베딩 실패 (건너뜀): {str(e)[:80]}")
+                results.append(None)
+        return results
+
     def generate_batch(
         self,
         texts: List[str],
         batch_size: int = 100
-    ) -> List[EmbeddingResult]:
+    ) -> List[Optional[EmbeddingResult]]:
         """
         Generate embeddings for multiple texts.
 
@@ -112,34 +171,12 @@ class EmbeddingGenerator(HttpClientMixin):
             batch_size: Number of texts per API call
 
         Returns:
-            List of EmbeddingResult objects
+            List of EmbeddingResult (or None for failed items). Length always equals len(texts).
         """
-        results = []
-
+        results: List[Optional[EmbeddingResult]] = []
         for i in range(0, len(texts), batch_size):
             batch = texts[i:i + batch_size]
-
-            if self.model.startswith("text-embedding-3") and self.dimensions != self.MODELS[self.model]:
-                response = self.client.embeddings.create(
-                    model=self.model,
-                    input=batch,
-                    dimensions=self.dimensions
-                )
-            else:
-                response = self.client.embeddings.create(
-                    model=self.model,
-                    input=batch
-                )
-
-            for j, data in enumerate(response.data):
-                results.append(EmbeddingResult(
-                    text=batch[j],
-                    embedding=data.embedding,
-                    model=self.model,
-                    dimensions=len(data.embedding),
-                    token_count=None  # Batch doesn't provide per-item token count
-                ))
-
+            results.extend(self._embed_batch_with_retry(batch))
         return results
 
     def get_model_info(self) -> dict:
