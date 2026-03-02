@@ -271,6 +271,13 @@ class PineconeAgent:
                     file_path = str(Path(loaded_file.path).resolve())
                     current_hash = MetadataManager.calculate_file_hash(file_path)
 
+                    # For markdown files, also check if the associated _meta.json changed
+                    if loaded_file.file_type == FileType.MARKDOWN:
+                        meta_json_path = Path(loaded_file.path).parent / (Path(loaded_file.path).stem + '_meta.json')
+                        if meta_json_path.exists():
+                            meta_hash = MetadataManager.calculate_file_hash(str(meta_json_path))
+                            current_hash = current_hash + '|' + meta_hash
+
                     # Skip if file hasn't changed
                     if not self.metadata_manager.file_changed(namespace, loaded_file.path, current_hash):
                         if verbose and not isinstance(files_iterator, tqdm):

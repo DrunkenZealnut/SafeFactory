@@ -44,6 +44,13 @@ class Chunk:
     page_id_end: Optional[int] = None
 
 
+def _count_blocks(block_counts) -> int:
+    """Sum block counts, ignoring the header row. Handles both dict and list formats."""
+    if isinstance(block_counts, dict):
+        return sum(v for k, v in block_counts.items() if k != 'BlockType' and isinstance(v, (int, float)))
+    return sum(count for block_type, count in block_counts if block_type != 'BlockType')
+
+
 def build_page_line_map(markdown_text: str, meta: Dict) -> Dict[int, int]:
     """
     Build a line_number → page_id mapping using anchors from _meta.json.
@@ -65,23 +72,32 @@ def build_page_line_map(markdown_text: str, meta: Dict) -> Dict[int, int]:
     if total_lines == 0:
         return {}
 
-    page_stats = meta.get('page_stats', [])
+    page_stats_raw = meta.get('page_stats', [])
     toc = meta.get('table_of_contents', [])
 
     # Build page_id → block_count map from page_stats
+    # Handles both list format [{page_id:0, block_counts:[[type,n],...]}]
+    # and dict format {"0": {block_counts:{type:n,...}}} (newer marker versions)
     page_block_counts: Dict[int, int] = {}
     max_page_id = -1
-    for ps in page_stats:
-        pid = ps.get('page_id', -1)
-        if pid < 0:
-            continue
-        # Sum all block counts for this page
-        blocks = 0
-        for block_type, count in ps.get('block_counts', []):
-            if block_type != 'BlockType':
-                blocks += count
-        page_block_counts[pid] = max(blocks, 1)
-        max_page_id = max(max_page_id, pid)
+    if isinstance(page_stats_raw, dict):
+        for pid_str, ps in page_stats_raw.items():
+            try:
+                pid = int(pid_str)
+            except (ValueError, TypeError):
+                continue
+            block_counts = ps.get('block_counts', {}) if isinstance(ps, dict) else {}
+            page_block_counts[pid] = max(_count_blocks(block_counts), 1)
+            max_page_id = max(max_page_id, pid)
+    else:
+        for ps in page_stats_raw:
+            if not isinstance(ps, dict):
+                continue
+            pid = ps.get('page_id', -1)
+            if pid < 0:
+                continue
+            page_block_counts[pid] = max(_count_blocks(ps.get('block_counts', [])), 1)
+            max_page_id = max(max_page_id, pid)
 
     if max_page_id < 0:
         return {}
@@ -850,6 +866,15 @@ class SemanticChunker(HttpClientMixin):
             document_summary = self._generate_document_summary(text)
             section_titles = self._extract_section_titles(text)
 
+        # Build TOC section summary map from meta_json (if summaries were pre-generated)
+        toc_summary_map: Dict[str, str] = {}
+        if meta_json:
+            for toc_entry in meta_json.get('table_of_contents', []):
+                title = toc_entry.get('title', '').strip()
+                summary = toc_entry.get('summary', '').strip()
+                if title and summary:
+                    toc_summary_map[_normalize_title(title)] = summary
+
         # Detect document domain and extract metadata
 
         normalized_source = unicodedata.normalize('NFC', source_file)
@@ -930,6 +955,11 @@ class SemanticChunker(HttpClientMixin):
             if self.enable_contextual and section_titles:
                 section_title = self._find_section_for_position(start_char, section_titles)
 
+            # Look up pre-generated TOC section summary
+            section_summary = None
+            if section_title and toc_summary_map:
+                section_summary = toc_summary_map.get(_normalize_title(section_title))
+
             # Resolve page_id from page_line_map
             chunk_page_id = None
             chunk_page_id_end = None
@@ -968,6 +998,8 @@ class SemanticChunker(HttpClientMixin):
             }
             if document_summary and i == 0:
                 chunk_metadata['document_summary'] = document_summary[:500]
+            if section_summary:
+                chunk_metadata['section_summary'] = section_summary[:300]
             if chunk_page_id is not None:
                 chunk_metadata['page_id'] = chunk_page_id
             if chunk_page_id_end is not None:
