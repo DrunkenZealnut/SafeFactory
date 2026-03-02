@@ -142,6 +142,10 @@ def add_toc_summaries(
     with open(meta_file, "r", encoding="utf-8") as f:
         meta = json.load(f)
 
+    if not isinstance(meta, dict):
+        print("[건너뜀] dict 형식이 아닙니다.")
+        return
+
     toc: List[Dict] = meta.get("table_of_contents", [])
     elements: List[Dict] = meta.get("elements", [])
 
