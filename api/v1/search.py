@@ -31,8 +31,24 @@ _HEARTBEAT_INTERVAL = 15  # SSE heartbeat interval (seconds)
 def _get_answer_max_tokens(namespace: str, source_count: int) -> int:
     """Return LLM max_tokens budget based on domain and source count."""
     if namespace == 'laborlaw':
-        return min(6000, 2000 + source_count * 250)
+        return min(8000, 2000 + source_count * 250)
     return min(4000, 1500 + source_count * 200)
+
+
+# Namespace-specific model overrides (provider, model).
+# Takes precedence over global llm_answer_provider / llm_answer_model settings.
+_NAMESPACE_MODEL_OVERRIDE = {
+    'laborlaw': ('anthropic', 'claude-opus-4-6'),
+}
+
+
+def _resolve_llm(namespace: str):
+    """Return (provider, model) for the given namespace."""
+    if namespace in _NAMESPACE_MODEL_OVERRIDE:
+        return _NAMESPACE_MODEL_OVERRIDE[namespace]
+    provider = get_setting('llm_answer_provider', 'openai')
+    model = get_setting('llm_answer_model', 'gpt-4o-mini')
+    return provider, model
 
 
 def _get_pdf_index():
@@ -243,8 +259,7 @@ def api_ask():
         messages = build_llm_messages(query, sources, context, namespace,
                                       calc_result, law_refs_formatted,
                                       labor_classification, legal_analysis)
-        provider = get_setting('llm_answer_provider', 'openai')
-        model = get_setting('llm_answer_model', 'gpt-4o-mini')
+        provider, model = _resolve_llm(namespace)
         if not _VALID_MODEL_RE.match(model):
             logging.error('Invalid model name in settings: %s', model)
             return error_response('잘못된 모델 설정입니다. 관리자에게 문의하세요.', 500)
@@ -337,8 +352,7 @@ def api_ask_stream():
     messages = build_llm_messages(query, sources, context, namespace,
                                   calc_result, law_refs_formatted,
                                   labor_classification, legal_analysis)
-    provider = get_setting('llm_answer_provider', 'openai')
-    model = get_setting('llm_answer_model', 'gpt-4o-mini')
+    provider, model = _resolve_llm(namespace)
     if not _VALID_MODEL_RE.match(model):
         logging.error('Invalid model name in settings: %s', model)
         return error_response('잘못된 모델 설정입니다. 관리자에게 문의하세요.', 500)
