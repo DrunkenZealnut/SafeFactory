@@ -9,8 +9,17 @@ from typing import List, Dict, Any, Optional, Tuple
 import numpy as np
 
 # Tunable reranking parameters (override via environment variables)
-RERANK_WEIGHT = float(os.environ.get("RERANK_WEIGHT", "0.7"))
-ORIGINAL_WEIGHT = float(os.environ.get("ORIGINAL_WEIGHT", "0.3"))
+RERANK_WEIGHT = float(os.environ.get("RERANK_WEIGHT", "0.75"))
+ORIGINAL_WEIGHT = float(os.environ.get("ORIGINAL_WEIGHT", "0.25"))
+
+# Domain-specific rerank weight profiles
+DOMAIN_RERANK_CONFIG = {
+    'laborlaw':   {'rerank_weight': 0.80, 'original_weight': 0.20},  # 크로스인코더 더 신뢰
+    'semiconductor': {'rerank_weight': 0.70, 'original_weight': 0.30},  # 벡터 점수도 참고
+    'msds':       {'rerank_weight': 0.80, 'original_weight': 0.20},  # 정확 매칭 중시
+    'field-training': {'rerank_weight': 0.75, 'original_weight': 0.25},
+    'safeguide':  {'rerank_weight': 0.75, 'original_weight': 0.25},
+}
 
 # Try to import sentence-transformers for cross-encoder
 try:

@@ -41,7 +41,7 @@ class ContextOptimizer(HttpClientMixin):
     def __init__(
         self,
         openai_api_key: Optional[str] = None,
-        similarity_threshold: float = 0.85,
+        similarity_threshold: float = 0.90,
         model: str = "gpt-4o-mini",
         provider: str = "openai",
     ):

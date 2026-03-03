@@ -18,11 +18,31 @@ except ImportError:
     BM25_AVAILABLE = False
     logging.warning("rank-bm25 not installed. Hybrid search disabled.")
 
+# Try to import konlpy for Korean morphological analysis (optional)
+try:
+    from konlpy.tag import Okt
+    _okt = Okt()
+    KONLPY_AVAILABLE = True
+    logging.info("konlpy Okt loaded — Korean morphological analysis enabled for BM25")
+except Exception:
+    _okt = None
+    KONLPY_AVAILABLE = False
+
 # Tunable search parameters (override via environment variables)
 RRF_K = int(os.environ.get("RRF_K", "60"))
 KEYWORD_BOOST = float(os.environ.get("KEYWORD_BOOST", "0.1"))
 TITLE_BOOST = float(os.environ.get("TITLE_BOOST", "3.0"))    # document_title 매칭 배수
 SECTION_BOOST = float(os.environ.get("SECTION_BOOST", "2.0"))  # section_title 매칭 배수
+
+# Domain-specific RRF weight profiles (vector_weight, bm25_weight)
+# Thread-safe: passed as parameters, not mutating instance state
+DOMAIN_RRF_CONFIG = {
+    'laborlaw':   {'vector_weight': 0.4, 'bm25_weight': 0.6},   # 법조항 정확 매칭 중시
+    'semiconductor': {'vector_weight': 0.6, 'bm25_weight': 0.4},  # 개념적 유사도 중시
+    'msds':       {'vector_weight': 0.4, 'bm25_weight': 0.6},   # 화학물질명 정확 매칭
+    'field-training': {'vector_weight': 0.5, 'bm25_weight': 0.5},
+    'safeguide':  {'vector_weight': 0.5, 'bm25_weight': 0.5},
+}
 
 
 @dataclass
@@ -71,7 +91,11 @@ class HybridSearcher:
 
     def _tokenize(self, text: str) -> List[str]:
         """
-        Tokenize Korean/English mixed text with particle stripping.
+        Tokenize Korean/English mixed text.
+
+        Uses konlpy Okt morphological analyzer when available for better
+        Korean tokenization (e.g., "근로기준법" → "근로", "기준", "법").
+        Falls back to regex-based particle stripping otherwise.
 
         Args:
             text: Text to tokenize
@@ -79,9 +103,18 @@ class HybridSearcher:
         Returns:
             List of tokens
         """
-        # Extract Korean, English, and numeric tokens
+        if KONLPY_AVAILABLE and _okt is not None:
+            try:
+                # Use Okt nouns + English/number extraction
+                korean_nouns = _okt.nouns(text)
+                english_numeric = re.findall(r'[a-zA-Z]+|[0-9]+', text.lower())
+                tokens = [t for t in korean_nouns + english_numeric if len(t) > 1]
+                return tokens
+            except Exception:
+                pass  # Fall through to regex tokenizer
+
+        # Fallback: regex-based tokenizer with particle stripping
         tokens = re.findall(r'[가-힣]+|[a-zA-Z]+|[0-9]+', text.lower())
-        # Strip Korean particles and filter short tokens
         stripped = []
         for t in tokens:
             cleaned = self._KOREAN_PARTICLES.sub('', t)
@@ -290,7 +323,8 @@ class HybridSearcher:
         vector_results: List[Dict[str, Any]],
         keywords: List[str],
         top_k: int = 10,
-        keyword_boost: float = KEYWORD_BOOST
+        keyword_boost: float = KEYWORD_BOOST,
+        domain: str = '',
     ) -> List[Dict[str, Any]]:
         """
         Hybrid search with additional keyword boosting.
@@ -303,12 +337,23 @@ class HybridSearcher:
             keyword_boost: Base boost factor per keyword match in content
                            (TITLE_BOOST × boost for document_title matches,
                             SECTION_BOOST × boost for section_title matches)
+            domain: Domain key for domain-specific RRF weights
 
         Returns:
             Search results with keyword boosting
         """
+        # Apply domain-specific RRF weights (thread-safe: creates new instance state via params)
+        domain_cfg = DOMAIN_RRF_CONFIG.get(domain, {})
+        saved_vw, saved_bw = self.vector_weight, self.bm25_weight
+        if domain_cfg:
+            self.vector_weight = domain_cfg['vector_weight']
+            self.bm25_weight = domain_cfg['bm25_weight']
+
         # First, do standard hybrid search
         results = self.search(query, vector_results, top_k=top_k)
+
+        # Restore original weights
+        self.vector_weight, self.bm25_weight = saved_vw, saved_bw
 
         if not keywords:
             return results

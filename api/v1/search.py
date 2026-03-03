@@ -15,7 +15,7 @@ from api.response import success_response, error_response
 from api import rate_limit
 from services.settings import get_setting
 from services.singletons import get_agent, get_anthropic_client, get_gemini_client, get_hybrid_searcher_instance, get_openai_client
-from services.rag_pipeline import run_rag_pipeline, build_llm_messages, find_related_images
+from services.rag_pipeline import run_rag_pipeline, build_llm_messages, find_related_images, post_process_answer, compute_answer_confidence
 from services.domain_config import DOCUMENTS_PATH
 
 # ---------------------------------------------------------------------------
@@ -298,6 +298,8 @@ def api_ask():
             )
             answer = response.choices[0].message.content
 
+        answer = post_process_answer(answer, len(sources))
+        confidence = compute_answer_confidence(answer, sources, context)
         related_images = _collect_related_images(sources)
         law_refs_raw = pipeline.get('law_references')
 
@@ -311,6 +313,7 @@ def api_ask():
             'query_variations': enhanced_queries if use_enhancement else None,
             'keywords_extracted': keywords if use_enhancement else None,
             'law_references': law_refs_raw if law_refs_raw else None,
+            'confidence': confidence,
         })
 
     except Exception:

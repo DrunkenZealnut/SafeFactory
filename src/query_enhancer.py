@@ -18,6 +18,68 @@ os.environ.setdefault('SSL_CERT_FILE', certifi.where())
 os.environ.setdefault('REQUESTS_CA_BUNDLE', certifi.where())
 
 
+# Domain-specific synonym mappings for query expansion
+DOMAIN_SYNONYMS = {
+    'semiconductor': {
+        'CVD': ['화학기상증착', 'Chemical Vapor Deposition'],
+        '화학기상증착': ['CVD', 'Chemical Vapor Deposition'],
+        'PVD': ['물리기상증착', 'Physical Vapor Deposition'],
+        '물리기상증착': ['PVD', 'Physical Vapor Deposition'],
+        '에칭': ['식각', 'etching'],
+        '식각': ['에칭', 'etching'],
+        'CMP': ['화학기계연마', 'Chemical Mechanical Polishing'],
+        '화학기계연마': ['CMP'],
+        'PECVD': ['플라즈마화학기상증착', 'Plasma Enhanced CVD'],
+        'LPCVD': ['저압화학기상증착', 'Low Pressure CVD'],
+        'ALD': ['원자층증착', 'Atomic Layer Deposition'],
+        '원자층증착': ['ALD'],
+        '포토리소그래피': ['노광', 'photolithography', '포토공정'],
+        '노광': ['포토리소그래피', 'photolithography', '포토공정'],
+        '이온주입': ['ion implantation', '이온임플란트'],
+        '확산': ['diffusion', '열확산'],
+        '웨이퍼': ['wafer', '실리콘웨이퍼'],
+        '다이싱': ['dicing', '절단'],
+        '본딩': ['bonding', '와이어본딩'],
+        '패키징': ['packaging', '조립'],
+    },
+    'laborlaw': {
+        '해고': ['부당해고', '정리해고', '해임', '면직'],
+        '부당해고': ['해고', '부당면직'],
+        '임금': ['급여', '보수', '급료', '월급'],
+        '급여': ['임금', '보수', '급료', '월급'],
+        '연차': ['연차유급휴가', '연차휴가', '유급휴가'],
+        '연차유급휴가': ['연차', '연차휴가'],
+        '퇴직금': ['퇴직급여', '퇴직연금'],
+        '최저임금': ['최저시급', '법정최저임금'],
+        '4대보험': ['사회보험', '국민연금', '건강보험', '고용보험', '산재보험'],
+        '초과근무': ['연장근로', '초과근로', '야간근로', '휴일근로'],
+        '연장근로': ['초과근무', '초과근로', '잔업'],
+        '근로계약': ['고용계약', '근로계약서'],
+        '산업재해': ['산재', '업무상재해'],
+        '산재': ['산업재해', '업무상재해'],
+    },
+    'field-training': {
+        '안전모': ['보호모', '머리보호구', '안전헬멧'],
+        '보호구': ['PPE', '개인보호구', '안전장비'],
+        '안전대': ['안전벨트', '추락방지대'],
+        '방독마스크': ['방독면', '가스마스크', '호흡보호구'],
+        '안전화': ['안전장화', '발보호구'],
+        '보안경': ['안전안경', '보호안경', '눈보호구'],
+        '안전수칙': ['작업수칙', '안전규정', '안전지침'],
+    },
+    'msds': {
+        'MSDS': ['물질안전보건자료', 'SDS', 'Material Safety Data Sheet'],
+        '물질안전보건자료': ['MSDS', 'SDS'],
+        'GHS': ['화학물질분류표시', '세계조화시스템'],
+        'CAS': ['CAS번호', 'CAS Number'],
+        'TWA': ['시간가중평균', 'Time Weighted Average'],
+        'STEL': ['단시간노출기준', 'Short Term Exposure Limit'],
+        'LC50': ['반수치사농도'],
+        'LD50': ['반수치사량'],
+    },
+}
+
+
 class QueryEnhancer(HttpClientMixin):
     """
     Enhances user queries for better retrieval results.
@@ -98,6 +160,39 @@ class QueryEnhancer(HttpClientMixin):
                 max_tokens=max_tokens,
             )
             return resp.choices[0].message.content
+
+    def expand_with_synonyms(self, query: str, domain: str = '') -> str:
+        """Expand query with domain-specific synonyms.
+
+        Appends synonym terms found in the query to improve retrieval recall.
+        Does not modify the original query — only appends synonyms.
+
+        Args:
+            query: Original user query.
+            domain: Domain key (e.g., 'semiconductor', 'laborlaw').
+
+        Returns:
+            Query with appended synonyms, or original query if no matches.
+        """
+        synonyms_map = DOMAIN_SYNONYMS.get(domain, {})
+        if not synonyms_map:
+            return query
+
+        added = []
+        query_lower = query.lower()
+        for term, syns in synonyms_map.items():
+            if term.lower() in query_lower:
+                for syn in syns:
+                    if syn.lower() not in query_lower and syn not in added:
+                        added.append(syn)
+                        if len(added) >= 5:  # Limit expansion to avoid noise
+                            break
+            if len(added) >= 5:
+                break
+
+        if added:
+            return f"{query} ({' '.join(added)})"
+        return query
 
     def multi_query(self, query: str, num_variations: int = 3) -> List[str]:
         """

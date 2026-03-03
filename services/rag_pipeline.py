@@ -12,6 +12,7 @@ from services.domain_config import (
     DOMAIN_PROMPTS,
     DEFAULT_SYSTEM_PROMPT,
     COT_INSTRUCTIONS,
+    DOMAIN_COT_INSTRUCTIONS,
     VISUAL_GUIDELINES,
     NAMESPACE_DOMAIN_MAP,
 )
@@ -25,11 +26,115 @@ from services.singletons import (
     get_uploader,
 )
 
-MIN_RELEVANCE_SCORE = float(os.environ.get('MIN_RELEVANCE_SCORE', '0.3'))
+MIN_RELEVANCE_SCORE = float(os.environ.get('MIN_RELEVANCE_SCORE', '0.2'))
 MIN_TOKEN_COUNT = int(os.environ.get('MIN_TOKEN_COUNT', '30'))
 TOP_K_MENTION_MULT = int(os.environ.get('TOP_K_MENTION_MULT', '3'))
 TOP_K_NO_BM25_MULT = int(os.environ.get('TOP_K_NO_BM25_MULT', '4'))
-TOP_K_DEFAULT_MULT = int(os.environ.get('TOP_K_DEFAULT_MULT', '2'))
+TOP_K_DEFAULT_MULT = int(os.environ.get('TOP_K_DEFAULT_MULT', '3'))
+
+
+def post_process_answer(answer: str, source_count: int) -> str:
+    """Post-process LLM answer to clean up citation issues and formatting.
+
+    Args:
+        answer: Raw LLM answer text.
+        source_count: Number of sources provided to the LLM.
+
+    Returns:
+        Cleaned answer text.
+    """
+    import re as _re
+
+    if not answer:
+        return answer
+
+    # 1. Remove invalid citation numbers (exceeding source count)
+    # Matches [N] where N > source_count, but not inside law reference blocks
+    def _replace_invalid_citation(match):
+        num = int(match.group(1))
+        if num > source_count and num <= source_count:
+            return match.group(0)
+        if num > source_count:
+            return ''
+        return match.group(0)
+
+    if source_count > 0:
+        answer = _re.sub(r'\[(\d+)\]', _replace_invalid_citation, answer)
+
+    # 2. Normalize excessive consecutive newlines (3+ → 2)
+    answer = _re.sub(r'\n{3,}', '\n\n', answer)
+
+    # 3. Clean up empty citation artifacts (e.g., trailing spaces from removed citations)
+    answer = _re.sub(r'\s+\n', '\n', answer)
+
+    return answer.strip()
+
+
+def compute_answer_confidence(answer: str, sources: list, context: str) -> dict:
+    """Compute a confidence indicator for the generated answer.
+
+    Factors considered:
+    - Citation coverage: how many sources are actually cited in the answer
+    - Source quality: average relevance score of sources
+    - Answer length: very short answers may indicate insufficient context
+
+    Args:
+        answer: Generated answer text.
+        sources: List of source dicts with 'score' fields.
+        context: Context text provided to the LLM.
+
+    Returns:
+        dict with 'score' (0.0-1.0), 'level' ('high'|'medium'|'low'), 'factors'.
+    """
+    import re as _re
+
+    if not answer or not sources:
+        return {'score': 0.0, 'level': 'low', 'factors': {}}
+
+    # Factor 1: Citation coverage (0-1)
+    cited_nums = set(int(n) for n in _re.findall(r'\[(\d+)\]', answer))
+    valid_cited = len([n for n in cited_nums if 1 <= n <= len(sources)])
+    citation_coverage = valid_cited / len(sources) if sources else 0
+
+    # Factor 2: Source quality — average score (0-1)
+    scores = [s.get('score', 0) for s in sources if isinstance(s.get('score'), (int, float))]
+    avg_source_score = sum(scores) / len(scores) if scores else 0
+
+    # Factor 3: Answer substantiveness (0-1)
+    answer_len = len(answer)
+    if answer_len > 500:
+        substantiveness = 1.0
+    elif answer_len > 200:
+        substantiveness = 0.7
+    elif answer_len > 50:
+        substantiveness = 0.4
+    else:
+        substantiveness = 0.2
+
+    # Weighted combination
+    confidence = (
+        citation_coverage * 0.4 +
+        avg_source_score * 0.35 +
+        substantiveness * 0.25
+    )
+    confidence = min(1.0, max(0.0, confidence))
+
+    if confidence >= 0.7:
+        level = 'high'
+    elif confidence >= 0.4:
+        level = 'medium'
+    else:
+        level = 'low'
+
+    return {
+        'score': round(confidence, 3),
+        'level': level,
+        'factors': {
+            'citation_coverage': round(citation_coverage, 3),
+            'avg_source_score': round(avg_source_score, 3),
+            'substantiveness': round(substantiveness, 3),
+        }
+    }
 
 
 def _get_num_variations(query: str) -> int:
@@ -83,10 +188,10 @@ def _run_legal_analysis_pass(query, classification, law_refs_text, context):
     client = get_gemini_client()
     config = genai_types.GenerateContentConfig(
         temperature=0.1,
-        max_output_tokens=600,
+        max_output_tokens=1000,
     )
     resp = client.models.generate_content(
-        model='gemini-2.0-flash',
+        model='gemini-2.5-flash',
         contents=analysis_prompt,
         config=config,
     )
@@ -170,13 +275,18 @@ def run_rag_pipeline(data):
             query_enhancer = get_query_enhancer()
             domain = NAMESPACE_DOMAIN_MAP.get(namespace, 'semiconductor')
 
+            # Expand query with domain-specific synonyms before multi-query generation
+            expanded_query = query_enhancer.expand_with_synonyms(search_query, domain)
+            if expanded_query != search_query:
+                logging.info("[Synonym Expansion] '%s' → '%s'", search_query, expanded_query)
+
             # Run query enhancement calls in parallel for lower latency
             with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
                 num_variations = _get_num_variations(search_query)
                 future_multi = executor.submit(query_enhancer.multi_query, search_query, num_variations)
                 future_hyde = (
                     executor.submit(query_enhancer.hyde, search_query, domain)
-                    if len(search_query) >= 30 else None
+                    if len(search_query) >= 10 else None
                 )
                 future_keywords = executor.submit(query_enhancer.extract_keywords_fast, search_query)
 
@@ -202,6 +312,11 @@ def run_rag_pipeline(data):
                     logging.warning("[Query Enhancement] keywords failed: %s", e)
                     keywords = []
                 logging.info("[Query Enhancement] Keywords: %s", keywords)
+
+                # Add synonym-expanded query as an additional variation
+                if expanded_query != search_query and expanded_query not in enhanced_queries:
+                    enhanced_queries.append(expanded_query)
+                    logging.info("[Synonym Expansion] Added expanded query as variation")
 
         except Exception as e:
             logging.warning("[Query Enhancement] Failed: %s, using original query", e)
@@ -310,11 +425,13 @@ def run_rag_pipeline(data):
     elif use_enhancement and len(results) > 3:
         try:
             hybrid_searcher = get_hybrid_searcher_instance()
+            domain_key = NAMESPACE_DOMAIN_MAP.get(namespace, 'semiconductor')
             results = hybrid_searcher.search_with_keyword_boost(
                 query=search_query,
                 vector_results=results,
                 keywords=keywords,
-                top_k=min(len(results), top_k * 2)
+                top_k=min(len(results), top_k * 2),
+                domain=domain_key,
             )
             logging.info("[Hybrid Search] Applied BM25 + keyword boosting")
         except Exception as e:
@@ -325,13 +442,21 @@ def run_rag_pipeline(data):
     # ========================================
     if use_enhancement and len(results) > 3:
         try:
+            from src.reranker import DOMAIN_RERANK_CONFIG
             reranker = get_reranker_instance()
+            domain_key = NAMESPACE_DOMAIN_MAP.get(namespace, 'semiconductor')
+            rerank_cfg = DOMAIN_RERANK_CONFIG.get(domain_key, {})
+            rerank_kwargs = {}
+            if rerank_cfg:
+                rerank_kwargs['rerank_weight'] = rerank_cfg['rerank_weight']
+                rerank_kwargs['original_weight'] = rerank_cfg['original_weight']
             results = reranker.hybrid_rerank(
                 query=search_query,
                 docs=results,
-                top_k=min(len(results), top_k + 5)  # Keep extra for context optimization
+                top_k=min(len(results), top_k * 2),  # Keep extra for context optimization
+                **rerank_kwargs,
             )
-            logging.info("[Reranking] Hybrid-reranked to %d documents", len(results))
+            logging.info("[Reranking] Hybrid-reranked to %d documents (domain=%s)", len(results), domain_key)
         except Exception as e:
             logging.warning("[Reranking] Failed: %s, using original order", e)
 
@@ -392,7 +517,7 @@ def run_rag_pipeline(data):
         score = r.get('rerank_score', r.get('rrf_score', r.get('score', 0)))
 
         if content:
-            context_parts.append(f"[문서 {i+1}] (출처: {source_file})\n{content}")
+            context_parts.append(f"[{i+1}] (출처: {source_file})\n{content}")
 
             # Build image URL for image files (normalize unicode for macOS)
             image_url = None
@@ -498,10 +623,21 @@ def build_llm_prompts(query, sources, context, namespace, calc_result=None,
         tuple: (system_prompt, user_prompt)
     """
     base_prompt = DOMAIN_PROMPTS.get(namespace, DEFAULT_SYSTEM_PROMPT)
-    system_prompt = base_prompt + COT_INSTRUCTIONS + VISUAL_GUIDELINES
+    domain_key = NAMESPACE_DOMAIN_MAP.get(namespace, 'semiconductor')
+    domain_cot = DOMAIN_COT_INSTRUCTIONS.get(domain_key, '')
+    system_prompt = base_prompt + COT_INSTRUCTIONS + domain_cot + VISUAL_GUIDELINES
 
     user_prompt = f"""## 질문
 {query}"""
+
+    # Place reference documents right after the question (Lost in the Middle optimization)
+    if sources:
+        user_prompt += f"""
+
+## 참고 문서 ({len(sources)}개)
+{context}
+
+**인용 규칙**: 위 참고 문서의 번호 [1], [2], ... 을 답변 본문에서 해당 정보 뒤에 인용하세요."""
 
     # Inject precise calculation results for laborlaw
     if calc_result and calc_result.get('formatted'):
@@ -554,12 +690,6 @@ def build_llm_prompts(query, sources, context, namespace, calc_result=None,
 {legal_analysis}
 
 위 분석을 참고하여 종합적이고 실용적인 답변을 작성하세요."""
-
-    if sources:
-        user_prompt += f"""
-
-## 참고 문서 ({len(sources)}개)
-{context}"""
 
     # Inject classification-aware analysis mode instructions for laborlaw
     if namespace == 'laborlaw' and labor_classification:
