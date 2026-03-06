@@ -303,7 +303,7 @@ def api_ask():
         related_images = _collect_related_images(sources)
         law_refs_raw = pipeline.get('law_references')
 
-        return success_response(data={
+        resp_data = {
             'query': query,
             'answer': answer,
             'sources': sources,
@@ -314,7 +314,13 @@ def api_ask():
             'keywords_extracted': keywords if use_enhancement else None,
             'law_references': law_refs_raw if law_refs_raw else None,
             'confidence': confidence,
-        })
+        }
+        # Debug mode: expose pipeline diagnostics
+        if data.get('debug'):
+            resp_data['query_type'] = pipeline.get('query_type')
+            resp_data['latencies'] = pipeline.get('latencies')
+
+        return success_response(data=resp_data)
 
     except Exception:
         logging.exception('[API/ask] Error')
@@ -382,9 +388,7 @@ def api_ask_stream():
                 yield f"data: {calc_event}\n\n"
 
             # Send metadata event first (sources, images, query info)
-            metadata_event = json.dumps({
-                'type': 'metadata',
-                'data': {
+            meta_data = {
                     'query': query,
                     'sources': sources,
                     'source_count': len(sources),
@@ -393,7 +397,15 @@ def api_ask_stream():
                     'query_variations': enhanced_queries if use_enhancement else None,
                     'keywords_extracted': keywords if use_enhancement else None,
                     'law_references': law_refs_raw if law_refs_raw else None,
-                }
+            }
+            # Debug mode: expose pipeline diagnostics
+            if data.get('debug'):
+                meta_data['query_type'] = pipeline.get('query_type')
+                meta_data['latencies'] = pipeline.get('latencies')
+
+            metadata_event = json.dumps({
+                'type': 'metadata',
+                'data': meta_data,
             }, ensure_ascii=False)
             yield f"data: {metadata_event}\n\n"
 

@@ -1,0 +1,196 @@
+{
+  "version": "1.0",
+  "description": "Golden dataset for RAG pipeline evaluation across 5 domains",
+  "domains": {
+    "semiconductor": [
+      {
+        "id": "semi-001",
+        "query": "CVD 공정에서 사용되는 가스 종류는?",
+        "expected_keywords": ["CVD", "가스", "증착"],
+        "expected_sources": [],
+        "namespace": "semiconductor",
+        "difficulty": "easy",
+        "query_type": "factual"
+      },
+      {
+        "id": "semi-002",
+        "query": "포토리소그래피 공정 순서를 설명해주세요",
+        "expected_keywords": ["포토리소그래피", "노광", "현상", "에칭"],
+        "expected_sources": [],
+        "namespace": "semiconductor",
+        "difficulty": "medium",
+        "query_type": "procedural"
+      },
+      {
+        "id": "semi-003",
+        "query": "습식 에칭과 건식 에칭의 차이점은?",
+        "expected_keywords": ["습식", "건식", "에칭", "차이"],
+        "expected_sources": [],
+        "namespace": "semiconductor",
+        "difficulty": "medium",
+        "query_type": "comparison"
+      },
+      {
+        "id": "semi-004",
+        "query": "반도체 클린룸 청정도 기준은 무엇인가요?",
+        "expected_keywords": ["클린룸", "청정도", "파티클"],
+        "expected_sources": [],
+        "namespace": "semiconductor",
+        "difficulty": "easy",
+        "query_type": "factual"
+      }
+    ],
+    "laborlaw": [
+      {
+        "id": "law-001",
+        "query": "연차휴가 발생 기준과 사용 방법은?",
+        "expected_keywords": ["연차", "휴가", "근로기준법"],
+        "expected_sources": [],
+        "namespace": "laborlaw",
+        "difficulty": "easy",
+        "query_type": "factual"
+      },
+      {
+        "id": "law-002",
+        "query": "퇴직금 계산 방법을 알려주세요",
+        "expected_keywords": ["퇴직금", "계산", "평균임금"],
+        "expected_sources": [],
+        "namespace": "laborlaw",
+        "difficulty": "medium",
+        "query_type": "procedural"
+      },
+      {
+        "id": "law-003",
+        "query": "정규직과 계약직의 차이점은 무엇인가요?",
+        "expected_keywords": ["정규직", "계약직", "차이", "기간제"],
+        "expected_sources": [],
+        "namespace": "laborlaw",
+        "difficulty": "medium",
+        "query_type": "comparison"
+      },
+      {
+        "id": "law-004",
+        "query": "주 52시간 근로제에서 연장근로수당은 어떻게 계산하나요?",
+        "expected_keywords": ["52시간", "연장근로", "수당", "계산"],
+        "expected_sources": [],
+        "namespace": "laborlaw",
+        "difficulty": "hard",
+        "query_type": "calculation"
+      }
+    ],
+    "field-training": [
+      {
+        "id": "ft-001",
+        "query": "밀폐공간 작업 시 안전수칙은?",
+        "expected_keywords": ["밀폐공간", "안전", "산소농도"],
+        "expected_sources": [],
+        "namespace": "field-training",
+        "difficulty": "easy",
+        "query_type": "factual"
+      },
+      {
+        "id": "ft-002",
+        "query": "고소작업 안전대 착용 절차를 설명해주세요",
+        "expected_keywords": ["고소작업", "안전대", "추락"],
+        "expected_sources": [],
+        "namespace": "field-training",
+        "difficulty": "medium",
+        "query_type": "procedural"
+      },
+      {
+        "id": "ft-003",
+        "query": "전기작업과 용접작업의 보호구 차이는?",
+        "expected_keywords": ["전기", "용접", "보호구"],
+        "expected_sources": [],
+        "namespace": "field-training",
+        "difficulty": "medium",
+        "query_type": "comparison"
+      },
+      {
+        "id": "ft-004",
+        "query": "크레인 작업 전 점검사항은 무엇인가요?",
+        "expected_keywords": ["크레인", "점검", "안전"],
+        "expected_sources": [],
+        "namespace": "field-training",
+        "difficulty": "easy",
+        "query_type": "factual"
+      }
+    ],
+    "safeguide": [
+      {
+        "id": "sg-001",
+        "query": "화재 발생 시 대피 절차는?",
+        "expected_keywords": ["화재", "대피", "소화기"],
+        "expected_sources": [],
+        "namespace": "safeguide",
+        "difficulty": "easy",
+        "query_type": "procedural"
+      },
+      {
+        "id": "sg-002",
+        "query": "안전보건관리체제에서 안전관리자의 역할은?",
+        "expected_keywords": ["안전관리자", "역할", "안전보건"],
+        "expected_sources": [],
+        "namespace": "safeguide",
+        "difficulty": "medium",
+        "query_type": "factual"
+      },
+      {
+        "id": "sg-003",
+        "query": "위험성평가 실시 절차와 방법은?",
+        "expected_keywords": ["위험성평가", "절차", "유해위험요인"],
+        "expected_sources": [],
+        "namespace": "safeguide",
+        "difficulty": "medium",
+        "query_type": "procedural"
+      },
+      {
+        "id": "sg-004",
+        "query": "산업재해 발생 시 보고 절차는 어떻게 되나요?",
+        "expected_keywords": ["산업재해", "보고", "산재"],
+        "expected_sources": [],
+        "namespace": "safeguide",
+        "difficulty": "easy",
+        "query_type": "procedural"
+      }
+    ],
+    "msds": [
+      {
+        "id": "msds-001",
+        "query": "아세톤의 유해성과 취급 시 주의사항은?",
+        "expected_keywords": ["아세톤", "유해성", "취급"],
+        "expected_sources": [],
+        "namespace": "msds",
+        "difficulty": "easy",
+        "query_type": "factual"
+      },
+      {
+        "id": "msds-002",
+        "query": "화학물질 누출 시 응급조치 방법은?",
+        "expected_keywords": ["누출", "응급조치", "화학물질"],
+        "expected_sources": [],
+        "namespace": "msds",
+        "difficulty": "medium",
+        "query_type": "procedural"
+      },
+      {
+        "id": "msds-003",
+        "query": "GHS 분류에서 인화성 액체와 가연성 액체의 차이는?",
+        "expected_keywords": ["GHS", "인화성", "가연성"],
+        "expected_sources": [],
+        "namespace": "msds",
+        "difficulty": "medium",
+        "query_type": "comparison"
+      },
+      {
+        "id": "msds-004",
+        "query": "MSDS에서 노출기준 TWA 값은 무엇을 의미하나요?",
+        "expected_keywords": ["MSDS", "TWA", "노출기준"],
+        "expected_sources": [],
+        "namespace": "msds",
+        "difficulty": "easy",
+        "query_type": "factual"
+      }
+    ]
+  }
+}

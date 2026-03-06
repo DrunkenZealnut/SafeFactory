@@ -4,6 +4,7 @@ import concurrent.futures
 import hashlib
 import logging
 import os
+import time
 import unicodedata
 from datetime import datetime
 
@@ -17,6 +18,7 @@ from services.domain_config import (
     NAMESPACE_DOMAIN_MAP,
 )
 from services.filters import parse_mentions, build_domain_filter
+from services.query_router import classify_query_type, QUERY_TYPE_CONFIG
 from services.singletons import (
     get_agent,
     get_query_enhancer,
@@ -263,12 +265,23 @@ def run_rag_pipeline(data):
         search_query = clean_query if clean_query else query
 
     agent = get_agent()
+    _timings = {}
+    domain_key = NAMESPACE_DOMAIN_MAP.get(namespace, 'semiconductor')
+
+    # Query type classification for routing
+    query_type = classify_query_type(search_query)
+    route_cfg = QUERY_TYPE_CONFIG.get(query_type, QUERY_TYPE_CONFIG['factual'])
+    logging.info("[Query Router] Type: %s", query_type)
 
     # ========================================
     # Phase 1: Query Enhancement
     # ========================================
+    _t0 = time.perf_counter()
     enhanced_queries = [search_query]
     keywords = []
+
+    use_multi_query = route_cfg.get('use_multi_query', True)
+    use_hyde = route_cfg.get('use_hyde', False)
 
     if use_enhancement:
         try:
@@ -282,20 +295,26 @@ def run_rag_pipeline(data):
 
             # Run query enhancement calls in parallel for lower latency
             with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-                num_variations = _get_num_variations(search_query)
-                future_multi = executor.submit(query_enhancer.multi_query, search_query, num_variations)
-                future_hyde = (
-                    executor.submit(query_enhancer.hyde, search_query, domain)
-                    if len(search_query) >= 10 else None
-                )
+                future_multi = None
+                if use_multi_query:
+                    num_variations = _get_num_variations(search_query)
+                    future_multi = executor.submit(query_enhancer.multi_query, search_query, num_variations)
+
+                future_hyde = None
+                if use_hyde and len(search_query) >= 10:
+                    future_hyde = executor.submit(query_enhancer.hyde, search_query, domain)
+
                 future_keywords = executor.submit(query_enhancer.extract_keywords_fast, search_query)
 
-                try:
-                    enhanced_queries = future_multi.result(timeout=10)
-                except Exception as e:
-                    logging.warning("[Query Enhancement] multi_query failed: %s", e)
-                    enhanced_queries = [search_query]
-                logging.info("[Query Enhancement] Generated %d query variations", len(enhanced_queries))
+                if future_multi:
+                    try:
+                        enhanced_queries = future_multi.result(timeout=10)
+                    except Exception as e:
+                        logging.warning("[Query Enhancement] multi_query failed: %s", e)
+                        enhanced_queries = [search_query]
+                    logging.info("[Query Enhancement] Generated %d query variations", len(enhanced_queries))
+                else:
+                    logging.info("[Query Enhancement] multi_query skipped (query_type=%s)", query_type)
 
                 if future_hyde:
                     try:
@@ -305,6 +324,8 @@ def run_rag_pipeline(data):
                             logging.info("[HyDE] Added hypothetical document query")
                     except Exception as e:
                         logging.warning("[HyDE] Failed: %s", e)
+                else:
+                    logging.info("[HyDE] Skipped (query_type=%s)", query_type)
 
                 try:
                     keywords = future_keywords.result(timeout=10)
@@ -322,20 +343,24 @@ def run_rag_pipeline(data):
             logging.warning("[Query Enhancement] Failed: %s, using original query", e)
             enhanced_queries = [search_query]
 
+    _timings['phase1_enhancement_ms'] = round((time.perf_counter() - _t0) * 1000)
+
     # ========================================
     # Phase 2: Multi-Query Search (with domain metadata filtering)
     # ========================================
     # Build domain-aware metadata filter from query and namespace
     domain_filter = build_domain_filter(search_query, namespace)
 
+    _t0 = time.perf_counter()
     # Search with multiple query variations and merge results
     # When BM25 is skipped, fetch more candidates so the reranker has a wider pool
+    top_k_mult = route_cfg.get('top_k_mult', TOP_K_DEFAULT_MULT)
     if mention_filters:
         search_top_k = top_k * TOP_K_MENTION_MULT
     elif skip_bm25:
         search_top_k = top_k * TOP_K_NO_BM25_MULT  # Wider recall when relying on reranker alone
     else:
-        search_top_k = top_k * TOP_K_DEFAULT_MULT  # Fetch more for filtering/reranking
+        search_top_k = top_k * top_k_mult  # Route-aware fetch multiplier
     is_all_namespace = (namespace == 'all')
     all_results = []
     seen_ids = set()
@@ -375,10 +400,12 @@ def run_rag_pipeline(data):
 
     results = all_results
     logging.info("[Search] Retrieved %d unique documents from %d queries", len(results), len(enhanced_queries))
+    _timings['phase2_search_ms'] = round((time.perf_counter() - _t0) * 1000)
 
     # ========================================
     # Phase 3: Apply mention filters
     # ========================================
+    _t0 = time.perf_counter()
     if mention_filters and results:
         filtered_results = []
         for r in results:
@@ -417,9 +444,12 @@ def run_rag_pipeline(data):
             }
         }
 
+    _timings['phase3_filter_ms'] = round((time.perf_counter() - _t0) * 1000)
+
     # ========================================
     # Phase 4: Hybrid Search (BM25 + Vector)
     # ========================================
+    _t0 = time.perf_counter()
     if skip_bm25:
         logging.info("[Hybrid Search] Skipped (SKIP_BM25_HYBRID=true)")
     elif use_enhancement and len(results) > 3:
@@ -437,9 +467,12 @@ def run_rag_pipeline(data):
         except Exception as e:
             logging.warning("[Hybrid Search] Failed: %s, using vector results only", e)
 
+    _timings['phase4_hybrid_ms'] = round((time.perf_counter() - _t0) * 1000)
+
     # ========================================
     # Phase 5: Reranking (hybrid: cross-encoder 70% + original score 30%)
     # ========================================
+    _t0 = time.perf_counter()
     if use_enhancement and len(results) > 3:
         try:
             from src.reranker import DOMAIN_RERANK_CONFIG
@@ -450,6 +483,11 @@ def run_rag_pipeline(data):
             if rerank_cfg:
                 rerank_kwargs['rerank_weight'] = rerank_cfg['rerank_weight']
                 rerank_kwargs['original_weight'] = rerank_cfg['original_weight']
+            else:
+                # Fallback to query-type-based rerank weight
+                rw = route_cfg.get('rerank_weight', 0.70)
+                rerank_kwargs['rerank_weight'] = rw
+                rerank_kwargs['original_weight'] = round(1.0 - rw, 2)
             results = reranker.hybrid_rerank(
                 query=search_query,
                 docs=results,
@@ -460,9 +498,12 @@ def run_rag_pipeline(data):
         except Exception as e:
             logging.warning("[Reranking] Failed: %s, using original order", e)
 
+    _timings['phase5_rerank_ms'] = round((time.perf_counter() - _t0) * 1000)
+
     # ========================================
     # Phase 6: Filtering, Context Optimization, and Reordering
     # ========================================
+    _t0 = time.perf_counter()
     # Filter by minimum relevance score BEFORE reordering (to preserve Lost-in-Middle intent)
     try:
         min_score = float(data.get('min_score', MIN_RELEVANCE_SCORE))
@@ -493,8 +534,8 @@ def run_rag_pipeline(data):
         try:
             context_optimizer = get_context_optimizer()
 
-            # Deduplicate similar content
-            results = context_optimizer.deduplicate(results)
+            # Deduplicate similar content (domain-specific thresholds)
+            results = context_optimizer.deduplicate(results, domain=domain_key)
 
             # Reorder for LLM attention (Lost in the Middle prevention)
             results = context_optimizer.reorder_for_llm(results, strategy="lost_in_middle")
@@ -503,9 +544,12 @@ def run_rag_pipeline(data):
         except Exception as e:
             logging.warning("[Context Optimization] Failed: %s", e)
 
+    _timings['phase6_optimize_ms'] = round((time.perf_counter() - _t0) * 1000)
+
     # ========================================
     # Phase 7: Build Context and Sources
     # ========================================
+    _t0 = time.perf_counter()
     context_parts = []
     sources = []
 
@@ -551,6 +595,9 @@ def run_rag_pipeline(data):
 
     context = "\n\n---\n\n".join(context_parts)
 
+    _timings['phase7_context_ms'] = round((time.perf_counter() - _t0) * 1000)
+    _timings['total_pipeline_ms'] = sum(_timings.values())
+
     result = {
         'early_response': False,
         'query': query,
@@ -562,6 +609,8 @@ def run_rag_pipeline(data):
         'enhanced_queries': enhanced_queries,
         'keywords': keywords,
         'use_enhancement': use_enhancement,
+        'query_type': query_type,
+        'latencies': _timings,
     }
 
     # Laborlaw: classify question, run calculator, search law API, and run analysis pass

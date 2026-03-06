@@ -162,10 +162,21 @@ class ContextOptimizer(HttpClientMixin):
 
         return intersection / union if union > 0 else 0.0
 
+    # Domain-specific deduplication thresholds.
+    # Lower threshold = more documents kept (more diversity).
+    DOMAIN_DEDUP_THRESHOLD = {
+        'laborlaw': 0.80,
+        'semiconductor': 0.90,
+        'field-training': 0.85,
+        'safeguide': 0.85,
+        'msds': 0.90,
+    }
+
     def deduplicate(
         self,
         docs: List[Dict[str, Any]],
-        content_key: str = "content"
+        content_key: str = "content",
+        domain: str = '',
     ) -> List[Dict[str, Any]]:
         """
         Remove semantically similar documents.
@@ -176,12 +187,15 @@ class ContextOptimizer(HttpClientMixin):
         Args:
             docs: List of documents with content and metadata
             content_key: Key for content in document dict
+            domain: Domain key for domain-specific threshold
 
         Returns:
             Deduplicated list of documents
         """
         if not docs:
             return []
+
+        threshold = self.DOMAIN_DEDUP_THRESHOLD.get(domain, self.similarity_threshold)
 
         # Sort by best available score (rerank > combined > rrf > score) to keep highest scored duplicates
         sorted_docs = sorted(
@@ -206,7 +220,7 @@ class ContextOptimizer(HttpClientMixin):
                 ngram_sim = self._compute_ngram_similarity(content, seen_content)
                 combined_sim = (jaccard_sim + ngram_sim) / 2
 
-                if combined_sim >= self.similarity_threshold:
+                if combined_sim >= threshold:
                     is_duplicate = True
                     break
 

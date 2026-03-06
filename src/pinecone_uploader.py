@@ -87,6 +87,26 @@ class PineconeUploader:
             time.sleep(2)
         raise TimeoutError(f"Index {self.index_name} not ready after {timeout}s")
 
+    @staticmethod
+    def _safe_truncate(text: str, max_chars: int, max_bytes: int) -> str:
+        """Truncate text by characters first, then verify byte limit.
+
+        Prevents mid-character truncation for Korean (3 bytes/char in UTF-8).
+        """
+        truncated = text[:max_chars]
+        encoded = truncated.encode('utf-8')
+        if len(encoded) <= max_bytes:
+            return truncated
+        # Binary search for the largest character count within byte limit
+        lo, hi = 0, len(truncated)
+        while lo < hi:
+            mid = (lo + hi + 1) // 2
+            if len(truncated[:mid].encode('utf-8')) <= max_bytes:
+                lo = mid
+            else:
+                hi = mid - 1
+        return truncated[:lo]
+
     def generate_id(self, content: str, source_file: str, chunk_index: int) -> str:
         """
         Generate a unique ID for a vector.
@@ -126,10 +146,9 @@ class PineconeUploader:
         vector_id = self.generate_id(content, source_file, chunk_index)
 
         # Pinecone metadata 전체 40,960 byte 한도 준수
-        # 한국어는 UTF-8에서 3바이트/문자이므로 바이트 기반으로 트런케이션
-        content_bytes = (content or "").encode("utf-8")
-        safe_content = content_bytes[:32768].decode("utf-8", errors="ignore")   # content: 32KB
-        safe_preview = content_bytes[:3000].decode("utf-8", errors="ignore")    # preview: ~1000 한국어 문자
+        # 문자 단위로 먼저 절단하여 한국어 문장 중간 잘림 방지
+        safe_content = self._safe_truncate(content or "", max_chars=10000, max_bytes=32768)
+        safe_preview = self._safe_truncate(content or "", max_chars=1000, max_bytes=3000)
 
         # Combine metadata
         full_metadata = {

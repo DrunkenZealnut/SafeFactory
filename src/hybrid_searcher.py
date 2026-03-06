@@ -317,6 +317,74 @@ class HybridSearcher:
 
         return merged[:top_k]
 
+    def _search_with_weights(
+        self,
+        query: str,
+        vector_results: List[Dict[str, Any]],
+        top_k: int,
+        vector_weight: float,
+        bm25_weight: float
+    ) -> List[Dict[str, Any]]:
+        """Thread-safe hybrid search with explicit weight parameters.
+
+        Unlike search(), this method does NOT read or mutate self.vector_weight
+        or self.bm25_weight, making it safe for concurrent use.
+        """
+        if not vector_results:
+            return []
+
+        if BM25_AVAILABLE:
+            self.build_index(vector_results)
+
+        bm25_results = self.bm25_search(query, top_k=len(vector_results))
+
+        if not bm25_results:
+            result = []
+            for i, doc in enumerate(vector_results[:top_k]):
+                d = doc.copy()
+                d['rrf_score'] = d.get('score', 0)
+                d['vector_rank'] = i + 1
+                d['bm25_rank'] = None
+                result.append(d)
+            return result
+
+        # RRF with explicit weights (not self.vector_weight/bm25_weight)
+        rrf_scores = {}
+
+        for rank, doc in enumerate(vector_results, start=1):
+            content = doc.get('metadata', {}).get('content', '')
+            doc_id = hashlib.sha256(content[:5000].encode()).hexdigest()
+            if doc_id not in rrf_scores:
+                rrf_scores[doc_id] = {
+                    'doc': doc, 'vector_rank': rank, 'bm25_rank': None, 'rrf_score': 0
+                }
+            rrf_scores[doc_id]['vector_rank'] = rank
+            rrf_scores[doc_id]['rrf_score'] += vector_weight / (self.rrf_k + rank)
+
+        for rank, (idx, score) in enumerate(bm25_results, start=1):
+            doc = self.doc_map.get(idx)
+            if not doc:
+                continue
+            content = doc.get('metadata', {}).get('content', '')
+            doc_id = hashlib.sha256(content[:5000].encode()).hexdigest()
+            if doc_id not in rrf_scores:
+                rrf_scores[doc_id] = {
+                    'doc': doc, 'vector_rank': None, 'bm25_rank': rank, 'rrf_score': 0
+                }
+            else:
+                rrf_scores[doc_id]['bm25_rank'] = rank
+            rrf_scores[doc_id]['rrf_score'] += bm25_weight / (self.rrf_k + rank)
+
+        sorted_results = sorted(rrf_scores.values(), key=lambda x: x['rrf_score'], reverse=True)
+        result = []
+        for item in sorted_results[:top_k]:
+            doc = item['doc'].copy()
+            doc['rrf_score'] = item['rrf_score']
+            doc['vector_rank'] = item['vector_rank']
+            doc['bm25_rank'] = item['bm25_rank']
+            result.append(doc)
+        return result
+
     def search_with_keyword_boost(
         self,
         query: str,
@@ -342,18 +410,13 @@ class HybridSearcher:
         Returns:
             Search results with keyword boosting
         """
-        # Apply domain-specific RRF weights (thread-safe: creates new instance state via params)
+        # Apply domain-specific RRF weights via local variables (thread-safe)
         domain_cfg = DOMAIN_RRF_CONFIG.get(domain, {})
-        saved_vw, saved_bw = self.vector_weight, self.bm25_weight
-        if domain_cfg:
-            self.vector_weight = domain_cfg['vector_weight']
-            self.bm25_weight = domain_cfg['bm25_weight']
+        vw = domain_cfg.get('vector_weight', self.vector_weight)
+        bw = domain_cfg.get('bm25_weight', self.bm25_weight)
 
-        # First, do standard hybrid search
-        results = self.search(query, vector_results, top_k=top_k)
-
-        # Restore original weights
-        self.vector_weight, self.bm25_weight = saved_vw, saved_bw
+        # First, do standard hybrid search with domain-specific weights
+        results = self._search_with_weights(query, vector_results, top_k, vw, bw)
 
         if not keywords:
             return results
