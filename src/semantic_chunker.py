@@ -307,7 +307,8 @@ class SemanticChunker(HttpClientMixin):
         min_chunk_tokens: int = 100,
         overlap_tokens: int = 50,
         similarity_threshold: float = 0.5,
-        enable_contextual: bool = True
+        enable_contextual: bool = True,
+        context_generator: Optional['ContextGenerator'] = None,
     ):
         """
         Initialize the SemanticChunker.
@@ -320,6 +321,7 @@ class SemanticChunker(HttpClientMixin):
             overlap_tokens: Number of overlapping tokens between chunks
             similarity_threshold: Threshold for semantic similarity
             enable_contextual: Enable contextual chunking with document metadata
+            context_generator: Optional ContextGenerator for LLM-based contextual prefixes
         """
         # Create httpx client with explicit SSL certificate verification
         self._http_client = httpx.Client(verify=certifi.where())
@@ -330,6 +332,7 @@ class SemanticChunker(HttpClientMixin):
         self.overlap_tokens = overlap_tokens
         self.similarity_threshold = similarity_threshold
         self.enable_contextual = enable_contextual
+        self.context_generator = context_generator
         self.encoding = tiktoken.encoding_for_model("gpt-4o-mini")
 
 
@@ -806,6 +809,19 @@ class SemanticChunker(HttpClientMixin):
 
         return None
 
+    def _detect_domain(self, source_file: str) -> str:
+        """Detect domain from source file path."""
+        normalized = unicodedata.normalize('NFC', source_file)
+        if '/laborlaw/' in normalized:
+            return 'laborlaw'
+        if '카드북' in normalized or '/현장실습/' in normalized:
+            return 'field-training'
+        if '/안전보건공단/' in normalized:
+            return 'safeguide'
+        if re.search(r'LM\d{10}', source_file):
+            return 'semiconductor'
+        return ''
+
     def _add_contextual_prefix(
         self,
         content: str,
@@ -919,6 +935,24 @@ class SemanticChunker(HttpClientMixin):
         # Step 3: Add overlap
         overlapped_segments = self._add_overlap(merged_segments)
 
+        # Step 3.5: Generate contextual prefixes in batch (Anthropic Contextual Retrieval)
+        _contextual_prefixes = [None] * len(overlapped_segments)
+        if self.context_generator and overlapped_segments:
+            domain = self._detect_domain(source_file)
+            try:
+                raw_segments = list(merged_segments)
+                _contextual_prefixes = self.context_generator.generate_batch(
+                    document=text,
+                    chunks=raw_segments,
+                    domain=domain,
+                    metadata=metadata,
+                )
+                # Pad if lengths differ (overlap may change count)
+                while len(_contextual_prefixes) < len(overlapped_segments):
+                    _contextual_prefixes.append(None)
+            except Exception as e:
+                logger.warning("[Contextual Retrieval] Batch generation failed: %s", e)
+
         # Build char_offset → line_number lookup for page mapping
         char_to_line: Optional[List[int]] = None
         if page_line_map:
@@ -978,9 +1012,13 @@ class SemanticChunker(HttpClientMixin):
                 f"{source_file}_{i}_{segment[:50]}".encode()
             ).hexdigest()[:12]
 
-            # Add contextual prefix if enabled
+            # Add contextual prefix
             enhanced_content = segment
-            if self.enable_contextual:
+            if self.context_generator and _contextual_prefixes[i]:
+                # LLM-based contextual prefix (Anthropic Contextual Retrieval)
+                enhanced_content = f"{_contextual_prefixes[i]}\n\n{segment}"
+            elif self.enable_contextual:
+                # Fallback: static prefix
                 enhanced_content = self._add_contextual_prefix(
                     segment, document_title, section_title, source_file
                 )
