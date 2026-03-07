@@ -49,9 +49,9 @@ DOMAIN_CONTEXT_PROMPTS = {
 }
 
 DEFAULT_CONTEXT_PROMPT = (
-    "이 청크가 문서 전체에서 어떤 맥락인지 "
-    "검색 품질 향상을 위해 간결하게 설명해주세요. "
-    "맥락 설명만 답변하세요."
+    "이 청크가 문서 전체에서 어떤 위치와 역할을 하는지, "
+    "검색 시 이 청크를 정확히 찾을 수 있도록 간결한 맥락을 작성해주세요. "
+    "50~100 토큰 이내의 맥락 설명만 답변하세요."
 )
 
 
@@ -201,8 +201,9 @@ class ContextGenerator:
                         "text": (
                             f"다음은 위 문서에서 발췌한 청크입니다:\n"
                             f"<chunk>\n{chunk[:self.MAX_CHUNK_TOKENS * 3]}\n</chunk>\n\n"
-                            f"{domain_instruction}\n"
-                            f"맥락 설명만 답변하세요."
+                            f"이 청크를 문서 전체 맥락에서 위치시키기 위한 간결한 맥락을 작성해주세요.\n"
+                            f"검색 품질 향상이 목적이며, 50~100 토큰 이내로 핵심 맥락만 답변하세요.\n"
+                            f"{domain_instruction}"
                         )
                     }
                 ]
@@ -211,7 +212,7 @@ class ContextGenerator:
 
         response = self.client.messages.create(
             model=self.model,
-            max_tokens=200,
+            max_tokens=150,
             messages=messages,
         )
 

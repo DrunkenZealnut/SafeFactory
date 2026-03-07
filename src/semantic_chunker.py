@@ -303,7 +303,7 @@ class SemanticChunker(HttpClientMixin):
         self,
         openai_api_key: str,
         model: str = "text-embedding-3-small",
-        max_chunk_tokens: int = 500,
+        max_chunk_tokens: int = 800,
         min_chunk_tokens: int = 100,
         overlap_tokens: int = 50,
         similarity_threshold: float = 0.5,

@@ -40,7 +40,7 @@ def main():
     process_parser.add_argument("--namespace", "-n", type=str, default="", help="Pinecone 네임스페이스")
     process_parser.add_argument("--no-recursive", action="store_true", help="하위 폴더 미포함")
     process_parser.add_argument("--batch-size", type=int, default=50, help="배치 크기 (기본: 50)")
-    process_parser.add_argument("--max-chunk-tokens", type=int, default=500, help="청크당 최대 토큰 (기본: 500)")
+    process_parser.add_argument("--max-chunk-tokens", type=int, default=800, help="청크당 최대 토큰 (기본: 800)")
     process_parser.add_argument("--embedding-model", type=str, default="text-embedding-3-small",
                                choices=["text-embedding-3-small", "text-embedding-3-large"],
                                help="임베딩 모델")
