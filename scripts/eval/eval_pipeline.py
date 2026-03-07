@@ -215,6 +215,7 @@ def run_evaluation(top_k: int = 5, dataset_path: str = None) -> Dict[str, Any]:
             'avg_mrr': round(sum(r['mrr'] for r in valid_all) / len(valid_all), 4),
             'avg_ndcg_at_k': round(sum(r['ndcg_at_k'] for r in valid_all) / len(valid_all), 4),
             'avg_wall_ms': round(sum(r['wall_ms'] for r in valid_all) / len(valid_all)),
+            'retrieval_failure_rate': round(1.0 - sum(r['recall_at_k'] for r in valid_all) / len(valid_all), 4),
         }
 
     # Latency breakdown
@@ -252,6 +253,8 @@ def print_report(report: Dict[str, Any]):
         print(f"  MRR              : {overall['avg_mrr']:.4f}")
         print(f"  NDCG@K           : {overall['avg_ndcg_at_k']:.4f}")
         print(f"  Avg Wall Time    : {overall['avg_wall_ms']}ms")
+        if 'retrieval_failure_rate' in overall:
+            print(f"  Failure Rate     : {overall['retrieval_failure_rate']:.2%}  (Anthropic baseline: 5.7%)")
 
     print("\nPer-Domain:")
     for domain, metrics in report.get('domain_metrics', {}).items():
@@ -274,7 +277,7 @@ def print_report(report: Dict[str, Any]):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='RAG Pipeline Evaluation')
-    parser.add_argument('--top-k', type=int, default=5, help='Top K for retrieval')
+    parser.add_argument('--top-k', type=int, default=20, help='Top K for retrieval (Anthropic recommends 20)')
     parser.add_argument('--dataset', type=str, default=None, help='Path to golden dataset JSON')
     parser.add_argument('--output', type=str, default=None, help='Output JSON path')
     args = parser.parse_args()

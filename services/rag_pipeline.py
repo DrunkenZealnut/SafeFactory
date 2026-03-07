@@ -238,10 +238,10 @@ def run_rag_pipeline(data):
     query = data.get('query', '').strip()
     namespace = data.get('namespace', '')
     try:
-        top_k = max(1, min(int(data.get('top_k', 10)), 100))
+        top_k = max(1, min(int(data.get('top_k', 20)), 100))
     except (ValueError, TypeError):
-        logging.warning("[RAG] Invalid top_k value: %s, using default 10", data.get('top_k'))
-        top_k = 10
+        logging.warning("[RAG] Invalid top_k value: %s, using default 20", data.get('top_k'))
+        top_k = 20
     use_enhancement = data.get('use_enhancement', True)
 
     logging.info("[API/ask] Query: %.50s..., Namespace: %s, TopK: %d, Enhanced: %s", query, namespace, top_k, use_enhancement)

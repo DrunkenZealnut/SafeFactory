@@ -48,7 +48,8 @@ class PineconeAgent:
         vision_model: str = "gpt-4o-mini",
         max_chunk_tokens: int = 500,
         create_index_if_not_exists: bool = True,
-        track_metadata: bool = True
+        track_metadata: bool = True,
+        context_generator=None,
     ):
         """
         Initialize the PineconeAgent.
@@ -72,7 +73,8 @@ class PineconeAgent:
         self.chunker = SemanticChunker(
             openai_api_key=openai_api_key,
             model=embedding_model,
-            max_chunk_tokens=max_chunk_tokens
+            max_chunk_tokens=max_chunk_tokens,
+            context_generator=context_generator,
         )
 
         self.embedding_generator = EmbeddingGenerator(

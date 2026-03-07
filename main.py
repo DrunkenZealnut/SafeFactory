@@ -40,7 +40,7 @@ def main():
     process_parser.add_argument("--namespace", "-n", type=str, default="", help="Pinecone 네임스페이스")
     process_parser.add_argument("--no-recursive", action="store_true", help="하위 폴더 미포함")
     process_parser.add_argument("--batch-size", type=int, default=50, help="배치 크기 (기본: 50)")
-    process_parser.add_argument("--max-chunk-tokens", type=int, default=500, help="청크당 최대 토큰 (기본: 500)")
+    process_parser.add_argument("--max-chunk-tokens", type=int, default=800, help="청크당 최대 토큰 (기본: 800)")
     process_parser.add_argument("--embedding-model", type=str, default="text-embedding-3-small",
                                choices=["text-embedding-3-small", "text-embedding-3-large"],
                                help="임베딩 모델")
@@ -54,6 +54,10 @@ def main():
                                help="이미지 파일 건너뜀 (Vision API 호출 없음, 마크다운만 처리)")
     process_parser.add_argument("--force", action="store_true",
                                help="변경 여부 무시하고 모든 파일 강제 재처리")
+    process_parser.add_argument("--contextual", action="store_true",
+                               help="Anthropic Contextual Retrieval 활성화 (LLM 기반 청크 맥락 생성)")
+    process_parser.add_argument("--context-model", type=str, default="claude-haiku-4-5-20251001",
+                               help="Contextual prefix 생성 모델 (기본: claude-haiku-4-5-20251001)")
 
     # Search command
     search_parser = subparsers.add_parser("search", help="Pinecone에서 검색")
@@ -107,13 +111,29 @@ def main():
             print(f"❌ 오류: 폴더를 찾을 수 없습니다: {args.folder}")
             sys.exit(1)
 
+        # Initialize Contextual Retrieval if requested
+        context_gen = None
+        if args.contextual:
+            anthropic_key = os.getenv('ANTHROPIC_API_KEY')
+            if not anthropic_key:
+                print("❌ 오류: --contextual 사용 시 ANTHROPIC_API_KEY 환경변수가 필요합니다.")
+                print("   .env 파일에 ANTHROPIC_API_KEY를 설정해주세요.")
+                sys.exit(1)
+            from src.context_generator import ContextGenerator
+            context_gen = ContextGenerator(
+                api_key=anthropic_key,
+                model=args.context_model,
+            )
+            print(f"🧠 Contextual Retrieval 활성화 (모델: {args.context_model})")
+
         print("🚀 Pinecone 에이전트 초기화 중...")
         agent = PineconeAgent(
             openai_api_key=openai_key,
             pinecone_api_key=pinecone_key,
             pinecone_index_name=index_name,
             embedding_model=args.embedding_model,
-            max_chunk_tokens=args.max_chunk_tokens
+            max_chunk_tokens=args.max_chunk_tokens,
+            context_generator=context_gen,
         )
 
         # Build extra metadata from CLI flags
@@ -161,6 +181,18 @@ def main():
             print(f"\n⚠️ 에러 ({len(result.errors)}개):")
             for error in result.errors[:5]:
                 print(f"  - {error}")
+
+        # Print contextual retrieval cost stats
+        if context_gen:
+            stats = context_gen.get_stats()
+            print(f"\n🧠 Contextual Retrieval 통계:")
+            print(f"  LLM 호출: {stats['llm_calls']}회")
+            print(f"  캐시 히트: {stats['cache_hits']}회")
+            print(f"  입력 토큰: {stats['total_input_tokens']:,}")
+            print(f"  출력 토큰: {stats['total_output_tokens']:,}")
+            print(f"  캐시 읽기 토큰: {stats['cache_read_tokens']:,}")
+            print(f"  추정 비용: ${stats['estimated_cost_usd']:.4f}")
+            context_gen.close()
 
     elif args.command == "search":
         print("🔍 검색 중...")
