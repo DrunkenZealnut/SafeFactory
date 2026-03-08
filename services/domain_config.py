@@ -9,7 +9,7 @@ DOCUMENTS_PATH = Path(__file__).parent.parent / "documents"
 # Directory-to-namespace mapping for filesystem sync
 # ---------------------------------------------------------------------------
 DIRECTORY_NAMESPACE_MAP = {
-    'ncs': '',                     # 반도체 (기본 네임스페이스)
+    'ncs': 'semiconductor-v2',     # 반도체 (Contextual Retrieval 적용)
     'laborlaw': 'laborlaw',
     '현장실습': 'field-training',
     '안전보건공단': 'safeguide',
@@ -216,7 +216,7 @@ DOMAIN_CONFIG = {
     'semiconductor': {
         'title': '반도체 AI 검색',
         'icon': '🔬',
-        'namespace': '',
+        'namespace': 'semiconductor-v2',
         'color': '#00d4ff',
         'color_rgb': '0, 212, 255',
         'gradient_from': '#00d4ff',

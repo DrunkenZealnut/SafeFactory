@@ -286,11 +286,18 @@ class PineconeReranker:
             return []
 
         # Extract content from each doc
+        # bge-reranker-v2-m3: query + document must be ≤ 1024 tokens
+        # bge tokenizer: Korean ≈ 2-2.5 chars/token (not 3 like GPT)
+        MAX_PAIR_TOKENS = 1024
+        SAFETY_MARGIN = 24
+        query_tokens_est = len(query) // 2 + 1  # conservative: 2 chars/token
+        max_doc_tokens = MAX_PAIR_TOKENS - query_tokens_est - SAFETY_MARGIN
+        max_doc_chars = max(300, max_doc_tokens * 2)  # conservative: 2 chars/token
+
         documents = []
         for doc in docs:
             content = doc.get(content_key) or doc.get('metadata', {}).get('content', '')
-            # bge-reranker-v2-m3 supports up to 1024 tokens (~3000 chars for Korean)
-            documents.append(content[:3000] if content else "")
+            documents.append(content[:max_doc_chars] if content else "")
 
         try:
             result = self.pc.inference.rerank(
