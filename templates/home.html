@@ -9,7 +9,7 @@
     /* ===== Hero Section ===== */
     .hero {
         text-align: center;
-        padding: 56px 24px 48px;
+        padding: 36px 24px 24px;
         position: relative;
     }
     .hero::before {
@@ -50,22 +50,22 @@
         50% { box-shadow: 0 0 0 6px rgba(34,197,94,0); }
     }
     .hero-title {
-        font-size: 42px;
+        font-size: 36px;
         font-weight: 900;
         background: linear-gradient(135deg, var(--sf-purple), var(--sf-purple-dark), #4c1d95);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
-        margin: 0 auto 14px;
+        margin: 0 auto 10px;
         line-height: 1.25;
         text-align: center;
     }
     .hero-subtitle {
-        font-size: 16px;
+        font-size: 14px;
         color: var(--sf-text-2);
         font-weight: 400;
         line-height: 1.7;
-        margin-bottom: 32px;
+        margin-bottom: 24px;
         text-align: center;
     }
     .hero-subtitle strong {
@@ -173,126 +173,43 @@
         background: rgba(124,58,237,0.04);
     }
 
-    /* ===== Domain Cards ===== */
-    .domains-section {
-        max-width: 1280px;
-        margin: 0 auto;
-        padding: 0 24px 48px;
-    }
-    .section-title {
-        font-size: 20px;
-        font-weight: 700;
-        color: var(--sf-text-1);
-        margin-bottom: 20px;
-    }
-    .domain-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 16px;
-    }
-    .domain-card {
-        background: var(--sf-card-bg);
-        border: 1px solid var(--sf-border);
-        border-radius: 20px;
-        padding: 0;
-        cursor: pointer;
-        transition: all 0.3s;
-        position: relative;
-        overflow: hidden;
-        text-decoration: none;
-        color: inherit;
-        display: block;
-    }
-    .domain-card-bar {
-        height: 3px;
-        border-radius: 20px 20px 0 0;
-        opacity: 0;
-        transition: opacity 0.3s;
-    }
-    .domain-card:hover {
-        border-color: transparent;
-        transform: translateY(-4px);
-        box-shadow: var(--sf-shadow-lg);
-    }
-    .domain-card:hover .domain-card-bar { opacity: 1; }
-
-    .domain-card-body { padding: 26px 22px; }
-
-    .card-top {
-        margin-bottom: 14px;
-    }
-    .card-icon-wrap {
-        width: 50px;
-        height: 50px;
-        border-radius: 14px;
+    /* ===== Domain Chips ===== */
+    .domain-chips {
         display: flex;
-        align-items: center;
         justify-content: center;
-        font-size: 24px;
+        flex-wrap: wrap;
+        gap: 10px;
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 0 24px 32px;
     }
-    .card-title {
-        font-size: 18px;
-        font-weight: 700;
-        margin-bottom: 6px;
-    }
-    .card-desc {
-        font-size: 13px;
-        color: var(--sf-text-3);
-        line-height: 1.6;
-        margin-bottom: 16px;
-    }
-    .card-action {
-        display: flex;
+    .domain-chip {
+        display: inline-flex;
         align-items: center;
-        justify-content: space-between;
-        padding-top: 14px;
-        border-top: 1px solid var(--sf-border);
-    }
-    .card-action-label {
-        font-size: 13px;
+        gap: 6px;
+        padding: 10px 20px;
+        border-radius: 12px;
+        font-size: 14px;
         font-weight: 600;
+        text-decoration: none;
         color: var(--sf-text-2);
+        border: 1px solid var(--sf-border);
+        background: var(--sf-card-bg);
+        transition: all 0.2s;
+        white-space: nowrap;
     }
-    .card-action-arrow {
-        font-size: 16px;
-        color: var(--sf-text-4);
-        transition: transform 0.2s, color 0.2s;
-    }
-    .domain-card:hover .card-action-arrow {
-        transform: translateX(4px);
-        color: var(--sf-purple-light);
+    .domain-chip:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--sf-shadow-md);
     }
 
-    /* Domain color variants */
-    .dc-semi .domain-card-bar { background: linear-gradient(90deg, var(--sf-blue), #60a5fa); }
-    .dc-semi:hover { box-shadow: 0 12px 40px rgba(59,130,246,0.12); }
-    .dc-semi .card-icon-wrap { background: rgba(59,130,246,0.08); }
-    .dc-semi .card-title { color: #2563eb; }
-
-    .dc-labor .domain-card-bar { background: linear-gradient(90deg, var(--sf-amber), #fbbf24); }
-    .dc-labor:hover { box-shadow: 0 12px 40px rgba(245,158,11,0.12); }
-    .dc-labor .card-icon-wrap { background: rgba(245,158,11,0.08); }
-    .dc-labor .card-title { color: #d97706; }
-
-    .dc-field .domain-card-bar { background: linear-gradient(90deg, var(--sf-red), #f87171); }
-    .dc-field:hover { box-shadow: 0 12px 40px rgba(239,68,68,0.12); }
-    .dc-field .card-icon-wrap { background: rgba(239,68,68,0.08); }
-    .dc-field .card-title { color: #dc2626; }
-
-    .dc-safe .domain-card-bar { background: linear-gradient(90deg, var(--sf-violet), #a78bfa); }
-    .dc-safe:hover { box-shadow: 0 12px 40px rgba(139,92,246,0.12); }
-    .dc-safe .card-icon-wrap { background: rgba(139,92,246,0.08); }
-    .dc-safe .card-title { color: #7c3aed; }
-
-    .dc-msds .domain-card-bar { background: linear-gradient(90deg, var(--sf-green), #34d399); }
-    .dc-msds:hover { box-shadow: 0 12px 40px rgba(16,185,129,0.12); }
-    .dc-msds .card-icon-wrap { background: rgba(16,185,129,0.08); }
-    .dc-msds .card-title { color: #059669; }
-
-    .dc-comm .domain-card-bar { background: linear-gradient(90deg, var(--sf-cyan), #22d3ee); }
-    .dc-comm:hover { box-shadow: 0 12px 40px rgba(6,182,212,0.12); }
-    .dc-comm .card-icon-wrap { background: rgba(6,182,212,0.08); }
-    .dc-comm .card-title { color: #0891b2; }
+    /* Domain chip color variants */
+    .dc-semi:hover { border-color: rgba(59,130,246,0.4); color: #2563eb; }
+    .dc-labor:hover { border-color: rgba(245,158,11,0.4); color: #d97706; }
+    .dc-field:hover { border-color: rgba(239,68,68,0.4); color: #dc2626; }
+    .dc-safe:hover { border-color: rgba(139,92,246,0.4); color: #7c3aed; }
+    .dc-msds:hover { border-color: rgba(16,185,129,0.4); color: #059669; }
+    .dc-comm:hover { border-color: rgba(6,182,212,0.4); color: #0891b2; }
 
     /* ===== Bottom Row ===== */
     .bottom-row {
@@ -447,15 +364,14 @@
 
     /* ===== Responsive ===== */
     @media (max-width: 900px) {
-        .hero-title { font-size: 30px; }
-        .domain-grid { grid-template-columns: repeat(2, 1fr); }
+        .hero-title { font-size: 28px; }
         .bottom-row { grid-template-columns: 1fr; }
     }
     @media (max-width: 600px) {
-        .hero { padding: 36px 16px 20px; }
-        .hero-title { font-size: 24px; }
-        .hero-subtitle { font-size: 14px; }
-        .domain-grid { grid-template-columns: 1fr; }
+        .hero { padding: 24px 16px 16px; }
+        .hero-title { font-size: 22px; }
+        .hero-subtitle { font-size: 13px; }
+        .domain-chip { padding: 8px 14px; font-size: 13px; }
         .search-domain-select { display: none; }
     }
 </style>
@@ -465,11 +381,8 @@
 <!-- Hero Section -->
 <section class="hero">
     <div class="hero-badge"><span class="pulse"></span> AI 실시간 검색</div>
-    <h1 class="hero-title">무엇이든 물어보세요<br>AI가 전문 문서에서 찾아드립니다</h1>
-    <p class="hero-subtitle">
-        반도체 기술부터 노동법, 산업안전까지 &mdash;<br>
-        <strong>SafeFactory</strong>가 즉시 답변을 드립니다
-    </p>
+    <h1 class="hero-title">AI 산업안전 지식검색</h1>
+    <p class="hero-subtitle">반도체·노동법·산업안전 전문 문서 AI 검색</p>
 
     <!-- Unified Search -->
     <div class="search-container">
@@ -491,112 +404,19 @@
             <span class="search-hint" onclick="fillSearch('CVD와 PVD 공정의 차이점은?')">💡 CVD와 PVD 차이점</span>
             <span class="search-hint" onclick="fillSearch('주휴수당 계산 방법')">💡 주휴수당 계산</span>
             <span class="search-hint" onclick="fillSearch('아세톤 MSDS 정보')">💡 아세톤 MSDS</span>
-            <span class="search-hint" onclick="fillSearch('현장실습 장비 안전수칙')">💡 장비 안전수칙</span>
         </div>
     </div>
 
 </section>
 
-<!-- Domain Cards -->
-<section class="domains-section">
-    <h2 class="section-title">📚 전문 분야</h2>
-    <div class="domain-grid">
-        <!-- 반도체 -->
-        <a href="/semiconductor" class="domain-card dc-semi">
-            <div class="domain-card-bar"></div>
-            <div class="domain-card-body">
-                <div class="card-top">
-                    <div class="card-icon-wrap">🔬</div>
-                </div>
-                <div class="card-title">반도체 기술</div>
-                <div class="card-desc">반도체 공정, 아키텍처, 제조 기술 관련 전문 문서 검색 및 AI 질의응답</div>
-                <div class="card-action">
-                    <span class="card-action-label">🤖 AI 질문하기</span>
-                    <span class="card-action-arrow">→</span>
-                </div>
-            </div>
-        </a>
-
-        <!-- 노동법 -->
-        <a href="/laborlaw" class="domain-card dc-labor">
-            <div class="domain-card-bar"></div>
-            <div class="domain-card-body">
-                <div class="card-top">
-                    <div class="card-icon-wrap">⚖️</div>
-                </div>
-                <div class="card-title">노동법</div>
-                <div class="card-desc">근로기준법, 판례, 임금 및 보험료 계산 · 노동법 관련 AI 법률 상담</div>
-                <div class="card-action">
-                    <span class="card-action-label">🤖 AI 질문하기</span>
-                    <span class="card-action-arrow">→</span>
-                </div>
-            </div>
-        </a>
-
-        <!-- 현장실습 -->
-        <a href="/field-training" class="domain-card dc-field">
-            <div class="domain-card-bar"></div>
-            <div class="domain-card-body">
-                <div class="card-top">
-                    <div class="card-icon-wrap">🏭</div>
-                </div>
-                <div class="card-title">현장실습 안전교육</div>
-                <div class="card-desc">직업계고 현장실습 안전보건 가이드 · 장비별 위험요인 및 안전수칙</div>
-                <div class="card-action">
-                    <span class="card-action-label">🤖 AI 질문하기</span>
-                    <span class="card-action-arrow">→</span>
-                </div>
-            </div>
-        </a>
-
-        <!-- 안전보건 -->
-        <a href="/safeguide" class="domain-card dc-safe">
-            <div class="domain-card-bar"></div>
-            <div class="domain-card-body">
-                <div class="card-top">
-                    <div class="card-icon-wrap">🛡️</div>
-                </div>
-                <div class="card-title">안전보건 가이드</div>
-                <div class="card-desc">안전보건공단 공식 안전보건 교육자료 · 산업 현장 안전수칙 및 예방대책</div>
-                <div class="card-action">
-                    <span class="card-action-label">🤖 AI 질문하기</span>
-                    <span class="card-action-arrow">→</span>
-                </div>
-            </div>
-        </a>
-
-        <!-- MSDS -->
-        <a href="/msds" class="domain-card dc-msds">
-            <div class="domain-card-bar"></div>
-            <div class="domain-card-body">
-                <div class="card-top">
-                    <div class="card-icon-wrap">🧪</div>
-                </div>
-                <div class="card-title">MSDS 화학물질</div>
-                <div class="card-desc">산업안전보건공단 물질안전보건자료 · 화학물질 안전정보 검색</div>
-                <div class="card-action">
-                    <span class="card-action-label">🤖 AI 질문하기</span>
-                    <span class="card-action-arrow">→</span>
-                </div>
-            </div>
-        </a>
-
-        <!-- 커뮤니티 -->
-        <a href="/community" class="domain-card dc-comm">
-            <div class="domain-card-bar"></div>
-            <div class="domain-card-body">
-                <div class="card-top">
-                    <div class="card-icon-wrap">💬</div>
-                </div>
-                <div class="card-title">커뮤니티</div>
-                <div class="card-desc">질문, 정보공유, 자유게시판 · 함께 소통하는 커뮤니티 공간</div>
-                <div class="card-action">
-                    <span class="card-action-label">💬 커뮤니티 입장</span>
-                    <span class="card-action-arrow">→</span>
-                </div>
-            </div>
-        </a>
-    </div>
+<!-- Domain Chips -->
+<section class="domain-chips">
+    <a href="/semiconductor" class="domain-chip dc-semi">🔬 반도체</a>
+    <a href="/laborlaw" class="domain-chip dc-labor">⚖️ 노동법</a>
+    <a href="/field-training" class="domain-chip dc-field">🏭 현장실습</a>
+    <a href="/safeguide" class="domain-chip dc-safe">🛡️ 안전보건</a>
+    <a href="/msds" class="domain-chip dc-msds">🧪 MSDS</a>
+    <a href="/community" class="domain-chip dc-comm">💬 커뮤니티</a>
 </section>
 
 <!-- Bottom Row -->

@@ -1,0 +1,26 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          script: |
+            cd ~/SafeFactory
+            git pull origin main
+            source venv/bin/activate
+            pip install -r requirements.txt
+            pkill -f gunicorn || true
+            sleep 2
+            nohup venv/bin/gunicorn web_app:app --bind 127.0.0.1:5001 --workers 2 --timeout 180 > app.log 2>&1 &
+            sleep 3
+            curl -sf http://127.0.0.1:5001/api/v1/health || echo "WARNING: Health check failed"
