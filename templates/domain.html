@@ -920,30 +920,6 @@
         }
     }
 
-    /* LLM Info Bar */
-    .llm-info-bar {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin-top: 12px;
-        padding: 8px 14px;
-        background: rgba(0, 0, 0, 0.02);
-        border: 1px solid rgba(0, 0, 0, 0.04);
-        border-radius: 8px;
-        font-size: 12px;
-        color: var(--sf-text-3);
-    }
-    .llm-info-icon { font-size: 13px; flex-shrink: 0; }
-    .llm-info-text { color: var(--sf-text-3); }
-    .llm-info-text .model-name {
-        color: var(--primary-color);
-        font-weight: 600;
-    }
-    .llm-info-text .separator {
-        margin: 0 6px;
-        color: var(--sf-border);
-    }
-
     /* Search Mode Selector */
     .search-mode-selector {
         display: flex;
@@ -1054,46 +1030,21 @@
                         <textarea id="askQuery" name="query" placeholder="질문을 입력하세요..." required></textarea>
                     </div>
                     <div class="search-row">
-                        <div class="search-input-group">
-                            <label for="askNamespace">네임스페이스</label>
-                            <select id="askNamespace" name="namespace">
-                                <option value="">전체</option>
-                            </select>
-                        </div>
-                        <div class="search-input-group">
-                            <label for="askTopK">참고 문서 수</label>
-                            <select id="askTopK" name="topK">
-                                <option value="5">5개</option>
-                                <option value="10" selected>10개</option>
-                                <option value="15">15개</option>
-                                <option value="20">20개</option>
-                                <option value="30">30개</option>
-                                <option value="50">50개</option>
-                            </select>
-                        </div>
                         <div class="search-input-group" style="display: flex; align-items: flex-end;">
                             <button type="submit" class="btn btn-ai" style="width: 100%;">
                                 🤖 AI 답변 받기
                             </button>
                         </div>
                     </div>
+                    <select id="askNamespace" name="namespace" hidden><option value="">전체</option></select>
+                    <select id="askTopK" name="topK" hidden><option value="10" selected>10</option></select>
                 </form>
-
-                <div class="llm-info-bar" id="llmInfoBar">
-                    <span class="llm-info-icon">⚙️</span>
-                    <span class="llm-info-text" id="llmInfoText">모델 정보 로딩 중...</span>
-                </div>
 
                 <div class="hint">
                     <strong>💡 샘플 질문:</strong><br>
                     {% for question in config.sample_questions %}
                     • <a href="#" class="sample-question" style="color: var(--primary-color);">{{ question }}</a><br>
                     {% endfor %}
-                </div>
-
-                <div class="hint" style="background: rgba(124, 58, 237, 0.06); border-color: rgba(124, 58, 237, 0.2); margin-top: 10px;">
-                    <strong>📁 사용 가능한 문서:</strong>
-                    <span id="availableSources" style="color: #a78bfa;">로딩 중...</span>
                 </div>
 
                 <!-- Loading -->
@@ -1127,16 +1078,11 @@
                 </div>
 
                 <form class="search-form" id="searchForm">
+                    <select id="namespace" name="namespace" hidden><option value="">전체</option></select>
                     <div class="search-row">
                         <div class="search-input-group" style="flex: 2;">
                             <label for="query">검색어</label>
                             <input type="text" id="query" name="query" placeholder="검색할 내용을 입력하세요..." required>
-                        </div>
-                        <div class="search-input-group">
-                            <label for="namespace">네임스페이스</label>
-                            <select id="namespace" name="namespace">
-                                <option value="">전체</option>
-                            </select>
                         </div>
                     </div>
                     <div class="search-row">
@@ -1729,53 +1675,6 @@
     // Escape HTML
     // escapeHtml function moved to common.js
 
-    // Load available sources for @ mention hints
-    async function loadSources() {
-        try {
-            const namespace = document.getElementById('askNamespace').value;
-            const response = await fetch(`/api/sources?namespace=${encodeURIComponent(namespace)}`);
-            const data = await response.json();
-
-            if (data.success) {
-                const sourcesEl = document.getElementById('availableSources');
-                const folders = data.data.folders.slice(0, 5);
-                const files = data.data.files.slice(0, 5);
-
-                let hints = [];
-                if (folders.length > 0) {
-                    // Extract short folder names
-                    const shortFolders = folders.map(f => {
-                        const parts = f.split('/');
-                        return parts[parts.length - 1];
-                    }).filter(f => f.length > 0).slice(0, 3);
-                    hints.push(...shortFolders.map(f => `@${f}/`));
-                }
-                if (files.length > 0) {
-                    // Extract keywords from file names
-                    const keywords = files.map(f => {
-                        // Extract meaningful part from filename
-                        const match = f.match(/_([\uAC00-\uD7AF_]+)\./);
-                        return match ? match[1].split('_').slice(0, 2).join('_') : null;
-                    }).filter(k => k).slice(0, 3);
-                    hints.push(...keywords.map(k => `@${k}`));
-                }
-
-                if (hints.length > 0) {
-                    sourcesEl.innerHTML = hints.map(h =>
-                        `<code style="background: rgba(124,58,237,0.08); padding: 2px 6px; border-radius: 4px; margin: 2px;">${escapeHtml(h)}</code>`
-                    ).join(' ');
-                } else {
-                    sourcesEl.textContent = '문서 없음';
-                }
-            }
-        } catch (error) {
-            console.error('Failed to load sources:', error);
-            document.getElementById('availableSources').textContent = '로드 실패';
-        }
-    }
-
-    // Reload sources when namespace changes
-    document.getElementById('askNamespace').addEventListener('change', loadSources);
 
     // ========================================
     // PDF Viewer Modal
@@ -1886,37 +1785,7 @@
         }
     });
 
-    // Load LLM model info
-    async function loadLlmInfo() {
-        try {
-            const resp = await fetch('/api/v1/llm-info');
-            const data = await resp.json();
-            if (data.success && data.data) {
-                const d = data.data;
-                const provider = escapeHtml(d.answer_provider || '');
-                const model = escapeHtml(d.answer_model || '');
-                const temp = d.answer_temperature || '';
-                const embedding = escapeHtml(d.embedding_model || '');
-                const reranker = escapeHtml(d.reranker_type || '');
-
-                let parts = [];
-                if (provider && model) {
-                    parts.push(`<span class="model-name">${provider} / ${model}</span>`);
-                }
-                if (temp) parts.push(`Temperature ${temp}`);
-                if (embedding) parts.push(`Embedding: ${embedding}`);
-                if (reranker) parts.push(`Reranker: ${reranker}`);
-
-                document.getElementById('llmInfoText').innerHTML = parts.join('<span class="separator">·</span>');
-            }
-        } catch (e) {
-            document.getElementById('llmInfoBar').style.display = 'none';
-        }
-    }
-
     // Initial load
     loadStats();
-    loadLlmInfo();
-    setTimeout(loadSources, 1000); // Load sources after stats
 </script>
 {% endblock %}
