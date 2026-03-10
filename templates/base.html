@@ -7,30 +7,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/theme.css">
     <style>
-        /* ===== Design System ===== */
-        :root {
-            --sf-bg: #08090d;
-            --sf-card-bg: #0f1017;
-            --sf-nav-bg: #0c0d12;
-            --sf-border: #1a1b25;
-            --sf-border-light: #1f2029;
-            --sf-purple: #7c3aed;
-            --sf-purple-light: #a78bfa;
-            --sf-purple-lighter: #c4b5fd;
-            --sf-purple-dark: #6d28d9;
-            --sf-text-1: #e4e4e7;
-            --sf-text-2: #a1a1aa;
-            --sf-text-3: #71717a;
-            --sf-text-4: #52525b;
-            --sf-blue: #3b82f6;
-            --sf-amber: #f59e0b;
-            --sf-red: #ef4444;
-            --sf-violet: #8b5cf6;
-            --sf-green: #10b981;
-            --sf-cyan: #06b6d4;
-            --sf-community: #7c4dff;
-        }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -47,10 +25,11 @@
             position: sticky;
             top: 0;
             z-index: 100;
-            background: rgba(8, 9, 13, 0.85);
+            background: rgba(255, 255, 255, 0.92);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border-bottom: 1px solid var(--sf-border);
+            box-shadow: var(--sf-shadow-sm);
         }
 
         .sf-nav-inner {
@@ -75,7 +54,7 @@
         .sf-nav-logo-text {
             font-size: 18px;
             font-weight: 800;
-            color: var(--sf-purple-lighter);
+            color: var(--sf-purple);
         }
 
         /* Center Tabs */
@@ -106,8 +85,8 @@
             white-space: nowrap;
         }
         .sf-nav-tab:hover {
-            color: var(--sf-text-2);
-            background: rgba(167, 139, 250, 0.06);
+            color: var(--sf-text-1);
+            background: rgba(124, 58, 237, 0.06);
         }
         .sf-nav-tab.active {
             background: linear-gradient(135deg, var(--sf-purple), var(--sf-purple-dark));
@@ -182,18 +161,18 @@
         }
         .sf-nav-link:hover {
             color: var(--sf-text-1);
-            background: rgba(255,255,255,0.05);
+            background: rgba(0, 0, 0, 0.04);
         }
         .sf-nav-admin {
             font-size: 12px;
-            color: var(--sf-purple-light);
+            color: var(--sf-purple);
             text-decoration: none;
             padding: 5px 10px;
             border-radius: 6px;
-            background: rgba(167, 139, 250, 0.1);
+            background: rgba(124, 58, 237, 0.08);
             transition: all 0.2s;
         }
-        .sf-nav-admin:hover { background: rgba(167, 139, 250, 0.2); }
+        .sf-nav-admin:hover { background: rgba(124, 58, 237, 0.15); }
 
         .logout-form {
             display: inline;
@@ -213,7 +192,7 @@
         }
         .sf-nav-logout-btn:hover {
             color: var(--sf-text-1);
-            background: rgba(255,255,255,0.05);
+            background: rgba(0, 0, 0, 0.04);
         }
 
         .sf-nav-divider {
@@ -245,7 +224,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(8, 9, 13, 0.95);
+            background: rgba(255, 255, 255, 0.97);
             backdrop-filter: blur(20px);
             z-index: 200;
             padding: 20px;
@@ -292,7 +271,7 @@
         }
         .sf-mobile-menu-links a:hover,
         .sf-mobile-menu-links a.active {
-            background: rgba(167, 139, 250, 0.1);
+            background: rgba(124, 58, 237, 0.06);
             color: var(--sf-text-1);
         }
         .sf-mobile-menu-links a.active {

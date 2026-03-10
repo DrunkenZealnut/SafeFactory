@@ -150,12 +150,12 @@ function renderChart(chartData, containerId) {
     const ctx = canvas.getContext('2d');
 
     const colors = [
-        'rgba(0, 212, 255, 0.8)',
-        'rgba(156, 39, 176, 0.8)',
-        'rgba(76, 175, 80, 0.8)',
-        'rgba(255, 193, 7, 0.8)',
-        'rgba(244, 67, 54, 0.8)',
-        'rgba(33, 150, 243, 0.8)'
+        'rgba(37, 99, 235, 0.75)',
+        'rgba(124, 58, 237, 0.75)',
+        'rgba(5, 150, 105, 0.75)',
+        'rgba(217, 119, 6, 0.75)',
+        'rgba(220, 38, 38, 0.75)',
+        'rgba(8, 145, 178, 0.75)'
     ];
 
     const config = {
@@ -166,10 +166,10 @@ function renderChart(chartData, containerId) {
                 label: chartData.title || 'Data',
                 data: chartData.data || [],
                 backgroundColor: chartData.type === 'line'
-                    ? 'rgba(0, 212, 255, 0.2)'
+                    ? 'rgba(37, 99, 235, 0.15)'
                     : colors.slice(0, chartData.data?.length || 1),
                 borderColor: chartData.type === 'line'
-                    ? 'rgba(0, 212, 255, 1)'
+                    ? 'rgba(37, 99, 235, 1)'
                     : colors.slice(0, chartData.data?.length || 1),
                 borderWidth: 2
             }]
@@ -179,24 +179,24 @@ function renderChart(chartData, containerId) {
             maintainAspectRatio: false,
             plugins: {
                 legend: {
-                    labels: { color: '#e0e0e0' }
+                    labels: { color: '#4b5563' }
                 },
                 title: {
                     display: true,
                     text: chartData.title || '',
-                    color: '#00d4ff',
+                    color: '#7c3aed',
                     font: { size: 14 }
                 }
             },
             scales: chartData.type !== 'pie' ? {
                 y: {
                     beginAtZero: true,
-                    ticks: { color: '#aaa' },
-                    grid: { color: 'rgba(255,255,255,0.1)' }
+                    ticks: { color: '#6b7280' },
+                    grid: { color: 'rgba(0,0,0,0.06)' }
                 },
                 x: {
-                    ticks: { color: '#aaa' },
-                    grid: { color: 'rgba(255,255,255,0.1)' }
+                    ticks: { color: '#6b7280' },
+                    grid: { color: 'rgba(0,0,0,0.06)' }
                 }
             } : {}
         }

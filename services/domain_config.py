@@ -12,7 +12,7 @@ DIRECTORY_NAMESPACE_MAP = {
     'ncs': 'semiconductor-v2',     # 반도체 (Contextual Retrieval 적용)
     'laborlaw': 'laborlaw',
     '현장실습': 'field-training',
-    '안전보건공단': 'safeguide',
+    '안전보건공단': 'kosha',            # 안전보건공단 (Contextual Retrieval 적용)
 }
 DEFAULT_NAMESPACE = ''
 
@@ -217,10 +217,10 @@ DOMAIN_CONFIG = {
         'title': '반도체 AI 검색',
         'icon': '🔬',
         'namespace': 'semiconductor-v2',
-        'color': '#00d4ff',
-        'color_rgb': '0, 212, 255',
-        'gradient_from': '#00d4ff',
-        'gradient_to': '#0099cc',
+        'color': '#0891b2',
+        'color_rgb': '8, 145, 178',
+        'gradient_from': '#0891b2',
+        'gradient_to': '#0e7490',
         'description': '반도체 기술 문서 기반 AI 질의응답',
         'sample_questions': [
             'CVD와 PVD 공정의 차이점은 무엇인가요?',
@@ -233,10 +233,10 @@ DOMAIN_CONFIG = {
         'title': '노동법 AI 상담',
         'icon': '⚖️',
         'namespace': 'laborlaw',
-        'color': '#ff9800',
-        'color_rgb': '255, 152, 0',
-        'gradient_from': '#ff9800',
-        'gradient_to': '#f57c00',
+        'color': '#d97706',
+        'color_rgb': '217, 119, 6',
+        'gradient_from': '#d97706',
+        'gradient_to': '#b45309',
         'description': '노동법 및 임금·보험료 계산 전문 AI',
         'sample_questions': [
             '연봉 5000만원 실수령액은 얼마인가요?',
@@ -250,10 +250,10 @@ DOMAIN_CONFIG = {
         'title': '현장실습 안전교육',
         'icon': '🏭',
         'namespace': 'field-training',
-        'color': '#e91e63',
-        'color_rgb': '233, 30, 99',
-        'gradient_from': '#e91e63',
-        'gradient_to': '#c2185b',
+        'color': '#db2777',
+        'color_rgb': '219, 39, 119',
+        'gradient_from': '#db2777',
+        'gradient_to': '#be185d',
         'description': '직업계고 현장실습 안전보건 가이드',
         'sample_questions': [
             '연삭기 작업 시 안전수칙은?',
@@ -266,11 +266,11 @@ DOMAIN_CONFIG = {
     'safeguide': {
         'title': '안전보건 가이드',
         'icon': '🛡️',
-        'namespace': 'safeguide',
-        'color': '#2196f3',
-        'color_rgb': '33, 150, 243',
-        'gradient_from': '#2196f3',
-        'gradient_to': '#1565c0',
+        'namespace': 'kosha',
+        'color': '#2563eb',
+        'color_rgb': '37, 99, 235',
+        'gradient_from': '#2563eb',
+        'gradient_to': '#1d4ed8',
         'description': '안전보건공단 공식 안전보건 교육자료 검색',
         'sample_questions': [
             '작업장 안전수칙을 알려주세요',
@@ -284,10 +284,10 @@ DOMAIN_CONFIG = {
         'title': 'MSDS 화학물질 정보',
         'icon': '🧪',
         'namespace': 'msds',
-        'color': '#4caf50',
-        'color_rgb': '76, 175, 80',
-        'gradient_from': '#4caf50',
-        'gradient_to': '#388e3c',
+        'color': '#059669',
+        'color_rgb': '5, 150, 105',
+        'gradient_from': '#059669',
+        'gradient_to': '#047857',
         'description': '산업안전보건공단 물질안전보건자료 검색',
         'sample_questions': [
             '벤젠의 안전 정보를 알려주세요',

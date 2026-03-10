@@ -9,9 +9,9 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            background: #f5f7fb;
             min-height: 100vh;
-            color: #e0e0e0;
+            color: #1f2937;
             display: flex;
             flex-direction: column;
         }
@@ -19,30 +19,30 @@
         /* Top Nav */
         .top-nav {
             width: 100%;
-            background: rgba(0,0,0,0.4);
+            background: #ffffff;
             padding: 12px 24px;
             display: flex;
             align-items: center;
             gap: 15px;
-            border-bottom: 1px solid rgba(255,255,255,0.08);
+            border-bottom: 1px solid #e5e7eb;
             z-index: 100;
         }
         .top-nav .back-link {
-            color: #888;
+            color: #6b7280;
             text-decoration: none;
             font-size: 0.9rem;
             display: flex;
             align-items: center;
             gap: 6px;
         }
-        .top-nav .back-link:hover { color: #00d4ff; }
+        .top-nav .back-link:hover { color: #7c3aed; }
         .top-nav h1 {
             font-size: 1.2rem;
-            color: #00d4ff;
+            color: #7c3aed;
             flex: 1;
         }
         .top-nav .user-info {
-            color: #aaa;
+            color: #6b7280;
             font-size: 0.85rem;
         }
 
@@ -56,8 +56,8 @@
         /* Sidebar */
         .sidebar {
             width: 220px;
-            background: rgba(0,0,0,0.3);
-            border-right: 1px solid rgba(255,255,255,0.08);
+            background: #ffffff;
+            border-right: 1px solid #e5e7eb;
             padding: 20px 0;
             flex-shrink: 0;
             overflow-y: auto;
@@ -67,20 +67,20 @@
             align-items: center;
             gap: 10px;
             padding: 12px 24px;
-            color: #999;
+            color: #6b7280;
             cursor: pointer;
             transition: all 0.2s;
             font-size: 0.95rem;
             border-left: 3px solid transparent;
         }
         .sidebar-item:hover {
-            color: #e0e0e0;
-            background: rgba(255,255,255,0.05);
+            color: #1f2937;
+            background: rgba(0,0,0,0.03);
         }
         .sidebar-item.active {
-            color: #00d4ff;
-            background: rgba(0,212,255,0.08);
-            border-left-color: #00d4ff;
+            color: #7c3aed;
+            background: rgba(124,58,237,0.06);
+            border-left-color: #7c3aed;
         }
         .sidebar-icon { font-size: 1.1rem; width: 24px; text-align: center; }
 
@@ -95,7 +95,7 @@
         .section.active { display: block; }
         .section-title {
             font-size: 1.5rem;
-            color: #fff;
+            color: #1f2937;
             margin-bottom: 24px;
         }
 
@@ -107,8 +107,8 @@
             margin-bottom: 30px;
         }
         .stat-card {
-            background: rgba(255,255,255,0.06);
-            border: 1px solid rgba(255,255,255,0.1);
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
             border-radius: 12px;
             padding: 20px;
             text-align: center;
@@ -117,10 +117,10 @@
         .stat-card .stat-value {
             font-size: 2rem;
             font-weight: 700;
-            color: #00d4ff;
+            color: #7c3aed;
         }
         .stat-card .stat-label {
-            color: #888;
+            color: #6b7280;
             font-size: 0.85rem;
             margin-top: 4px;
         }
@@ -128,8 +128,8 @@
         /* Tables */
         .table-wrapper {
             overflow-x: auto;
-            background: rgba(255,255,255,0.04);
-            border: 1px solid rgba(255,255,255,0.08);
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
             border-radius: 12px;
         }
         table {
@@ -138,22 +138,22 @@
             font-size: 0.9rem;
         }
         th {
-            background: rgba(0,0,0,0.3);
+            background: rgba(0,0,0,0.03);
             padding: 12px 16px;
             text-align: left;
-            color: #aaa;
+            color: #6b7280;
             font-weight: 500;
             white-space: nowrap;
         }
         td {
             padding: 12px 16px;
-            border-top: 1px solid rgba(255,255,255,0.06);
+            border-top: 1px solid #f3f4f6;
             max-width: 250px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
-        tr:hover td { background: rgba(255,255,255,0.03); }
+        tr:hover td { background: rgba(0,0,0,0.02); }
 
         /* Buttons */
         .btn {
@@ -161,21 +161,21 @@
             align-items: center;
             gap: 6px;
             padding: 6px 14px;
-            border: 1px solid rgba(255,255,255,0.15);
+            border: 1px solid #e5e7eb;
             border-radius: 8px;
-            background: rgba(255,255,255,0.08);
-            color: #e0e0e0;
+            background: rgba(0,0,0,0.03);
+            color: #4b5563;
             font-size: 0.82rem;
             cursor: pointer;
             transition: all 0.2s;
         }
-        .btn:hover { background: rgba(255,255,255,0.15); }
+        .btn:hover { background: rgba(0,0,0,0.06); }
         .btn-primary {
-            background: rgba(0,212,255,0.2);
-            border-color: rgba(0,212,255,0.4);
-            color: #00d4ff;
+            background: rgba(124,58,237,0.1);
+            border-color: rgba(124,58,237,0.3);
+            color: #7c3aed;
         }
-        .btn-primary:hover { background: rgba(0,212,255,0.35); }
+        .btn-primary:hover { background: rgba(124,58,237,0.2); }
         .btn-danger {
             background: rgba(244,67,54,0.15);
             border-color: rgba(244,67,54,0.3);
@@ -206,19 +206,19 @@
             flex-wrap: wrap;
         }
         .toolbar input, .toolbar select {
-            background: rgba(255,255,255,0.08);
-            border: 1px solid rgba(255,255,255,0.15);
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
             border-radius: 8px;
             padding: 8px 14px;
-            color: #e0e0e0;
+            color: #1f2937;
             font-size: 0.9rem;
             outline: none;
         }
-        .toolbar input::placeholder { color: #666; }
+        .toolbar input::placeholder { color: #9ca3af; }
         .toolbar input:focus, .toolbar select:focus {
-            border-color: rgba(0,212,255,0.5);
+            border-color: rgba(124,58,237,0.4);
         }
-        .toolbar select option { background: #1a1a2e; }
+        .toolbar select option { background: #ffffff; }
 
         /* Pagination */
         .pagination {
@@ -229,10 +229,10 @@
             margin-top: 20px;
         }
         .pagination .btn.active {
-            background: rgba(0,212,255,0.3);
-            color: #00d4ff;
+            background: rgba(124,58,237,0.15);
+            color: #7c3aed;
         }
-        .page-info { color: #888; font-size: 0.85rem; }
+        .page-info { color: #9ca3af; font-size: 0.85rem; }
 
         /* Badges */
         .badge {
@@ -242,8 +242,8 @@
             font-size: 0.75rem;
             font-weight: 500;
         }
-        .badge-admin { background: rgba(0,212,255,0.2); color: #00d4ff; }
-        .badge-user { background: rgba(255,255,255,0.1); color: #aaa; }
+        .badge-admin { background: rgba(124,58,237,0.1); color: #7c3aed; }
+        .badge-user { background: rgba(0,0,0,0.06); color: #9ca3af; }
         .badge-active { background: rgba(76,175,80,0.2); color: #4caf50; }
         .badge-inactive { background: rgba(244,67,54,0.2); color: #f44336; }
         .badge-deleted { background: rgba(244,67,54,0.15); color: #f44336; }
@@ -257,16 +257,17 @@
             position: fixed;
             bottom: 30px;
             right: 30px;
-            background: rgba(0,0,0,0.85);
-            border: 1px solid rgba(0,212,255,0.3);
+            background: #ffffff;
+            border: 1px solid rgba(124,58,237,0.2);
             border-radius: 10px;
             padding: 14px 24px;
-            color: #e0e0e0;
+            color: #1f2937;
             font-size: 0.9rem;
             z-index: 9999;
             transform: translateY(100px);
             opacity: 0;
             transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
         .toast.show { transform: translateY(0); opacity: 1; }
         .toast.error { border-color: rgba(244,67,54,0.5); }
@@ -290,30 +291,30 @@
         }
         .modal-overlay.active { display: flex; }
         .modal {
-            background: #1e2a3a;
-            border: 1px solid rgba(255,255,255,0.1);
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
             border-radius: 16px;
             padding: 30px;
             max-width: 500px;
             width: 90%;
         }
-        .modal h3 { color: #fff; margin-bottom: 20px; }
+        .modal h3 { color: #1f2937; margin-bottom: 20px; }
         .modal .form-group { margin-bottom: 16px; }
-        .modal label { display: block; color: #aaa; margin-bottom: 6px; font-size: 0.85rem; }
+        .modal label { display: block; color: #9ca3af; margin-bottom: 6px; font-size: 0.85rem; }
         .modal input, .modal select {
             width: 100%;
-            background: rgba(255,255,255,0.08);
-            border: 1px solid rgba(255,255,255,0.15);
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
             border-radius: 8px;
             padding: 10px 14px;
-            color: #e0e0e0;
+            color: #1f2937;
             font-size: 0.9rem;
             outline: none;
         }
         .modal input:focus, .modal select:focus {
-            border-color: rgba(0,212,255,0.5);
+            border-color: rgba(124,58,237,0.4);
         }
-        .modal select option { background: #1a1a2e; }
+        .modal select option { background: #ffffff; }
         .modal-actions {
             display: flex;
             gap: 10px;
@@ -323,8 +324,8 @@
 
         /* File Tree */
         .file-tree-container {
-            background: rgba(255,255,255,0.04);
-            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(0,0,0,0.02);
+            border: 1px solid #e5e7eb;
             border-radius: 12px;
             padding: 16px;
             max-height: calc(100vh - 250px);
@@ -338,15 +339,15 @@
             padding: 6px 8px;
             border-radius: 6px;
             font-size: 0.9rem;
-            color: #e0e0e0;
+            color: #1f2937;
             transition: background 0.15s;
         }
-        .tree-folder:hover { background: rgba(255,255,255,0.06); }
+        .tree-folder:hover { background: rgba(0,0,0,0.04); }
         .tree-folder .tree-arrow {
             width: 16px;
             text-align: center;
             font-size: 0.7rem;
-            color: #888;
+            color: #9ca3af;
             transition: transform 0.2s;
             flex-shrink: 0;
         }
@@ -374,11 +375,11 @@
             gap: 8px;
             padding: 4px 8px 4px 28px;
             font-size: 0.85rem;
-            color: #aaa;
+            color: #4b5563;
             border-radius: 6px;
             transition: background 0.15s;
         }
-        .tree-file:hover { background: rgba(255,255,255,0.04); color: #e0e0e0; }
+        .tree-file:hover { background: rgba(0,0,0,0.02); color: #1f2937; }
         .tree-file .file-icon { font-size: 0.9rem; flex-shrink: 0; }
         .tree-file .file-name {
             flex: 1;
@@ -387,7 +388,7 @@
             white-space: nowrap;
         }
         .tree-file .file-name a { color: inherit; text-decoration: none; }
-        .tree-file .file-name a:hover { color: #00d4ff; }
+        .tree-file .file-name a:hover { color: #7c3aed; }
         .tree-file .file-meta {
             color: #666;
             font-size: 0.75rem;
@@ -404,7 +405,7 @@
             padding-right: 24px;
             transition: color 0.2s;
         }
-        th.sortable:hover { color: #00d4ff; }
+        th.sortable:hover { color: #7c3aed; }
         th.sortable::after {
             content: '⇅';
             position: absolute;
@@ -417,14 +418,14 @@
         th.sortable.asc::after {
             content: '▲';
             opacity: 1;
-            color: #00d4ff;
+            color: #7c3aed;
         }
         th.sortable.desc::after {
             content: '▼';
             opacity: 1;
-            color: #00d4ff;
+            color: #7c3aed;
         }
-        th.sortable.asc, th.sortable.desc { color: #00d4ff; }
+        th.sortable.asc, th.sortable.desc { color: #7c3aed; }
 
         @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -437,7 +438,7 @@
                 overflow-x: auto;
                 padding: 0;
                 border-right: none;
-                border-bottom: 1px solid rgba(255,255,255,0.08);
+                border-bottom: 1px solid #e5e7eb;
             }
             .sidebar-item {
                 padding: 10px 16px;
@@ -446,7 +447,7 @@
                 white-space: nowrap;
                 font-size: 0.85rem;
             }
-            .sidebar-item.active { border-bottom-color: #00d4ff; border-left-color: transparent; }
+            .sidebar-item.active { border-bottom-color: #7c3aed; border-left-color: transparent; }
             .main-content { padding: 20px; }
             .stat-cards { grid-template-columns: repeat(2, 1fr); }
         }
@@ -530,7 +531,7 @@
                     </div>
                 </div>
 
-                <h3 style="color:#fff;margin-bottom:16px;">최근 활동 로그</h3>
+                <h3 style="color:#1f2937;margin-bottom:16px;">최근 활동 로그</h3>
                 <div class="table-wrapper">
                     <table>
                         <thead><tr><th>시간</th><th>관리자</th><th>액션</th><th>대상</th><th>상세</th></tr></thead>
@@ -563,7 +564,7 @@
                     </select>
                     <button class="btn btn-primary" id="sync-fs-btn" onclick="syncFilesystem()">📂 파일 동기화</button>
                     <button class="btn" onclick="refreshFileTree()">🔄 새로고침</button>
-                    <span id="doc-tree-stats" style="color:#888;font-size:0.85rem;margin-left:auto;"></span>
+                    <span id="doc-tree-stats" style="color:#9ca3af;font-size:0.85rem;margin-left:auto;"></span>
                 </div>
 
                 <!-- Search Results (shown when searching) -->
@@ -608,8 +609,8 @@
                         <select id="post-cat-filter">
                             <option value="">전체 카테고리</option>
                         </select>
-                        <label style="display:flex;align-items:center;gap:6px;color:#aaa;font-size:0.85rem;cursor:pointer;">
-                            <input type="checkbox" id="post-show-deleted" style="accent-color:#00d4ff;"> 삭제 포함
+                        <label style="display:flex;align-items:center;gap:6px;color:#9ca3af;font-size:0.85rem;cursor:pointer;">
+                            <input type="checkbox" id="post-show-deleted" style="accent-color:#7c3aed;"> 삭제 포함
                         </label>
                     </div>
                     <div class="table-wrapper">
@@ -684,10 +685,10 @@
                 <h2 class="section-title">통계</h2>
 
                 <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
-                    <h3 style="color:#fff;margin:0;">네임스페이스별 벡터 분포</h3>
+                    <h3 style="color:#1f2937;margin:0;">네임스페이스별 벡터 분포</h3>
                     <button class="btn btn-primary btn-sm" id="sync-vectors-btn" onclick="syncVectors()">🔄 Pinecone 동기화</button>
                     <button class="btn btn-success btn-sm" id="folder-status-btn" onclick="updateFolderStatus()">📊 폴더 상태 갱신</button>
-                    <span id="sync-status" style="color:#888;font-size:0.82rem;"></span>
+                    <span id="sync-status" style="color:#9ca3af;font-size:0.82rem;"></span>
                 </div>
                 <div class="table-wrapper" style="margin-bottom:30px;">
                     <table>
@@ -696,7 +697,7 @@
                     </table>
                 </div>
 
-                <h3 style="color:#fff;margin-bottom:16px;">카테고리별 게시글</h3>
+                <h3 style="color:#1f2937;margin-bottom:16px;">카테고리별 게시글</h3>
                 <div class="table-wrapper" style="margin-bottom:30px;">
                     <table>
                         <thead><tr><th>카테고리</th><th>게시글 수</th><th>비율</th></tr></thead>
@@ -704,7 +705,7 @@
                     </table>
                 </div>
 
-                <h3 style="color:#fff;margin-bottom:16px;">소셜 로그인 현황</h3>
+                <h3 style="color:#1f2937;margin-bottom:16px;">소셜 로그인 현황</h3>
                 <div class="table-wrapper" style="margin-bottom:30px;">
                     <table>
                         <thead><tr><th>제공자</th><th>사용자 수</th></tr></thead>
@@ -756,18 +757,18 @@
 
                 <!-- API Connection Test -->
                 <div class="card" style="margin-bottom:20px;">
-                    <h3 style="color:#00d4ff;margin-bottom:16px;">🔌 API 연결 테스트</h3>
+                    <h3 style="color:#7c3aed;margin-bottom:16px;">🔌 API 연결 테스트</h3>
                     <div style="display:flex;gap:12px;flex-wrap:wrap;">
                         <button class="btn" onclick="testConnection('openai')" id="test-openai-btn"
-                            style="padding:8px 16px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:6px;cursor:pointer;">
+                            style="padding:8px 16px;background:#f9fafb;color:#1f2937;border:1px solid #e5e7eb;border-radius:6px;cursor:pointer;">
                             OpenAI 테스트
                         </button>
                         <button class="btn" onclick="testConnection('gemini')" id="test-gemini-btn"
-                            style="padding:8px 16px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:6px;cursor:pointer;">
+                            style="padding:8px 16px;background:#f9fafb;color:#1f2937;border:1px solid #e5e7eb;border-radius:6px;cursor:pointer;">
                             Gemini 테스트
                         </button>
                         <button class="btn" onclick="testConnection('pinecone')" id="test-pinecone-btn"
-                            style="padding:8px 16px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:6px;cursor:pointer;">
+                            style="padding:8px 16px;background:#f9fafb;color:#1f2937;border:1px solid #e5e7eb;border-radius:6px;cursor:pointer;">
                             Pinecone 테스트
                         </button>
                     </div>
@@ -776,80 +777,80 @@
 
                 <!-- Answer Generation -->
                 <div class="card" style="margin-bottom:20px;">
-                    <h3 style="color:#00d4ff;margin-bottom:16px;">🤖 답변 생성 (Answer Generation)</h3>
+                    <h3 style="color:#7c3aed;margin-bottom:16px;">🤖 답변 생성 (Answer Generation)</h3>
                     <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
                         <div style="flex:1;min-width:140px;">
                             <label style="display:block;margin-bottom:4px;font-weight:600;">제공자</label>
-                            <select id="set-answer-provider" onchange="onProviderChange('answer')" style="width:100%;padding:8px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:6px;"></select>
+                            <select id="set-answer-provider" onchange="onProviderChange('answer')" style="width:100%;padding:8px;background:#ffffff;color:#1f2937;border:1px solid #e5e7eb;border-radius:6px;"></select>
                         </div>
                         <div style="flex:2;min-width:200px;">
                             <label style="display:block;margin-bottom:4px;font-weight:600;">모델</label>
-                            <select id="set-answer-model" style="width:100%;padding:8px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:6px;"></select>
+                            <select id="set-answer-model" style="width:100%;padding:8px;background:#ffffff;color:#1f2937;border:1px solid #e5e7eb;border-radius:6px;"></select>
                         </div>
                     </div>
-                    <small style="display:block;color:#888;margin-bottom:12px;">RAG 질문 답변에 사용되는 LLM</small>
+                    <small style="display:block;color:#9ca3af;margin-bottom:12px;">RAG 질문 답변에 사용되는 LLM</small>
                     <div>
                         <label style="display:block;margin-bottom:4px;font-weight:600;">Temperature</label>
-                        <input type="number" id="set-answer-temp" min="0" max="1" step="0.1" value="0.3" style="width:120px;padding:8px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:6px;">
-                        <small style="display:block;color:#888;margin-top:4px;">낮을수록 일관적, 높을수록 창의적 (0.0~1.0)</small>
+                        <input type="number" id="set-answer-temp" min="0" max="1" step="0.1" value="0.3" style="width:120px;padding:8px;background:#ffffff;color:#1f2937;border:1px solid #e5e7eb;border-radius:6px;">
+                        <small style="display:block;color:#9ca3af;margin-top:4px;">낮을수록 일관적, 높을수록 창의적 (0.0~1.0)</small>
                     </div>
                 </div>
 
                 <!-- Query Enhancement -->
                 <div class="card" style="margin-bottom:20px;">
-                    <h3 style="color:#00d4ff;margin-bottom:16px;">🔍 쿼리 강화 (Query Enhancement)</h3>
+                    <h3 style="color:#7c3aed;margin-bottom:16px;">🔍 쿼리 강화 (Query Enhancement)</h3>
                     <div style="display:flex;gap:12px;flex-wrap:wrap;">
                         <div style="flex:1;min-width:140px;">
                             <label style="display:block;margin-bottom:4px;font-weight:600;">제공자</label>
-                            <select id="set-query-provider" onchange="onProviderChange('query')" style="width:100%;padding:8px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:6px;"></select>
+                            <select id="set-query-provider" onchange="onProviderChange('query')" style="width:100%;padding:8px;background:#ffffff;color:#1f2937;border:1px solid #e5e7eb;border-radius:6px;"></select>
                         </div>
                         <div style="flex:2;min-width:200px;">
                             <label style="display:block;margin-bottom:4px;font-weight:600;">모델</label>
-                            <select id="set-query-model" style="width:100%;padding:8px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:6px;"></select>
+                            <select id="set-query-model" style="width:100%;padding:8px;background:#ffffff;color:#1f2937;border:1px solid #e5e7eb;border-radius:6px;"></select>
                         </div>
                     </div>
-                    <small style="display:block;color:#888;margin-top:8px;">Multi-Query, HyDE 생성에 사용 (현재 OpenAI만 지원)</small>
+                    <small style="display:block;color:#9ca3af;margin-top:8px;">Multi-Query, HyDE 생성에 사용 (현재 OpenAI만 지원)</small>
                 </div>
 
                 <!-- Context Optimizer -->
                 <div class="card" style="margin-bottom:20px;">
-                    <h3 style="color:#00d4ff;margin-bottom:16px;">📊 컨텍스트 최적화 (Context Optimizer)</h3>
+                    <h3 style="color:#7c3aed;margin-bottom:16px;">📊 컨텍스트 최적화 (Context Optimizer)</h3>
                     <div style="display:flex;gap:12px;flex-wrap:wrap;">
                         <div style="flex:1;min-width:140px;">
                             <label style="display:block;margin-bottom:4px;font-weight:600;">제공자</label>
-                            <select id="set-context-provider" onchange="onProviderChange('context')" style="width:100%;padding:8px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:6px;"></select>
+                            <select id="set-context-provider" onchange="onProviderChange('context')" style="width:100%;padding:8px;background:#ffffff;color:#1f2937;border:1px solid #e5e7eb;border-radius:6px;"></select>
                         </div>
                         <div style="flex:2;min-width:200px;">
                             <label style="display:block;margin-bottom:4px;font-weight:600;">모델</label>
-                            <select id="set-context-model" style="width:100%;padding:8px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:6px;"></select>
+                            <select id="set-context-model" style="width:100%;padding:8px;background:#ffffff;color:#1f2937;border:1px solid #e5e7eb;border-radius:6px;"></select>
                         </div>
                     </div>
-                    <small style="display:block;color:#888;margin-top:8px;">관련 문장 추출, 문맥 정제에 사용 (현재 OpenAI만 지원)</small>
+                    <small style="display:block;color:#9ca3af;margin-top:8px;">관련 문장 추출, 문맥 정제에 사용 (현재 OpenAI만 지원)</small>
                 </div>
 
                 <!-- Embedding -->
                 <div class="card" style="margin-bottom:20px;">
-                    <h3 style="color:#00d4ff;margin-bottom:16px;">📐 임베딩 (Embedding)</h3>
+                    <h3 style="color:#7c3aed;margin-bottom:16px;">📐 임베딩 (Embedding)</h3>
                     <div>
                         <label style="display:block;margin-bottom:4px;font-weight:600;">모델</label>
-                        <select id="set-embedding-model" style="width:100%;max-width:360px;padding:8px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:6px;"></select>
+                        <select id="set-embedding-model" style="width:100%;max-width:360px;padding:8px;background:#ffffff;color:#1f2937;border:1px solid #e5e7eb;border-radius:6px;"></select>
                         <small style="display:block;color:#f59e0b;margin-top:4px;">변경 시 기존 벡터와 호환되지 않을 수 있습니다</small>
                     </div>
                 </div>
 
                 <!-- Reranker -->
                 <div class="card" style="margin-bottom:20px;">
-                    <h3 style="color:#00d4ff;margin-bottom:16px;">🔄 리랭커 (Reranker)</h3>
+                    <h3 style="color:#7c3aed;margin-bottom:16px;">🔄 리랭커 (Reranker)</h3>
                     <div>
                         <label style="display:block;margin-bottom:4px;font-weight:600;">유형</label>
-                        <select id="set-reranker-type" style="width:100%;max-width:360px;padding:8px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:6px;"></select>
-                        <small style="display:block;color:#888;margin-top:4px;">검색 결과 재순위 방식</small>
+                        <select id="set-reranker-type" style="width:100%;max-width:360px;padding:8px;background:#ffffff;color:#1f2937;border:1px solid #e5e7eb;border-radius:6px;"></select>
+                        <small style="display:block;color:#9ca3af;margin-top:4px;">검색 결과 재순위 방식</small>
                     </div>
                 </div>
 
                 <div style="display:flex;align-items:center;gap:12px;">
                     <button class="btn btn-primary" onclick="saveSettings()" id="btn-save-settings">💾 설정 저장</button>
-                    <span id="settings-status" style="color:#888;"></span>
+                    <span id="settings-status" style="color:#9ca3af;"></span>
                 </div>
             </div>
 
@@ -876,7 +877,7 @@
             <div style="display:flex;gap:12px;">
                 <div class="form-group" style="flex:1;">
                     <label>색상</label>
-                    <input type="color" id="cat-color" value="#00d4ff" style="padding:4px;height:40px;">
+                    <input type="color" id="cat-color" value="#7c3aed" style="padding:4px;height:40px;">
                 </div>
                 <div class="form-group" style="flex:1;">
                     <label>아이콘 (이모지)</label>
@@ -915,12 +916,12 @@
             </div>
             <div class="form-group">
                 <label>내용 (마크다운 지원 · 링크를 붙여넣으면 미리보기가 표시됩니다)</label>
-                <textarea id="news-content" placeholder="뉴스 내용을 입력하세요...&#10;&#10;링크를 붙여넣으면 자동으로 미리보기가 표시됩니다." style="width:100%;min-height:200px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:10px 14px;color:#e0e0e0;font-size:0.9rem;outline:none;resize:vertical;font-family:inherit;"></textarea>
+                <textarea id="news-content" placeholder="뉴스 내용을 입력하세요...&#10;&#10;링크를 붙여넣으면 자동으로 미리보기가 표시됩니다." style="width:100%;min-height:200px;background:#ffffff;border:1px solid #e5e7eb;border-radius:8px;padding:10px 14px;color:#1f2937;font-size:0.9rem;outline:none;resize:vertical;font-family:inherit;"></textarea>
                 <div id="news-link-previews" style="margin-top:8px;display:flex;flex-direction:column;gap:8px;"></div>
             </div>
             <div class="form-group">
                 <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                    <input type="checkbox" id="news-published" checked style="accent-color:#00d4ff;"> 즉시 공개
+                    <input type="checkbox" id="news-published" checked style="accent-color:#7c3aed;"> 즉시 공개
                 </label>
             </div>
             <div class="modal-actions">
@@ -1436,7 +1437,7 @@
         document.getElementById('cat-name').value = '';
         document.getElementById('cat-slug').value = '';
         document.getElementById('cat-desc').value = '';
-        document.getElementById('cat-color').value = '#00d4ff';
+        document.getElementById('cat-color').value = '#7c3aed';
         document.getElementById('cat-icon').value = '';
         document.getElementById('cat-sort').value = '0';
         document.getElementById('category-modal').classList.add('active');
@@ -1984,7 +1985,7 @@
         const status = document.getElementById('settings-status');
         btn.disabled = true;
         status.textContent = '저장 중...';
-        status.style.color = '#888';
+        status.style.color = '#9ca3af';
 
         try {
             const settings = [
