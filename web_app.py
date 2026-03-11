@@ -331,6 +331,20 @@ def mypage():
     return render_template('mypage.html', social_accounts=social_accounts)
 
 
+@app.route('/history')
+@login_required
+def history():
+    """Search history page."""
+    return render_template('history.html')
+
+
+@app.route('/my-documents')
+@login_required
+def my_documents():
+    """User's bookmarked documents page."""
+    return render_template('my_documents.html')
+
+
 @app.route('/semiconductor')
 def semiconductor():
     """Semiconductor domain page."""

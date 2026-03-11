@@ -355,6 +355,8 @@
                     {% if current_user.role == 'admin' %}
                     <a href="/admin" class="sf-nav-admin">관리자</a>
                     {% endif %}
+                    <a href="/history" class="sf-nav-link">검색기록</a>
+                    <a href="/my-documents" class="sf-nav-link">나의 자료</a>
                     <a href="/mypage" class="sf-nav-link">마이페이지</a>
                     <form action="/logout" method="POST" class="logout-form">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -391,6 +393,12 @@
         </div>
         <div class="sf-mobile-auth">
             {% if current_user.is_authenticated %}
+            <a href="/history" class="sf-mobile-auth-link">
+                검색기록
+            </a>
+            <a href="/my-documents" class="sf-mobile-auth-link">
+                나의 자료
+            </a>
             <a href="/mypage" class="sf-mobile-auth-link">
                 마이페이지
             </a>

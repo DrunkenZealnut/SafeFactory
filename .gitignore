@@ -41,3 +41,8 @@ msds/
 
 # User-uploaded files
 static/uploads/
+=0.39.0
+=1.2.0
+=42.0.0
+instance/
+pinecone_files_by_namespace.csv

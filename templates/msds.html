@@ -4,16 +4,11 @@
 {% block mobile_nav_msds %}active{% endblock %}
 
 {% block head_extra %}
-<style>
     :root {
         --primary-color: {{ config.color }};
         --primary-rgb: {{ config.color_rgb }};
         --gradient-from: {{ config.gradient_from }};
         --gradient-to: {{ config.gradient_to }};
-    }
-
-    body {
-        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
     }
 
     .container {
@@ -35,7 +30,7 @@
     }
 
     header p {
-        color: #888;
+        color: var(--sf-text-3);
         font-size: 1.1rem;
     }
 
@@ -48,11 +43,12 @@
 
     /* Search Panel */
     .search-panel {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: var(--sf-card-bg);
+        border: 1px solid var(--sf-border);
         border-radius: 20px;
         padding: 30px;
         height: fit-content;
+        box-shadow: var(--sf-shadow-md);
     }
 
     .search-panel h2 {
@@ -74,17 +70,17 @@
     }
 
     .form-group label {
-        color: #aaa;
+        color: var(--sf-text-2);
         font-size: 0.9rem;
     }
 
     .form-group input,
     .form-group select {
-        background: rgba(255, 255, 255, 0.1);
-        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: var(--sf-bg);
+        border: 1px solid var(--sf-border);
         border-radius: 10px;
         padding: 12px 15px;
-        color: #e0e0e0;
+        color: var(--sf-text-1);
         font-size: 1rem;
     }
 
@@ -96,7 +92,7 @@
 
     .btn-search {
         background: linear-gradient(135deg, var(--gradient-from), var(--gradient-to));
-        border: 1px solid rgba(255, 255, 255, 0.2);
+        border: none;
         border-radius: 10px;
         padding: 15px;
         color: white;
@@ -117,10 +113,11 @@
 
     /* Results Panel */
     .results-panel {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: var(--sf-card-bg);
+        border: 1px solid var(--sf-border);
         border-radius: 20px;
         padding: 30px;
+        box-shadow: var(--sf-shadow-md);
     }
 
     .results-header {
@@ -136,7 +133,7 @@
     }
 
     .result-count {
-        color: #888;
+        color: var(--sf-text-3);
         font-size: 0.9rem;
     }
 
@@ -148,8 +145,8 @@
     }
 
     .result-item {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: var(--sf-bg);
+        border: 1px solid var(--sf-border);
         border-radius: 15px;
         padding: 20px;
         cursor: pointer;
@@ -159,24 +156,25 @@
     .result-item:hover {
         border-color: var(--primary-color);
         transform: translateY(-2px);
+        box-shadow: var(--sf-shadow-md);
     }
 
     .result-item.selected {
         border-color: var(--primary-color);
-        background: rgba(var(--primary-rgb), 0.1);
+        background: rgba(var(--primary-rgb), 0.06);
     }
 
     .result-name {
         font-size: 1.1rem;
         font-weight: bold;
-        color: #fff;
+        color: var(--sf-text-1);
         margin-bottom: 8px;
     }
 
     .result-info {
         display: flex;
         gap: 15px;
-        color: #aaa;
+        color: var(--sf-text-3);
         font-size: 0.9rem;
     }
 
@@ -190,7 +188,7 @@
     .detail-view {
         margin: 20px 0;
         display: none;
-        background: rgba(255, 255, 255, 0.03);
+        background: var(--sf-card-bg);
         border: 2px solid var(--primary-color);
         border-radius: 20px;
         padding: 30px;
@@ -218,6 +216,7 @@
         padding: 25px;
         border-radius: 15px;
         margin-bottom: 20px;
+        color: #fff;
     }
 
     .detail-header h3 {
@@ -245,8 +244,8 @@
     }
 
     .summary-card {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: var(--sf-bg);
+        border: 1px solid var(--sf-border);
         border-radius: 15px;
         padding: 20px;
     }
@@ -262,18 +261,18 @@
     }
 
     .summary-card-content {
-        color: #ccc;
+        color: var(--sf-text-2);
         line-height: 1.6;
     }
 
     .summary-card-content strong {
-        color: #fff;
+        color: var(--sf-text-1);
         display: block;
         margin-top: 8px;
     }
 
     .summary-highlight {
-        background: rgba(var(--primary-rgb), 0.2);
+        background: rgba(var(--primary-rgb), 0.08);
         padding: 15px;
         border-radius: 10px;
         border-left: 3px solid var(--primary-color);
@@ -292,8 +291,8 @@
     }
 
     .accordion-item {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: var(--sf-bg);
+        border: 1px solid var(--sf-border);
         border-radius: 10px;
         margin-bottom: 10px;
         overflow: hidden;
@@ -309,15 +308,15 @@
     }
 
     .accordion-header:hover {
-        background: rgba(255, 255, 255, 0.05);
+        background: rgba(var(--primary-rgb), 0.04);
     }
 
     .accordion-header.active {
-        background: rgba(var(--primary-rgb), 0.1);
+        background: rgba(var(--primary-rgb), 0.08);
     }
 
     .accordion-title {
-        color: #fff;
+        color: var(--sf-text-1);
         font-weight: 500;
     }
 
@@ -342,7 +341,7 @@
 
     .accordion-body {
         padding: 20px;
-        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        border-top: 1px solid var(--sf-border);
     }
 
     .section-item {
@@ -356,7 +355,7 @@
     }
 
     .section-item-detail {
-        color: #ccc;
+        color: var(--sf-text-2);
         line-height: 1.6;
         white-space: pre-wrap;
     }
@@ -365,7 +364,7 @@
     .loading {
         text-align: center;
         padding: 40px;
-        color: #888;
+        color: var(--sf-text-3);
     }
 
     .loading::after {
@@ -383,7 +382,7 @@
     .empty-state {
         text-align: center;
         padding: 60px 20px;
-        color: #888;
+        color: var(--sf-text-3);
     }
 
     .empty-state-icon {
@@ -395,12 +394,12 @@
     .camera-section {
         margin-top: 15px;
         padding-top: 15px;
-        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        border-top: 1px solid var(--sf-border);
     }
 
     .btn-camera {
         background: linear-gradient(135deg, var(--gradient-from), var(--gradient-to));
-        border: 1px solid rgba(255, 255, 255, 0.2);
+        border: none;
         border-radius: 10px;
         padding: 12px 20px;
         color: white;
@@ -430,7 +429,7 @@
         left: 0;
         width: 100%;
         height: 100%;
-        background: rgba(0, 0, 0, 0.9);
+        background: rgba(0, 0, 0, 0.7);
         z-index: 1000;
         justify-content: center;
         align-items: center;
@@ -441,12 +440,13 @@
     }
 
     .camera-container {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: var(--sf-card-bg);
+        border: 1px solid var(--sf-border);
         border-radius: 20px;
         padding: 30px;
         max-width: 800px;
         width: 90%;
+        box-shadow: var(--sf-shadow-lg);
     }
 
     .camera-header {
@@ -462,9 +462,9 @@
     }
 
     .btn-close {
-        background: rgba(255, 255, 255, 0.1);
-        border: none;
-        color: #fff;
+        background: var(--sf-bg);
+        border: 1px solid var(--sf-border);
+        color: var(--sf-text-1);
         font-size: 1.5rem;
         width: 40px;
         height: 40px;
@@ -474,7 +474,7 @@
     }
 
     .btn-close:hover {
-        background: rgba(255, 255, 255, 0.2);
+        background: var(--sf-border);
     }
 
     .camera-view {
@@ -518,17 +518,19 @@
     }
 
     .btn-retake {
-        background: rgba(255, 255, 255, 0.1);
+        background: var(--sf-bg);
+        border: 1px solid var(--sf-border);
+        color: var(--sf-text-1);
     }
 
     .btn-retake:hover {
-        background: rgba(255, 255, 255, 0.2);
+        background: var(--sf-border);
     }
 
     .camera-status {
         text-align: center;
         margin-top: 15px;
-        color: #888;
+        color: var(--sf-text-3);
         font-size: 0.9rem;
     }
 
@@ -561,7 +563,6 @@
             padding: 8px 12px;
         }
     }
-</style>
 {% endblock %}
 
 {% block content %}
@@ -789,7 +790,7 @@
             const div = document.createElement('div');
             div.className = 'result-item';
             div.innerHTML = `
-                <div class="result-name">${escapeHtml(item.prodNmKor || item.chemNmKor || '화학물질명 없음')}</div>
+                <div class="result-name">${escapeHtml(item.chemNameKor || item.chemNmKor || item.prodNmKor || '화학물질명 없음')}</div>
                 <div class="result-info">
                     ${item.casNo ? `<span>CAS: ${escapeHtml(item.casNo)}</span>` : ''}
                     ${item.unNo ? `<span>UN: ${escapeHtml(item.unNo)}</span>` : ''}
@@ -825,7 +826,7 @@
 
                     // Reorganize layout: Selected item -> Detail -> Other results
                     reorganizeResults(selectedItem);
-                    displayDetail(detailData);
+                    displayDetail(detailData, selectedItem);
                 }
             } catch (error) {
                 console.error('Detail error:', error);
@@ -860,22 +861,20 @@
         }
 
         // Display Chemical Detail
-        function displayDetail(data) {
-            const firstSection = Object.values(data.sections)[0];
-            const firstItem = firstSection?.items?.[0] || {};
-
-            // Header
+        function displayDetail(data, searchItem) {
+            // Header - use search result item which has chemNameKor, casNo, etc.
+            const info = searchItem || {};
             document.getElementById('detailHeader').innerHTML = `
-                <h3>${escapeHtml(firstItem.prodNmKor || firstItem.chemNmKor || '화학물질 정보')}</h3>
+                <h3>${escapeHtml(info.chemNameKor || info.chemNmKor || '화학물질 정보')}</h3>
                 <div class="detail-meta">
-                    ${firstItem.casNo ? `<span>CAS: ${escapeHtml(firstItem.casNo)}</span>` : ''}
-                    ${firstItem.unNo ? `<span>UN: ${escapeHtml(firstItem.unNo)}</span>` : ''}
-                    ${firstItem.keNo ? `<span>KE: ${escapeHtml(firstItem.keNo)}</span>` : ''}
+                    ${info.casNo ? `<span>CAS: ${escapeHtml(info.casNo)}</span>` : ''}
+                    ${info.unNo ? `<span>UN: ${escapeHtml(info.unNo)}</span>` : ''}
+                    ${info.keNo ? `<span>KE: ${escapeHtml(info.keNo)}</span>` : ''}
                 </div>
             `;
 
             // Create Summary Section
-            createSummarySection(data);
+            createSummarySection(data, searchItem);
 
             // Create Accordion for all sections
             createAccordion(data);
@@ -884,11 +883,11 @@
         }
 
         // Create Summary Section
-        function createSummarySection(data) {
+        function createSummarySection(data, searchItem) {
             const summarySection = document.getElementById('summarySection');
+            const info = searchItem || {};
 
             // Extract key information
-            const section01 = data.sections['01']; // 화학제품 정보
             const section02 = data.sections['02']; // 유해성·위험성
             const section07 = data.sections['07']; // 취급 및 저장
             const section11 = data.sections['11']; // 독성
@@ -898,21 +897,18 @@
 
             let summaryHTML = '<div class="summary-grid">';
 
-            // 화학물질명 및 CAS
-            if (section01) {
-                const item = section01.items?.[0] || {};
-                summaryHTML += `
-                    <div class="summary-card">
-                        <div class="summary-card-title">🧪 화학물질 기본 정보</div>
-                        <div class="summary-card-content">
-                            <strong>제품명:</strong> ${escapeHtml(item.prodNmKor || item.chemNmKor || '-')}
-                            ${item.casNo ? `<strong>CAS 번호:</strong> ${escapeHtml(item.casNo)}` : ''}
-                            ${item.keNo ? `<strong>KE 번호:</strong> ${escapeHtml(item.keNo)}` : ''}
-                            ${item.unNo ? `<strong>UN 번호:</strong> ${escapeHtml(item.unNo)}` : ''}
-                        </div>
+            // 화학물질 기본 정보 - use search result item
+            summaryHTML += `
+                <div class="summary-card">
+                    <div class="summary-card-title">🧪 화학물질 기본 정보</div>
+                    <div class="summary-card-content">
+                        <strong>제품명:</strong> ${escapeHtml(info.chemNameKor || info.chemNmKor || '-')}
+                        ${info.casNo ? `<strong>CAS 번호:</strong> ${escapeHtml(info.casNo)}` : ''}
+                        ${info.keNo ? `<strong>KE 번호:</strong> ${escapeHtml(info.keNo)}` : ''}
+                        ${info.unNo ? `<strong>UN 번호:</strong> ${escapeHtml(info.unNo)}` : ''}
                     </div>
-                `;
-            }
+                </div>
+            `;
 
             // 유해성 및 독성
             summaryHTML += `

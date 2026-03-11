@@ -727,3 +727,162 @@ class NewsArticle(db.Model):
         if include_content:
             d['content'] = self.content
         return d
+
+
+# ---------------------------------------------------------------------------
+# Search history
+# ---------------------------------------------------------------------------
+
+class SearchHistory(db.Model):
+    """Per-user search and ask history."""
+
+    __tablename__ = 'search_history'
+    __table_args__ = (
+        db.Index('ix_search_history_user_created', 'user_id', 'created_at'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False,
+    )
+    query = db.Column(db.Text, nullable=False)
+    query_type = db.Column(db.String(10), nullable=False, default='search')
+    namespace = db.Column(db.String(100), nullable=False, default='')
+    search_mode = db.Column(db.String(20), nullable=True)
+    result_count = db.Column(db.Integer, nullable=False, default=0)
+    answer_preview = db.Column(db.String(200), nullable=True)
+    created_at = db.Column(
+        db.DateTime, nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+    user = db.relationship('User', backref='search_histories')
+
+    MAX_PER_USER = 500
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'query': self.query,
+            'query_type': self.query_type,
+            'namespace': self.namespace,
+            'search_mode': self.search_mode,
+            'result_count': self.result_count,
+            'answer_preview': self.answer_preview,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+# ---------------------------------------------------------------------------
+# Shared questions (Question Likes)
+# ---------------------------------------------------------------------------
+
+class SharedQuestion(db.Model):
+    """Publicly shared AI questions that other users can like."""
+
+    __tablename__ = 'shared_questions'
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'query_hash', name='uq_user_query_hash'),
+        db.Index('ix_shared_questions_namespace_likes', 'namespace', 'like_count'),
+        db.Index('ix_shared_questions_user', 'user_id'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False,
+    )
+    query = db.Column(db.Text, nullable=False)
+    query_hash = db.Column(db.String(32), nullable=False)
+    namespace = db.Column(db.String(100), nullable=False, default='')
+    answer_preview = db.Column(db.String(300), nullable=True)
+    like_count = db.Column(db.Integer, nullable=False, default=0)
+    is_hidden = db.Column(db.Boolean, nullable=False, default=False)
+    created_at = db.Column(
+        db.DateTime, nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+    user = db.relationship('User', backref='shared_questions')
+    likes = db.relationship('QuestionLike', backref='question', cascade='all, delete-orphan')
+
+    DAILY_SHARE_LIMIT = 10
+
+    def to_dict(self, liked_by_me=False):
+        return {
+            'id': self.id,
+            'query': self.query,
+            'namespace': self.namespace,
+            'answer_preview': self.answer_preview,
+            'like_count': self.like_count,
+            'author': {
+                'id': self.user.id,
+                'name': self.user.name,
+            } if self.user else None,
+            'liked_by_me': liked_by_me,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class QuestionLike(db.Model):
+    """Like on a shared question (unique per user+question)."""
+
+    __tablename__ = 'question_likes'
+    __table_args__ = (
+        db.UniqueConstraint('question_id', 'user_id', name='uq_question_user_like'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    question_id = db.Column(
+        db.Integer, db.ForeignKey('shared_questions.id', ondelete='CASCADE'), nullable=False,
+    )
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False,
+    )
+    created_at = db.Column(
+        db.DateTime, nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+    user = db.relationship('User')
+
+
+# ---------------------------------------------------------------------------
+# User bookmarks
+# ---------------------------------------------------------------------------
+
+class UserBookmark(db.Model):
+    """User's bookmarked documents from search results."""
+
+    __tablename__ = 'user_bookmarks'
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'source_file', name='uq_user_bookmark'),
+        db.Index('ix_user_bookmarks_user_created', 'user_id', 'created_at'),
+        db.Index('ix_user_bookmarks_namespace', 'user_id', 'namespace'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False,
+    )
+    source_file = db.Column(db.String(500), nullable=False)
+    namespace = db.Column(db.String(100), nullable=False, default='')
+    title = db.Column(db.String(300), nullable=False)
+    file_type = db.Column(db.String(20), nullable=True)
+    created_at = db.Column(
+        db.DateTime, nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+    user = db.relationship('User', backref='bookmarks')
+
+    MAX_PER_USER = 200
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'source_file': self.source_file,
+            'namespace': self.namespace,
+            'title': self.title,
+            'file_type': self.file_type,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }

@@ -1,0 +1,392 @@
+{% extends "base.html" %}
+
+{% block title %}검색 기록 - SafeFactory{% endblock %}
+
+{% block head_extra %}
+    body {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    }
+
+    .container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 40px 20px;
+    }
+
+    .page-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 25px;
+    }
+
+    .page-header h1 {
+        font-size: 1.8rem;
+        color: #00d4ff;
+        margin: 0;
+    }
+
+    .btn-delete-all {
+        padding: 8px 18px;
+        background: rgba(239, 68, 68, 0.12);
+        color: #ef4444;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        border-radius: 10px;
+        font-size: 0.85rem;
+        cursor: pointer;
+        font: inherit;
+        transition: all 0.2s;
+    }
+
+    .btn-delete-all:hover {
+        background: rgba(239, 68, 68, 0.25);
+    }
+
+    .filters {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+
+    .filters select {
+        padding: 8px 14px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 10px;
+        color: #e0e0e0;
+        font-size: 0.9rem;
+        font: inherit;
+        cursor: pointer;
+        outline: none;
+    }
+
+    .filters select:focus {
+        border-color: rgba(0, 212, 255, 0.4);
+    }
+
+    .filters select option {
+        background: #1a1a2e;
+        color: #e0e0e0;
+    }
+
+    .history-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .history-item {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 14px;
+        padding: 16px 20px;
+        cursor: pointer;
+        transition: all 0.2s;
+        position: relative;
+    }
+
+    .history-item:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(0, 212, 255, 0.2);
+    }
+
+    .history-query {
+        font-size: 1rem;
+        color: #e0e0e0;
+        font-weight: 500;
+        margin-bottom: 6px;
+        padding-right: 32px;
+    }
+
+    .history-query .icon {
+        margin-right: 6px;
+    }
+
+    .history-meta {
+        font-size: 0.8rem;
+        color: #888;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .history-meta span::after {
+        content: '\b7';
+        margin-left: 8px;
+        color: #555;
+    }
+
+    .history-meta span:last-child::after {
+        content: '';
+    }
+
+    .history-preview {
+        margin-top: 6px;
+        font-size: 0.82rem;
+        color: #999;
+        font-style: italic;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .btn-delete-item {
+        position: absolute;
+        top: 14px;
+        right: 14px;
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        border: none;
+        background: transparent;
+        color: #666;
+        font-size: 1.1rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+
+    .btn-delete-item:hover {
+        background: rgba(239, 68, 68, 0.15);
+        color: #ef4444;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #666;
+    }
+
+    .empty-state .icon {
+        font-size: 3rem;
+        margin-bottom: 15px;
+    }
+
+    .pagination {
+        display: flex;
+        justify-content: center;
+        gap: 6px;
+        margin-top: 25px;
+        flex-wrap: wrap;
+    }
+
+    .pagination button {
+        padding: 7px 13px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        color: #aaa;
+        font-size: 0.85rem;
+        cursor: pointer;
+        font: inherit;
+        transition: all 0.2s;
+    }
+
+    .pagination button:hover:not(:disabled) {
+        border-color: rgba(0, 212, 255, 0.3);
+        color: #e0e0e0;
+    }
+
+    .pagination button.active {
+        background: rgba(0, 212, 255, 0.15);
+        border-color: rgba(0, 212, 255, 0.4);
+        color: #00d4ff;
+    }
+
+    .pagination button:disabled {
+        opacity: 0.4;
+        cursor: default;
+    }
+
+    .loading {
+        text-align: center;
+        padding: 40px;
+        color: #888;
+    }
+
+    @media (max-width: 480px) {
+        .page-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+        }
+    }
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1>검색 기록</h1>
+        <button class="btn-delete-all" onclick="deleteAll()" id="btnDeleteAll" style="display:none;">전체 삭제</button>
+    </div>
+
+    <div class="filters">
+        <select id="filterType" onchange="loadHistory()">
+            <option value="">전체</option>
+            <option value="search">검색</option>
+            <option value="ask">AI 질문</option>
+        </select>
+        <select id="filterNamespace" onchange="loadHistory()">
+            <option value="">전체 도메인</option>
+            <option value="semiconductor">반도체</option>
+            <option value="laborlaw">노동법</option>
+            <option value="field-training">현장훈련</option>
+            <option value="safeguide">안전가이드</option>
+            <option value="msds">화학물질</option>
+        </select>
+    </div>
+
+    <div id="historyContainer">
+        <div class="loading">불러오는 중...</div>
+    </div>
+
+    <div class="pagination" id="pagination"></div>
+</div>
+
+<script>
+const NAMESPACE_LABELS = {
+    '': '전체',
+    'semiconductor': '반도체',
+    'laborlaw': '노동법',
+    'field-training': '현장훈련',
+    'safeguide': '안전가이드',
+    'msds': '화학물질'
+};
+const NAMESPACE_PATHS = {
+    '': '/search',
+    'semiconductor': '/semiconductor',
+    'laborlaw': '/laborlaw',
+    'field-training': '/field-training',
+    'safeguide': '/safeguide',
+    'msds': '/msds'
+};
+
+let currentPage = 1;
+
+function timeAgo(isoStr) {
+    const diff = Date.now() - new Date(isoStr).getTime();
+    const m = Math.floor(diff / 60000);
+    if (m < 1) return '방금 전';
+    if (m < 60) return m + '분 전';
+    const h = Math.floor(m / 60);
+    if (h < 24) return h + '시간 전';
+    const d = Math.floor(h / 24);
+    if (d < 30) return d + '일 전';
+    return new Date(isoStr).toLocaleDateString('ko-KR');
+}
+
+async function loadHistory(page) {
+    if (page) currentPage = page;
+    else currentPage = 1;
+
+    const type = document.getElementById('filterType').value;
+    const ns = document.getElementById('filterNamespace').value;
+    let url = `/api/v1/search/history?page=${currentPage}&per_page=20`;
+    if (type) url += `&query_type=${type}`;
+    if (ns) url += `&namespace=${encodeURIComponent(ns)}`;
+
+    document.getElementById('historyContainer').innerHTML = '<div class="loading">불러오는 중...</div>';
+
+    try {
+        const res = await fetch(url);
+        const json = await res.json();
+        if (!json.success) throw new Error(json.error);
+        renderHistory(json.data);
+    } catch (e) {
+        document.getElementById('historyContainer').innerHTML =
+            `<div class="empty-state"><div class="icon">&#x26A0;</div><div>${e.message || '불러오기 실패'}</div></div>`;
+    }
+}
+
+function renderHistory(data) {
+    const container = document.getElementById('historyContainer');
+    const btnDel = document.getElementById('btnDeleteAll');
+
+    if (!data.items || data.items.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="icon">&#x1F50D;</div><div>검색 기록이 없습니다.</div></div>';
+        btnDel.style.display = 'none';
+        document.getElementById('pagination').innerHTML = '';
+        return;
+    }
+
+    btnDel.style.display = '';
+
+    let html = '<div class="history-list">';
+    for (const item of data.items) {
+        const icon = item.query_type === 'ask' ? '&#x1F4AC;' : '&#x1F50D;';
+        const typeLabel = item.query_type === 'ask' ? 'AI 질문' : '검색';
+        const nsLabel = NAMESPACE_LABELS[item.namespace] || item.namespace || '전체';
+        const path = NAMESPACE_PATHS[item.namespace] || '/search';
+        const encodedQ = encodeURIComponent(item.query);
+
+        html += `<div class="history-item" onclick="window.location.href='${path}?q=${encodedQ}'">`;
+        html += `<div class="history-query"><span class="icon">${icon}</span>${escapeHtml(item.query)}</div>`;
+        html += `<div class="history-meta">`;
+        html += `<span>${typeLabel}</span>`;
+        html += `<span>${nsLabel}</span>`;
+        html += `<span>${item.result_count}건</span>`;
+        html += `<span>${timeAgo(item.created_at)}</span>`;
+        html += `</div>`;
+        if (item.answer_preview) {
+            html += `<div class="history-preview">"${escapeHtml(item.answer_preview)}"</div>`;
+        }
+        html += `<button class="btn-delete-item" onclick="event.stopPropagation();deleteOne(${item.id})" title="삭제">&#x2715;</button>`;
+        html += `</div>`;
+    }
+    html += '</div>';
+    container.innerHTML = html;
+
+    renderPagination(data);
+}
+
+function renderPagination(data) {
+    const el = document.getElementById('pagination');
+    if (data.pages <= 1) { el.innerHTML = ''; return; }
+
+    let html = '';
+    html += `<button ${data.page <= 1 ? 'disabled' : ''} onclick="loadHistory(${data.page - 1})">&#x2039;</button>`;
+
+    const start = Math.max(1, data.page - 2);
+    const end = Math.min(data.pages, data.page + 2);
+    for (let i = start; i <= end; i++) {
+        html += `<button class="${i === data.page ? 'active' : ''}" onclick="loadHistory(${i})">${i}</button>`;
+    }
+
+    html += `<button ${data.page >= data.pages ? 'disabled' : ''} onclick="loadHistory(${data.page + 1})">&#x203A;</button>`;
+    el.innerHTML = html;
+}
+
+async function deleteOne(id) {
+    if (!confirm('이 검색 기록을 삭제하시겠습니까?')) return;
+    try {
+        const res = await fetch(`/api/v1/search/history/${id}`, { method: 'DELETE' });
+        const json = await res.json();
+        if (json.success) loadHistory(currentPage);
+    } catch (e) {
+        alert('삭제 실패');
+    }
+}
+
+async function deleteAll() {
+    if (!confirm('전체 검색 기록을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.')) return;
+    try {
+        const res = await fetch('/api/v1/search/history', { method: 'DELETE' });
+        const json = await res.json();
+        if (json.success) loadHistory(1);
+    } catch (e) {
+        alert('삭제 실패');
+    }
+}
+
+function escapeHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+}
+
+document.addEventListener('DOMContentLoaded', () => loadHistory(1));
+</script>
+{% endblock %}

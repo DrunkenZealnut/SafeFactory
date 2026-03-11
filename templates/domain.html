@@ -28,7 +28,6 @@
 {% endblock %}
 
 {% block head_extra %}
-<style>
     :root {
         --primary-color: {{ config.color }};
         --gradient-from: {{ config.gradient_from }};
@@ -938,6 +937,7 @@
         border: none;
         cursor: pointer;
         font-size: 14px;
+        font-weight: 500;
         transition: all 0.2s ease;
         text-align: center;
     }
@@ -952,9 +952,9 @@
     }
 
     .search-mode-btn.active {
-        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+        background: var(--sf-purple);
         color: #fff;
-        font-weight: 600;
+        font-weight: 700;
     }
 
     .search-mode-info {
@@ -1001,7 +1001,162 @@
         color: #a78bfa;
         border: 1px solid rgba(139, 92, 246, 0.3);
     }
-</style>
+
+    /* Bookmark button on result cards */
+    .result-card {
+        position: relative;
+    }
+    .btn-bookmark {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        border: 1px solid var(--sf-border);
+        background: var(--sf-card-bg);
+        color: var(--sf-text-3);
+        font-size: 1.1rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        z-index: 2;
+    }
+    .btn-bookmark:hover {
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+    }
+    .btn-bookmark.active {
+        background: rgba(var(--primary-rgb), 0.1);
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+    }
+
+    /* Popular questions section */
+    .popular-questions {
+        margin-top: 12px;
+        padding: 14px;
+        background: rgba(var(--primary-color-rgb), 0.04);
+        border: 1px solid rgba(var(--primary-color-rgb), 0.1);
+        border-radius: 12px;
+    }
+    .popular-questions-title {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--sf-text-2);
+        margin-bottom: 10px;
+    }
+    .pq-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background 0.2s;
+        font-size: 0.88rem;
+        color: var(--sf-text-2);
+    }
+    .pq-item:hover {
+        background: rgba(var(--primary-color-rgb), 0.08);
+        color: var(--sf-text-1);
+    }
+    .pq-item-query {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .pq-like-btn {
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        padding: 3px 8px;
+        border-radius: 6px;
+        border: 1px solid var(--sf-border);
+        background: transparent;
+        color: var(--sf-text-3);
+        font-size: 0.78rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        flex-shrink: 0;
+    }
+    .pq-like-btn:hover {
+        border-color: #ef4444;
+        color: #ef4444;
+    }
+    .pq-like-btn.liked {
+        border-color: #ef4444;
+        color: #ef4444;
+        background: rgba(239, 68, 68, 0.08);
+    }
+    .pq-author {
+        font-size: 0.72rem;
+        color: var(--sf-text-4);
+        flex-shrink: 0;
+    }
+
+    /* Share question button (after AI answer) */
+    .btn-share-question {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 6px 14px;
+        border-radius: 8px;
+        border: 1px solid rgba(var(--primary-color-rgb), 0.3);
+        background: rgba(var(--primary-color-rgb), 0.06);
+        color: var(--primary-color);
+        font-size: 0.82rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        font: inherit;
+        margin-left: 8px;
+    }
+    .btn-share-question:hover {
+        background: rgba(var(--primary-color-rgb), 0.12);
+    }
+    .btn-share-question.shared {
+        border-color: rgba(76, 175, 80, 0.4);
+        color: #4caf50;
+        background: rgba(76, 175, 80, 0.08);
+        cursor: default;
+    }
+
+    /* Recent queries dropdown */
+    .recent-queries-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: #1e2a3a;
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 10px;
+        margin-top: 4px;
+        z-index: 100;
+        overflow: hidden;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    .recent-queries-dropdown .rq-title {
+        padding: 8px 14px 4px;
+        font-size: 0.75rem;
+        color: #888;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .recent-queries-dropdown .rq-item {
+        padding: 9px 14px;
+        cursor: pointer;
+        color: #d0d0d0;
+        font-size: 0.9rem;
+        transition: background 0.15s;
+    }
+    .recent-queries-dropdown .rq-item:hover {
+        background: rgba(0,212,255,0.1);
+        color: #fff;
+    }
 {% endblock %}
 
 {% block content %}
@@ -1047,6 +1202,12 @@
                     {% endfor %}
                 </div>
 
+                <!-- Popular Questions -->
+                <div class="popular-questions" id="popularQuestions" style="display:none;">
+                    <div class="popular-questions-title">🔥 인기 질문</div>
+                    <div id="popularQuestionsList"></div>
+                </div>
+
                 <!-- Loading -->
                 <div class="loading" id="askLoading">
                     <div class="spinner ai"></div>
@@ -1079,31 +1240,27 @@
 
                 <form class="search-form" id="searchForm">
                     <select id="namespace" name="namespace" hidden><option value="">전체</option></select>
-                    <div class="search-row">
-                        <div class="search-input-group" style="flex: 2;">
-                            <label for="query">검색어</label>
-                            <input type="text" id="query" name="query" placeholder="검색할 내용을 입력하세요..." required>
+                    <div class="search-row" style="align-items: stretch; gap: 10px;">
+                        <div class="search-input-group" style="flex: 1; position: relative;">
+                            <input type="text" id="query" name="query" placeholder="검색할 내용을 입력하세요..." required autocomplete="off">
+                            <div class="recent-queries-dropdown" id="recentDropdown" style="display:none;"></div>
                         </div>
-                    </div>
-                    <div class="search-row">
-                        <div class="search-input-group">
-                            <label for="topK">결과 개수</label>
-                            <input type="number" id="topK" name="topK" value="5" min="1" max="10000" style="width: 80px; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                        </div>
-                        <div class="search-input-group">
-                            <label for="fileType">파일 타입</label>
-                            <select id="fileType" name="fileType">
-                                <option value="">전체</option>
-                                <option value="image">이미지</option>
-                                <option value="markdown">마크다운</option>
-                                <option value="json">JSON</option>
-                            </select>
-                        </div>
-                        <div class="search-input-group" style="display: flex; align-items: flex-end;">
-                            <button type="submit" class="btn btn-primary" style="width: 100%;">
-                                검색
-                            </button>
-                        </div>
+                        <select id="topK" name="topK" title="결과 개수" style="flex: 0 0 auto; width: auto; padding: 15px 14px;">
+                            <option value="5">파일 5개</option>
+                            <option value="10">파일 10개</option>
+                            <option value="20">파일 20개</option>
+                            <option value="50">파일 50개</option>
+                            <option value="100">파일 100개</option>
+                        </select>
+                        <select id="fileType" name="fileType" title="파일 타입" style="flex: 0 0 auto; width: auto; padding: 15px 14px;">
+                            <option value="">전체 타입</option>
+                            <option value="image">이미지</option>
+                            <option value="markdown">마크다운</option>
+                            <option value="json">JSON</option>
+                        </select>
+                        <button type="submit" class="btn btn-primary" style="flex: 0 0 auto; padding: 15px 30px; border: 2px solid rgba(var(--primary-color-rgb), 0.6) !important;">
+                            🔍 검색
+                        </button>
                     </div>
                 </form>
 
@@ -1156,6 +1313,100 @@
 
     // Active chart instances for cleanup
     let activeCharts = [];
+
+    // Bookmark state cache (populated by check-batch API)
+    let _bookmarkMap = {};  // source_file -> bookmark_id
+    const isLoggedIn = {{ 'true' if current_user.is_authenticated else 'false' }};
+
+    // Question sharing state
+    let _lastAskedQuery = '';
+    let _lastAskedNamespace = '';
+    let _lastAnswerPreview = '';
+
+    // ========================================
+    // Popular Questions (Question Likes)
+    // ========================================
+    async function loadPopularQuestions() {
+        try {
+            const res = await fetch(`/api/v1/questions/popular?namespace=${encodeURIComponent(DEFAULT_NAMESPACE)}&limit=10`);
+            const json = await res.json();
+            if (!json.success || !json.data.questions.length) return;
+
+            const container = document.getElementById('popularQuestionsList');
+            const section = document.getElementById('popularQuestions');
+            section.style.display = '';
+
+            container.innerHTML = json.data.questions.map(q => `
+                <div class="pq-item">
+                    <span class="pq-item-query" onclick="askPopularQuestion('${escapeAttr(q.query)}')">${escapeHtml(q.query)}</span>
+                    <span class="pq-author">${escapeHtml(q.author ? q.author.name : '')}</span>
+                    ${isLoggedIn ? `
+                        <button class="pq-like-btn ${q.liked_by_me ? 'liked' : ''}"
+                                onclick="event.stopPropagation();toggleQuestionLike(this,${q.id})">
+                            ${q.liked_by_me ? '♥' : '♡'} <span>${q.like_count}</span>
+                        </button>
+                    ` : `
+                        <span class="pq-like-btn" style="cursor:default;">♡ <span>${q.like_count}</span></span>
+                    `}
+                </div>
+            `).join('');
+        } catch (e) {
+            console.warn('Popular questions load failed:', e);
+        }
+    }
+
+    function askPopularQuestion(query) {
+        const textarea = document.getElementById('askQuery');
+        textarea.value = query;
+        textarea.focus();
+        document.getElementById('askForm').dispatchEvent(new Event('submit'));
+    }
+
+    async function toggleQuestionLike(btn, questionId) {
+        if (!isLoggedIn) return;
+        try {
+            const res = await fetch(`/api/v1/questions/${questionId}/like`, {method: 'POST'});
+            const json = await res.json();
+            if (json.success) {
+                if (json.data.liked) {
+                    btn.classList.add('liked');
+                    btn.innerHTML = '♥ <span>' + json.data.like_count + '</span>';
+                } else {
+                    btn.classList.remove('liked');
+                    btn.innerHTML = '♡ <span>' + json.data.like_count + '</span>';
+                }
+            }
+        } catch (e) {
+            console.warn('Question like failed:', e);
+        }
+    }
+
+    async function shareQuestion() {
+        if (!isLoggedIn || !_lastAskedQuery) return;
+        const btn = document.getElementById('btnShareQuestion');
+        if (!btn || btn.classList.contains('shared')) return;
+
+        try {
+            const res = await fetch('/api/v1/questions/share', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    query: _lastAskedQuery,
+                    namespace: _lastAskedNamespace,
+                    answer_preview: _lastAnswerPreview,
+                })
+            });
+            const json = await res.json();
+            if (json.success) {
+                btn.classList.add('shared');
+                btn.innerHTML = '✅ 공유됨';
+                showToast(json.message || '질문이 공유되었습니다.');
+                loadPopularQuestions();
+            }
+        } catch (e) {
+            showToast('질문 공유에 실패했습니다.', 'error');
+        }
+    }
 
     // Set default namespace value on page load
     document.addEventListener('DOMContentLoaded', () => {
@@ -1329,10 +1580,15 @@
         window._lastCalcMd = (calculations && calculations.formatted) || '';
         window._lastAnswerMd = cleanAnswer || '';
 
+        const shareBtn = isLoggedIn
+            ? `<button class="btn-share-question" id="btnShareQuestion" onclick="shareQuestion()">📤 질문 공유</button>`
+            : '';
+
         let html = calcHtml + `
             <div class="ai-answer-container">
                 <div class="ai-answer-header">
                     <span>🤖</span> AI 답변
+                    ${shareBtn}
                     <button class="copy-md-btn" onclick="copyMarkdown(this, _lastAnswerMd)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Markdown 복사</button>
                 </div>
                 <div class="ai-answer-content" id="aiAnswerContent">
@@ -1472,6 +1728,9 @@
         const namespace = document.getElementById('askNamespace').value;
         const topK = document.getElementById('askTopK').value;
 
+        _lastAskedQuery = query;
+        _lastAskedNamespace = namespace || DEFAULT_NAMESPACE;
+
         const loading = document.getElementById('askLoading');
         const resultsContainer = document.getElementById('askResultsContainer');
 
@@ -1491,6 +1750,7 @@
                 const data = await response.json();
                 loading.classList.remove('active');
                 if (data.success && data.data) {
+                    _lastAnswerPreview = (data.data.answer || '').substring(0, 300);
                     renderAskResults(resultsContainer, data.data, data.data.answer || '', null);
                 } else {
                     showToast(data.error || '알 수 없는 오류', 'error');
@@ -1547,6 +1807,7 @@
                             if (event.data && event.data.calculations) {
                                 calculations = event.data.calculations;
                             }
+                            _lastAnswerPreview = (answerText || '').substring(0, 300);
                             if (metadata) {
                                 renderAskResults(resultsContainer, metadata, answerText, calculations);
                             }
@@ -1646,7 +1907,17 @@
 
                         const safeFilename = escapeHtml(result.filename || result.source_file.split('/').pop() || '');
                         const safeSourceFile = escapeHtml(result.source_file || '');
+                        const namespace = DEFAULT_NAMESPACE || '';
+                        const bookmarkBtn = isLoggedIn
+                            ? `<button class="btn-bookmark ${isBookmarked(result.source_file) ? 'active' : ''}"
+                                 data-source-file="${safeSourceFile}"
+                                 onclick="event.stopPropagation();toggleBookmark(this,'${escapeAttr(result.source_file)}','${escapeAttr(safeFilename)}','${escapeAttr(namespace)}','${escapeAttr(safeFileType)}')"
+                                 title="나의 자료에 저장">
+                                 ${isBookmarked(result.source_file) ? '★' : '☆'}
+                               </button>`
+                            : '';
                         card.innerHTML = `
+                            ${bookmarkBtn}
                             <div class="result-header">
                                 <div class="result-meta">
                                     <span class="${typeClass}">${safeFileType}</span>
@@ -1662,6 +1933,9 @@
                         `;
                         resultsContainer.appendChild(card);
                     });
+
+                    // Check bookmark status for rendered results
+                    checkBookmarkStatus(data.data.results);
                 }
             } else {
                 showToast(data.error, 'error');
@@ -1787,5 +2061,139 @@
 
     // Initial load
     loadStats();
+    loadPopularQuestions();
+
+    // --- Recent search queries dropdown ---
+    (function() {
+        const isLoggedIn = {{ 'true' if current_user.is_authenticated else 'false' }};
+        if (!isLoggedIn) return;
+
+        const input = document.getElementById('query');
+        const dropdown = document.getElementById('recentDropdown');
+        if (!input || !dropdown) return;
+
+        let recentCache = null;
+
+        async function fetchRecent() {
+            if (recentCache) return recentCache;
+            try {
+                const res = await fetch('/api/v1/search/history/recent?limit=10');
+                const json = await res.json();
+                if (json.success && json.data.queries.length > 0) {
+                    recentCache = json.data.queries;
+                    return recentCache;
+                }
+            } catch (e) { /* ignore */ }
+            return null;
+        }
+
+        function showDropdown(queries) {
+            let html = '<div class="rq-title">최근 검색</div>';
+            for (const q of queries) {
+                const safe = q.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+                html += `<div class="rq-item" data-query="${safe}">${safe}</div>`;
+            }
+            dropdown.innerHTML = html;
+            dropdown.style.display = '';
+
+            dropdown.querySelectorAll('.rq-item').forEach(el => {
+                el.addEventListener('mousedown', function(e) {
+                    e.preventDefault();
+                    input.value = this.dataset.query;
+                    dropdown.style.display = 'none';
+                    input.closest('form').dispatchEvent(new Event('submit', {bubbles:true, cancelable:true}));
+                });
+            });
+        }
+
+        input.addEventListener('focus', async function() {
+            if (this.value.trim()) return;
+            const queries = await fetchRecent();
+            if (queries && queries.length > 0) showDropdown(queries);
+        });
+
+        input.addEventListener('input', function() {
+            if (this.value.trim()) dropdown.style.display = 'none';
+        });
+
+        input.addEventListener('blur', function() {
+            setTimeout(() => { dropdown.style.display = 'none'; }, 150);
+        });
+    })();
+
+    // ========================================
+    // Bookmark Functions
+    // ========================================
+    function isBookmarked(sourceFile) {
+        return sourceFile in _bookmarkMap;
+    }
+
+    function escapeAttr(str) {
+        if (!str) return '';
+        return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    }
+
+    async function checkBookmarkStatus(results) {
+        if (!isLoggedIn || !results || !results.length) return;
+        const sourceFiles = results.map(r => r.source_file).filter(Boolean);
+        if (!sourceFiles.length) return;
+        try {
+            const res = await fetch('/api/v1/bookmarks/check-batch', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({source_files: sourceFiles})
+            });
+            const json = await res.json();
+            if (json.success && json.data.bookmarked) {
+                _bookmarkMap = {..._bookmarkMap, ...json.data.bookmarked};
+                document.querySelectorAll('.btn-bookmark').forEach(btn => {
+                    const sf = btn.dataset.sourceFile;
+                    if (sf && sf in _bookmarkMap) {
+                        btn.classList.add('active');
+                        btn.textContent = '★';
+                    }
+                });
+            }
+        } catch (e) {
+            console.warn('Bookmark check failed:', e);
+        }
+    }
+
+    async function toggleBookmark(btn, sourceFile, title, namespace, fileType) {
+        if (!isLoggedIn) return;
+        const wasActive = btn.classList.contains('active');
+
+        if (wasActive) {
+            const bookmarkId = _bookmarkMap[sourceFile];
+            if (!bookmarkId) return;
+            try {
+                const res = await fetch(`/api/v1/bookmarks/${bookmarkId}`, {method: 'DELETE'});
+                const json = await res.json();
+                if (json.success) {
+                    delete _bookmarkMap[sourceFile];
+                    btn.classList.remove('active');
+                    btn.textContent = '☆';
+                }
+            } catch (e) {
+                console.warn('Bookmark delete failed:', e);
+            }
+        } else {
+            try {
+                const res = await fetch('/api/v1/bookmarks', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({source_file: sourceFile, title, namespace, file_type: fileType})
+                });
+                const json = await res.json();
+                if (json.success && json.data) {
+                    _bookmarkMap[sourceFile] = json.data.id;
+                    btn.classList.add('active');
+                    btn.textContent = '★';
+                }
+            } catch (e) {
+                console.warn('Bookmark create failed:', e);
+            }
+        }
+    }
 </script>
 {% endblock %}

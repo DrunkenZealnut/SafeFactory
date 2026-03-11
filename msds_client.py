@@ -13,7 +13,7 @@ class MsdsApiClient:
     """KOSHA MSDS API Client"""
 
     # API 설정
-    ENDPOINT = 'https://msds.kosha.or.kr/openapi/service/msdschem'
+    ENDPOINT = 'https://msds.kosha.or.kr/openapi/service/msdschem/'
     API_KEY = os.environ.get('MSDS_API_KEY', '')
 
     # 검색 조건

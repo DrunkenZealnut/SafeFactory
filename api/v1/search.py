@@ -9,10 +9,12 @@ import unicodedata
 from pathlib import Path
 from urllib.parse import quote
 from flask import request, Response, stream_with_context
+from flask_login import current_user, login_required
 
 from api.v1 import v1_bp
 from api.response import success_response, error_response
 from api import rate_limit
+from models import db, SearchHistory
 from services.settings import get_setting
 from services.singletons import get_agent, get_anthropic_client, get_gemini_client, get_hybrid_searcher_instance, get_openai_client
 from services.rag_pipeline import run_rag_pipeline, build_llm_messages, find_related_images, post_process_answer, compute_answer_confidence
@@ -103,6 +105,47 @@ def _prepare_gemini_params(messages, temperature, max_tokens):
         'max_output_tokens': max_tokens,
     }
     return user_msg, config
+
+
+# ---------------------------------------------------------------------------
+# Search history helpers
+# ---------------------------------------------------------------------------
+
+def _save_search_history(user_id, query, query_type, namespace='',
+                         search_mode=None, result_count=0, answer_preview=None):
+    """Save search history for logged-in user. Enforces MAX_PER_USER limit."""
+    try:
+        record = SearchHistory(
+            user_id=user_id,
+            query=query[:500],
+            query_type=query_type,
+            namespace=namespace,
+            search_mode=search_mode,
+            result_count=result_count,
+            answer_preview=answer_preview[:200] if answer_preview else None,
+        )
+        db.session.add(record)
+        db.session.commit()
+
+        # Prune oldest records when over limit
+        count = SearchHistory.query.filter_by(user_id=user_id).count()
+        if count > SearchHistory.MAX_PER_USER:
+            excess = count - SearchHistory.MAX_PER_USER
+            old_ids = (
+                db.session.query(SearchHistory.id)
+                .filter_by(user_id=user_id)
+                .order_by(SearchHistory.created_at.asc())
+                .limit(excess)
+                .all()
+            )
+            if old_ids:
+                SearchHistory.query.filter(
+                    SearchHistory.id.in_([r.id for r in old_ids])
+                ).delete(synchronize_session=False)
+                db.session.commit()
+    except Exception:
+        db.session.rollback()
+        logging.exception('[SearchHistory] Failed to save')
 
 
 @v1_bp.route('/search', methods=['POST'])
@@ -217,6 +260,17 @@ def api_search():
                     'ncs_code': metadata.get('ncs_code', ''),
                 })
 
+        # Save search history for logged-in users
+        if current_user.is_authenticated:
+            _save_search_history(
+                user_id=current_user.id,
+                query=query,
+                query_type='search',
+                namespace=namespace,
+                search_mode=search_mode,
+                result_count=len(formatted_results),
+            )
+
         return success_response(data={
             'query': query,
             'search_mode': search_mode,
@@ -319,6 +373,17 @@ def api_ask():
         if data.get('debug'):
             resp_data['query_type'] = pipeline.get('query_type')
             resp_data['latencies'] = pipeline.get('latencies')
+
+        # Save search history for logged-in users
+        if current_user.is_authenticated:
+            _save_search_history(
+                user_id=current_user.id,
+                query=query,
+                query_type='ask',
+                namespace=namespace,
+                result_count=len(sources),
+                answer_preview=answer[:200] if answer else None,
+            )
 
         return success_response(data=resp_data)
 
@@ -475,6 +540,16 @@ def api_ask_stream():
                         if hb:
                             yield hb
 
+            # Save search history for logged-in users
+            if current_user.is_authenticated:
+                _save_search_history(
+                    user_id=current_user.id,
+                    query=query,
+                    query_type='ask',
+                    namespace=namespace,
+                    result_count=len(sources),
+                )
+
             # Send done event
             done_event = json.dumps({
                 'type': 'done',
@@ -626,3 +701,107 @@ def _resolve_sibling_pdf(source_file: str):
             continue
 
     return None
+
+
+# ---------------------------------------------------------------------------
+# Search history CRUD endpoints
+# ---------------------------------------------------------------------------
+
+@v1_bp.route('/search/history', methods=['GET'])
+@login_required
+@rate_limit("30 per minute")
+def api_search_history():
+    """Return paginated search history for the current user."""
+    try:
+        page = max(1, request.args.get('page', 1, type=int))
+        per_page = min(max(1, request.args.get('per_page', 20, type=int)), 50)
+
+        q = SearchHistory.query.filter_by(user_id=current_user.id)
+
+        query_type = request.args.get('query_type', '').strip()
+        if query_type in ('search', 'ask'):
+            q = q.filter_by(query_type=query_type)
+
+        namespace = request.args.get('namespace', '').strip()
+        if namespace:
+            q = q.filter_by(namespace=namespace)
+
+        q = q.order_by(SearchHistory.created_at.desc())
+        pagination = q.paginate(page=page, per_page=per_page, error_out=False)
+
+        return success_response(data={
+            'items': [h.to_dict() for h in pagination.items],
+            'total': pagination.total,
+            'page': pagination.page,
+            'per_page': pagination.per_page,
+            'pages': pagination.pages,
+        })
+    except Exception:
+        logging.exception('[SearchHistory] List failed')
+        return error_response('검색 기록 조회 중 오류가 발생했습니다.', 500)
+
+
+@v1_bp.route('/search/history/recent', methods=['GET'])
+@login_required
+def api_search_history_recent():
+    """Return recent unique search queries for the current user."""
+    try:
+        limit = min(max(1, request.args.get('limit', 10, type=int)), 20)
+
+        rows = (
+            SearchHistory.query
+            .filter_by(user_id=current_user.id)
+            .order_by(SearchHistory.created_at.desc())
+            .limit(limit * 3)
+            .all()
+        )
+        # Deduplicate preserving order
+        seen = {}
+        for r in rows:
+            if r.query not in seen:
+                seen[r.query] = True
+        queries = list(seen.keys())[:limit]
+
+        return success_response(data={'queries': queries})
+    except Exception:
+        logging.exception('[SearchHistory] Recent failed')
+        return error_response('최근 검색어 조회 중 오류가 발생했습니다.', 500)
+
+
+@v1_bp.route('/search/history/<int:history_id>', methods=['DELETE'])
+@login_required
+def api_search_history_delete(history_id):
+    """Delete a single search history record owned by the current user."""
+    try:
+        record = SearchHistory.query.filter_by(
+            id=history_id, user_id=current_user.id
+        ).first()
+        if not record:
+            return error_response('검색 기록을 찾을 수 없습니다.', 404)
+
+        db.session.delete(record)
+        db.session.commit()
+        return success_response(message='검색 기록이 삭제되었습니다.')
+    except Exception:
+        db.session.rollback()
+        logging.exception('[SearchHistory] Delete failed')
+        return error_response('검색 기록 삭제 중 오류가 발생했습니다.', 500)
+
+
+@v1_bp.route('/search/history', methods=['DELETE'])
+@login_required
+def api_search_history_delete_all():
+    """Delete all search history records for the current user."""
+    try:
+        deleted = SearchHistory.query.filter_by(
+            user_id=current_user.id
+        ).delete()
+        db.session.commit()
+        return success_response(
+            message='전체 검색 기록이 삭제되었습니다.',
+            data={'deleted_count': deleted},
+        )
+    except Exception:
+        db.session.rollback()
+        logging.exception('[SearchHistory] Delete all failed')
+        return error_response('검색 기록 삭제 중 오류가 발생했습니다.', 500)
