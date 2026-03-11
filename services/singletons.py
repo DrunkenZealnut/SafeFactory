@@ -8,6 +8,7 @@ _lock = threading.RLock()
 
 _agent = None
 _openai_client = None
+_law_drf_client = None
 _query_enhancer = None
 _context_optimizer = None
 _reranker = None
@@ -192,6 +193,25 @@ def get_hybrid_searcher_instance():
                 from src.hybrid_searcher import get_hybrid_searcher
                 _hybrid_searcher = get_hybrid_searcher()
             instance = _hybrid_searcher
+    return instance
+
+
+def get_law_drf_client():
+    """Get or create LawDrfClient singleton.
+
+    Returns None if LAW_OC env var is not set (DRF API not available).
+    """
+    global _law_drf_client
+    instance = _law_drf_client
+    if instance is None:
+        oc = os.getenv('LAW_OC', '')
+        if not oc:
+            return None
+        with _lock:
+            if _law_drf_client is None:
+                from services.law_drf_client import LawDrfClient
+                _law_drf_client = LawDrfClient(oc=oc)
+            instance = _law_drf_client
     return instance
 
 

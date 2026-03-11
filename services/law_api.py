@@ -807,19 +807,90 @@ def search_labor_laws(query: str, classification: dict | None = None) -> list[di
     RAG 파이프라인(services/rag_pipeline.py)에서 laborlaw 도메인일 때 호출된다.
     반환된 조문은 format_law_references()로 포맷되어 LLM 프롬프트에 주입된다.
 
-    2단계 검색:
-      Phase 1: law.go.kr AJAX API (주 데이터 소스) — 전문 조문 텍스트
-               _find_relevant_articles() → 키워드 매칭 + LLM 토픽 추출
-      Phase 2: odcloud API (보조) — Phase 1에서 결과 없을 때만 사용
-               법령명 + 조문 제목만 제공 (전문 없음)
+    DRF 우선 경로 (LAW_OC 설정 시):
+      LegalSourceRouter를 통해 법령+판례+행정해석+행정규칙 4소스 통합 검색.
+      실패 시 기존 AJAX 경로로 폴백.
+
+    AJAX 폴백 경로 (기존):
+      Phase 1: law.go.kr AJAX API — 전문 조문 텍스트
+      Phase 2: odcloud API (보조) — Phase 1 결과 없을 때만 사용
 
     Returns:
-        [{'name': 법률명, 'article': 조문번호, 'article_text': 조문내용, ...}, ...]
+        [{'name': 법률명, 'article': 조문번호, 'article_text': 조문내용,
+          'source': 출처, ...}, ...]
     """
-    # --- Phase 1: law.go.kr article text (primary, has full content) ---
+    # --- AJAX 법령 조문 (항상 실행) ---
+    results = _search_via_ajax(query, classification)
+
+    # --- DRF 추가 소스: 판례/행정해석/행정규칙 병합 ---
+    drf_results = _search_via_drf(query, classification)
+    if drf_results:
+        results.extend(drf_results)
+
+    return results
+
+
+def _search_via_drf(query: str, classification: dict | None) -> list[dict]:
+    """DRF Open API를 통한 4소스 통합 검색. LAW_OC 미설정 시 빈 리스트."""
+    try:
+        from services.singletons import get_law_drf_client
+        drf_client = get_law_drf_client()
+        if not drf_client or not drf_client.available:
+            return []
+
+        from services.legal_source_router import LegalSourceRouter
+        router = LegalSourceRouter(drf_client)
+
+        # 기존 AJAX 법령 조문 + DRF 판례/해석/규칙 병합
+        # 법령 조문은 기존 _find_relevant_articles()가 더 정밀하므로 유지
+        ctx = router.search_all(query, classification)
+        if not ctx.has_content:
+            return []
+
+        # DRF 결과를 기존 dict 포맷으로 변환
+        results: list[dict] = []
+        for prec in ctx.precedents:
+            results.append({
+                'name': f'{prec.court} {prec.date}',
+                'article': f'{prec.case_name} ({prec.case_no})',
+                'article_text': prec.summary,
+                'source': 'precedent',
+                'source_type': 'precedent',
+            })
+        for interp in ctx.interpretations:
+            results.append({
+                'name': '고용노동부 행정해석',
+                'article': f'{interp.title} ({interp.case_no})',
+                'article_text': interp.answer,
+                'source': 'interpretation',
+                'source_type': 'interpretation',
+            })
+        for rule in ctx.admin_rules:
+            results.append({
+                'name': rule.name,
+                'article': rule.rule_type,
+                'article_text': rule.content,
+                'source': 'admin_rule',
+                'source_type': 'admin_rule',
+            })
+
+        if results:
+            logger.info("[LawAPI] DRF found %d additional references (prec=%d, interp=%d, admrul=%d)",
+                        len(results), len(ctx.precedents),
+                        len(ctx.interpretations), len(ctx.admin_rules))
+        return results
+
+    except Exception as e:
+        logger.warning("[LawAPI] DRF search failed, will fallback to AJAX: %s", e)
+        return []
+
+
+def _search_via_ajax(query: str, classification: dict | None) -> list[dict]:
+    """기존 AJAX + odcloud 검색 경로."""
     seen_nums: set[str] = set()
     results: list[dict] = []
 
+    # Phase 1: law.go.kr AJAX article text
     try:
         article_texts = _find_relevant_articles(query)
         for key, content in article_texts:
@@ -838,7 +909,7 @@ def search_labor_laws(query: str, classification: dict | None = None) -> list[di
     except Exception as e:
         logger.debug("[LawText] law.go.kr fetch failed: %s", e)
 
-    # --- Phase 2: odcloud API (supplement, only if law.go.kr returned nothing) ---
+    # Phase 2: odcloud API (supplement)
     if not results:
         client = _get_client()
         if client.api_key:
@@ -867,33 +938,107 @@ def format_law_references(laws: list[dict], start_index: int = 1) -> str:
 
     Each item is numbered [start_index], [start_index+1], ... so the AI
     uses matching citation numbers in its answer.
+
+    Multi-source 결과(판례/행정해석/행정규칙)는 소스별 섹션으로 그룹핑한다.
     """
     if not laws:
         return ''
 
-    lines = []
-    for i, law in enumerate(laws):
-        idx = start_index + i
-        name = law.get('name', '')
-        if '[' in name:
-            name = name[:name.index('[')].strip()
+    # 소스별 분류
+    law_items = []
+    prec_items = []
+    interp_items = []
+    admrul_items = []
+    for law in laws:
+        st = law.get('source_type', '')
+        if st == 'precedent':
+            prec_items.append(law)
+        elif st == 'interpretation':
+            interp_items.append(law)
+        elif st == 'admin_rule':
+            admrul_items.append(law)
+        else:
+            law_items.append(law)
 
-        article = law.get('article', '')
-        article_text = law.get('article_text', '')
+    lines: list[str] = []
+    idx = start_index
 
-        header = f"[{idx}] **{name}**"
-        if article:
-            header += f" {article}"
-        lines.append(header)
+    # 법령 조문
+    if law_items:
+        for law in law_items:
+            name = law.get('name', '')
+            if '[' in name:
+                name = name[:name.index('[')].strip()
+            article = law.get('article', '')
+            article_text = law.get('article_text', '')
 
-        if article_text:
-            text = article_text[:800].strip()
-            indented = '\n'.join(
-                f'> {l}' for l in text.split('\n') if l.strip())
-            lines.append(indented)
-        lines.append('')
+            header = f"[{idx}] **{name}**"
+            if article:
+                header += f" {article}"
+            lines.append(header)
+
+            if article_text:
+                text = article_text[:800].strip()
+                indented = '\n'.join(
+                    f'> {l}' for l in text.split('\n') if l.strip())
+                lines.append(indented)
+            lines.append('')
+            idx += 1
+
+    # 판례
+    if prec_items:
+        lines.append('### 관련 판례')
+        for law in prec_items:
+            header = f"[{idx}] **{law.get('name', '')}** {law.get('article', '')}"
+            lines.append(header)
+            article_text = law.get('article_text', '')
+            if article_text:
+                text = article_text[:800].strip()
+                indented = '\n'.join(
+                    f'> {l}' for l in text.split('\n') if l.strip())
+                lines.append(indented)
+            lines.append('')
+            idx += 1
+
+    # 행정해석
+    if interp_items:
+        lines.append('### 행정해석 (고용노동부 질의회신)')
+        for law in interp_items:
+            header = f"[{idx}] **{law.get('name', '')}** {law.get('article', '')}"
+            lines.append(header)
+            article_text = law.get('article_text', '')
+            if article_text:
+                text = article_text[:800].strip()
+                indented = '\n'.join(
+                    f'> {l}' for l in text.split('\n') if l.strip())
+                lines.append(indented)
+            lines.append('')
+            idx += 1
+
+    # 행정규칙
+    if admrul_items:
+        lines.append('### 관련 고시/지침')
+        for law in admrul_items:
+            header = f"[{idx}] **{law.get('name', '')}** {law.get('article', '')}"
+            lines.append(header)
+            article_text = law.get('article_text', '')
+            if article_text:
+                text = article_text[:800].strip()
+                indented = '\n'.join(
+                    f'> {l}' for l in text.split('\n') if l.strip())
+                lines.append(indented)
+            lines.append('')
+            idx += 1
 
     return '\n'.join(lines)
+
+
+def has_multi_source(laws: list[dict]) -> bool:
+    """법령 외 추가 소스(판례/행정해석/행정규칙)가 포함되었는지 확인."""
+    return any(
+        r.get('source_type') in ('precedent', 'interpretation', 'admin_rule')
+        for r in laws
+    )
 
 
 # ---------------------------------------------------------------------------

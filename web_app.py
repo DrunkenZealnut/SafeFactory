@@ -356,6 +356,13 @@ def msds():
     return render_template('msds.html', domain='msds', config=config)
 
 
+@app.route('/search')
+def search_all():
+    """Cross-domain unified search page."""
+    config = DOMAIN_CONFIG['all']
+    return render_template('domain.html', domain='all', config=config)
+
+
 @app.route('/community')
 def community():
     """Community bulletin board page."""

@@ -630,13 +630,14 @@ def run_rag_pipeline(data):
 
         # Search for relevant law references via public API
         try:
-            from services.law_api import search_labor_laws, format_law_references
+            from services.law_api import search_labor_laws, format_law_references, has_multi_source
             law_refs = search_labor_laws(query, classification)
             if law_refs:
                 result['law_references'] = law_refs
                 source_count = len(result.get('sources', []))
                 result['law_references_formatted'] = format_law_references(
                     law_refs, start_index=source_count + 1)
+                result['law_multi_source'] = has_multi_source(law_refs)
         except Exception as e:
             logging.warning("[LaborLaw] Law API search failed: %s", e)
 
@@ -720,16 +721,22 @@ def build_llm_prompts(query, sources, context, namespace, calc_result=None,
         _law_nums = _re.findall(r'^\[(\d+)\]', law_references, _re.MULTILINE)
         _law_range = ', '.join(f'[{n}]' for n in _law_nums) if _law_nums else ''
 
+        # 판례/행정해석/행정규칙이 포함된 multi-source 여부 감지
+        _is_multi = any(h in law_references for h in (
+            '### 관련 판례', '### 행정해석', '### 관련 고시/지침'))
+
+        _section_title = '관련 법적 근거' if _is_multi else '관련 법령 정보'
+
         user_prompt += f"""
 
-## 관련 법령 정보
+## {_section_title}
 {law_references}
 
-**법령 인용 필수 규칙 (반드시 준수):**
-- 위에 제공된 법령 {_law_range} 각각을 답변 본문에서 최소 1회 이상 인용하세요.
-- 각 법령 조문의 핵심 내용을 답변에 포함하고 해당 인용 번호를 표기하세요.
-- 예: "최저임금의 정의는 ... [6]", "최저임금 결정기준은 ... [7]" 등
-- 모든 법령 번호({_law_range})가 답변에 빠짐없이 등장해야 합니다."""
+**인용 필수 규칙 (반드시 준수):**
+- 위에 제공된 근거 {_law_range} 각각을 답변 본문에서 최소 1회 이상 인용하세요.
+- 각 근거의 핵심 내용을 답변에 포함하고 해당 인용 번호를 표기하세요.
+- 예: "근로기준법 제23조에 따르면 ... [6]", "대법원 판례에 의하면 ... [7]" 등
+- 모든 인용 번호({_law_range})가 답변에 빠짐없이 등장해야 합니다."""
 
     # Inject multi-step analysis result for legal/hybrid questions
     if legal_analysis:
