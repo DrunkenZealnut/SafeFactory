@@ -7,6 +7,7 @@ import os
 import time
 import certifi
 import httpx
+import tiktoken
 from typing import List, Optional
 from dataclasses import dataclass
 from openai import OpenAI
@@ -37,6 +38,8 @@ class EmbeddingGenerator(HttpClientMixin):
         "text-embedding-ada-002": 1536
     }
 
+    MAX_INPUT_TOKENS = 8191  # OpenAI embedding model token limit
+
     def __init__(
         self,
         api_key: str,
@@ -65,6 +68,16 @@ class EmbeddingGenerator(HttpClientMixin):
         else:
             self.dimensions = self.MODELS[model]
 
+        # Tokenizer for accurate truncation
+        self._encoding = tiktoken.get_encoding("cl100k_base")
+
+    def _truncate(self, text: str) -> str:
+        """Truncate text to fit within embedding model token limit."""
+        tokens = self._encoding.encode(text)
+        if len(tokens) <= self.MAX_INPUT_TOKENS:
+            return text
+        return self._encoding.decode(tokens[:self.MAX_INPUT_TOKENS])
+
 
     def generate(self, text: str) -> EmbeddingResult:
         """
@@ -76,6 +89,8 @@ class EmbeddingGenerator(HttpClientMixin):
         Returns:
             EmbeddingResult with embedding vector
         """
+        text = self._truncate(text)
+
         # text-embedding-3 models support custom dimensions
         if self.model.startswith("text-embedding-3") and self.dimensions != self.MODELS[self.model]:
             response = self.client.embeddings.create(
@@ -102,6 +117,8 @@ class EmbeddingGenerator(HttpClientMixin):
 
     def _call_api(self, batch: List[str]) -> List[EmbeddingResult]:
         """Single OpenAI embeddings API call for a batch."""
+        batch = [self._truncate(t) for t in batch]
+
         if self.model.startswith("text-embedding-3") and self.dimensions != self.MODELS[self.model]:
             response = self.client.embeddings.create(
                 model=self.model,
