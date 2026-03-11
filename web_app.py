@@ -26,6 +26,15 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
+
+# ========================================
+# Reverse Proxy Support (Nginx/Apache)
+# ========================================
+# When behind a reverse proxy, trust X-Forwarded-* headers so that
+# url_for(_external=True) generates the correct public URL (scheme + host).
+from werkzeug.middleware.proxy_fix import ProxyFix
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+
 secret_key = os.getenv('SECRET_KEY')
 if not secret_key:
     if os.getenv('FLASK_ENV') in ('production', 'prod'):
@@ -34,6 +43,7 @@ if not secret_key:
     secret_key = secrets.token_hex(32)
     app.logger.warning('SECRET_KEY not set — using random key (sessions will reset on restart)')
 app.config['SECRET_KEY'] = secret_key
+app.config['PREFERRED_URL_SCHEME'] = 'https'
 
 # ========================================
 # CSRF Protection
