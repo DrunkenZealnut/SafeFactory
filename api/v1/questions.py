@@ -2,7 +2,7 @@
 
 import hashlib
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from flask import request
 from flask_login import current_user, login_required
@@ -77,6 +77,46 @@ def api_question_share():
         db.session.rollback()
         logging.exception('[Question] Share failed')
         return error_response('질문 공유 중 오류가 발생했습니다.', 500)
+
+
+@v1_bp.route('/questions/wordcloud', methods=['GET'])
+@rate_limit("30 per minute")
+def api_question_wordcloud():
+    """Get keyword cloud data extracted from shared questions."""
+    try:
+        from services.keyword_extractor import extract_keywords
+
+        namespace = request.args.get('namespace', '').strip()
+        period = request.args.get('period', 'all').strip()
+        limit = min(max(1, request.args.get('limit', 80, type=int)), 100)
+
+        q = db.session.query(
+            SharedQuestion.query, SharedQuestion.like_count,
+        ).filter_by(is_hidden=False)
+
+        if namespace:
+            q = q.filter(SharedQuestion.namespace == namespace)
+
+        if period == '7d':
+            since = datetime.now(timezone.utc) - timedelta(days=7)
+            q = q.filter(SharedQuestion.created_at >= since)
+        elif period == '30d':
+            since = datetime.now(timezone.utc) - timedelta(days=30)
+            q = q.filter(SharedQuestion.created_at >= since)
+
+        rows = q.all()
+        keywords = extract_keywords(
+            [(row.query, row.like_count) for row in rows],
+            limit=limit,
+        )
+
+        return success_response(data={
+            'keywords': keywords,
+            'total_questions': len(rows),
+        })
+    except Exception:
+        logging.exception('[Question] Wordcloud failed')
+        return error_response('워드 클라우드 데이터 조회 중 오류가 발생했습니다.', 500)
 
 
 @v1_bp.route('/questions/popular', methods=['GET'])

@@ -24,6 +24,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"
         integrity="sha384-9nhczxUqK87bcKHh20fSQcTGD4qq5GhayNYSYWqwBkINBhOfQLg/P5HG5lF1urn4"
         crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/wordcloud@1.2.3/src/wordcloud2.js"></script>
 <script defer src="/static/js/common.js"></script>
 {% endblock %}
 
@@ -1042,11 +1043,43 @@
         border: 1px solid rgba(var(--primary-color-rgb), 0.1);
         border-radius: 12px;
     }
+    .popular-questions-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 10px;
+    }
     .popular-questions-title {
         font-size: 0.85rem;
         font-weight: 600;
         color: var(--sf-text-2);
-        margin-bottom: 10px;
+        margin-bottom: 0;
+    }
+    .pq-view-toggle {
+        display: flex;
+        gap: 2px;
+        background: rgba(var(--primary-color-rgb), 0.08);
+        border-radius: 6px;
+        padding: 2px;
+    }
+    .pq-view-btn {
+        padding: 3px 10px;
+        border: none;
+        background: transparent;
+        border-radius: 5px;
+        font-size: 0.78rem;
+        cursor: pointer;
+        color: var(--sf-text-3);
+        transition: all 0.2s;
+    }
+    .pq-view-btn.active {
+        background: var(--primary-color);
+        color: #fff;
+    }
+    #wordcloudCanvas {
+        width: 100%;
+        height: 200px;
+        cursor: pointer;
     }
     .pq-item {
         display: flex;
@@ -1204,8 +1237,17 @@
 
                 <!-- Popular Questions -->
                 <div class="popular-questions" id="popularQuestions" style="display:none;">
-                    <div class="popular-questions-title">🔥 인기 질문</div>
+                    <div class="popular-questions-header">
+                        <div class="popular-questions-title">🔥 인기 질문</div>
+                        <div class="pq-view-toggle">
+                            <button class="pq-view-btn active" data-view="list" onclick="switchPqView('list')">📋 리스트</button>
+                            <button class="pq-view-btn" data-view="cloud" onclick="switchPqView('cloud')">☁️ 클라우드</button>
+                        </div>
+                    </div>
                     <div id="popularQuestionsList"></div>
+                    <div id="wordcloudView" style="display:none;">
+                        <canvas id="wordcloudCanvas"></canvas>
+                    </div>
                 </div>
 
                 <!-- Loading -->
@@ -1378,6 +1420,78 @@
             }
         } catch (e) {
             console.warn('Question like failed:', e);
+        }
+    }
+
+    // ========================================
+    // Word Cloud View
+    // ========================================
+    let _wordcloudLoaded = false;
+
+    function switchPqView(view) {
+        document.querySelectorAll('.pq-view-btn').forEach(b => b.classList.remove('active'));
+        document.querySelector(`.pq-view-btn[data-view="${view}"]`).classList.add('active');
+
+        const listEl = document.getElementById('popularQuestionsList');
+        const cloudEl = document.getElementById('wordcloudView');
+
+        if (view === 'cloud') {
+            listEl.style.display = 'none';
+            cloudEl.style.display = '';
+            if (!_wordcloudLoaded) loadWordCloud();
+        } else {
+            listEl.style.display = '';
+            cloudEl.style.display = 'none';
+        }
+    }
+
+    async function loadWordCloud() {
+        try {
+            const res = await fetch(`/api/v1/questions/wordcloud?namespace=${encodeURIComponent(DEFAULT_NAMESPACE)}&limit=80`);
+            const json = await res.json();
+            if (!json.success || !json.data.keywords.length) {
+                document.getElementById('wordcloudView').innerHTML =
+                    '<p style="text-align:center;color:var(--sf-text-4);padding:30px 0;font-size:0.85rem;">공유된 질문이 부족하여 클라우드를 표시할 수 없습니다.</p>';
+                return;
+            }
+
+            _wordcloudLoaded = true;
+            const canvas = document.getElementById('wordcloudCanvas');
+            const maxWeight = Math.max(...json.data.keywords.map(k => k.weight));
+
+            // Color palette
+            const colors = [
+                'var(--primary-color)', '#ef4444', '#f59e0b', '#10b981',
+                '#6366f1', '#ec4899', '#14b8a6', '#8b5cf6',
+            ];
+
+            const list = json.data.keywords.map(k => {
+                const size = Math.max(12, Math.round((k.weight / maxWeight) * 48));
+                return [k.text, size];
+            });
+
+            WordCloud(canvas, {
+                list: list,
+                gridSize: 8,
+                weightFactor: 1,
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+                color: () => colors[Math.floor(Math.random() * colors.length)],
+                backgroundColor: 'transparent',
+                rotateRatio: 0.3,
+                minRotation: -Math.PI / 6,
+                maxRotation: Math.PI / 6,
+                click: item => {
+                    if (item) askPopularQuestion(item[0]);
+                },
+                hover: (item, dimension, event) => {
+                    canvas.style.cursor = item ? 'pointer' : 'default';
+                    canvas.title = item ? `"${item[0]}" 클릭하여 검색` : '';
+                },
+            });
+        } catch (e) {
+            console.warn('Word cloud load failed:', e);
+            document.getElementById('wordcloudView').innerHTML =
+                '<p style="text-align:center;color:var(--sf-text-4);padding:30px 0;font-size:0.85rem;">워드 클라우드를 불러올 수 없습니다.</p>';
         }
     }
 
