@@ -1,0 +1,365 @@
+{% extends "base.html" %}
+{% block title %}질문 클라우드 - SafeFactory{% endblock %}
+{% block nav_wordcloud %}active{% endblock %}
+{% block mobile_nav_wordcloud %}active{% endblock %}
+
+{% block head_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/wordcloud@1.2.3/src/wordcloud2.js"></script>
+<script defer src="/static/js/common.js"></script>
+{% endblock %}
+
+{% block head_extra %}
+    body { background: var(--sf-bg); }
+
+    .wc-container {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    .wc-header {
+        text-align: center;
+        padding: 30px 0 10px;
+    }
+    .wc-header h1 {
+        font-size: 1.8rem;
+        color: var(--sf-text-1);
+        margin-bottom: 6px;
+    }
+    .wc-header p {
+        color: var(--sf-text-3);
+        font-size: 0.9rem;
+    }
+
+    /* Filters */
+    .wc-filters {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin: 20px 0;
+    }
+    .wc-filter-group {
+        display: flex;
+        gap: 2px;
+        background: var(--sf-card);
+        border: 1px solid var(--sf-border);
+        border-radius: 8px;
+        padding: 3px;
+    }
+    .wc-filter-btn {
+        padding: 6px 14px;
+        border: none;
+        background: transparent;
+        border-radius: 6px;
+        font-size: 0.82rem;
+        cursor: pointer;
+        color: var(--sf-text-3);
+        transition: all 0.2s;
+        font-family: inherit;
+    }
+    .wc-filter-btn.active {
+        background: var(--sf-accent, #6366f1);
+        color: #fff;
+    }
+    .wc-filter-btn:hover:not(.active) {
+        background: rgba(99, 102, 241, 0.1);
+        color: var(--sf-text-1);
+    }
+
+    /* Cloud canvas */
+    .wc-canvas-wrap {
+        background: var(--sf-card);
+        border: 1px solid var(--sf-border);
+        border-radius: 16px;
+        padding: 20px;
+        margin: 16px 0;
+        min-height: 400px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    #wordcloudCanvas {
+        width: 100%;
+        height: 420px;
+        cursor: pointer;
+    }
+    .wc-empty {
+        text-align: center;
+        color: var(--sf-text-4);
+        padding: 60px 20px;
+        font-size: 0.9rem;
+    }
+    .wc-stats {
+        text-align: center;
+        color: var(--sf-text-4);
+        font-size: 0.78rem;
+        margin-top: 8px;
+    }
+
+    /* Questions list on keyword click */
+    .wc-questions-panel {
+        background: var(--sf-card);
+        border: 1px solid var(--sf-border);
+        border-radius: 12px;
+        padding: 16px;
+        margin-top: 16px;
+        display: none;
+    }
+    .wc-questions-title {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--sf-text-1);
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .wc-questions-close {
+        background: none;
+        border: none;
+        color: var(--sf-text-3);
+        cursor: pointer;
+        font-size: 1.1rem;
+        padding: 2px 6px;
+    }
+    .wc-q-item {
+        padding: 10px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background 0.2s;
+        font-size: 0.88rem;
+        color: var(--sf-text-2);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .wc-q-item:hover {
+        background: rgba(99, 102, 241, 0.08);
+        color: var(--sf-text-1);
+    }
+    .wc-q-text { flex: 1; }
+    .wc-q-likes {
+        font-size: 0.75rem;
+        color: var(--sf-text-4);
+        flex-shrink: 0;
+    }
+    .wc-q-domain {
+        font-size: 0.7rem;
+        padding: 2px 6px;
+        border-radius: 4px;
+        background: rgba(99, 102, 241, 0.1);
+        color: var(--sf-accent, #6366f1);
+        flex-shrink: 0;
+    }
+
+    @media (max-width: 768px) {
+        .wc-header h1 { font-size: 1.4rem; }
+        #wordcloudCanvas { height: 300px; }
+        .wc-filters { gap: 6px; }
+        .wc-filter-btn { padding: 5px 10px; font-size: 0.78rem; }
+    }
+{% endblock %}
+
+{% block content %}
+<div class="wc-container">
+    <div class="wc-header">
+        <h1>☁️ 질문 클라우드</h1>
+        <p>공유된 질문에서 추출한 핵심 키워드를 한눈에 확인하세요</p>
+    </div>
+
+    <!-- Filters -->
+    <div class="wc-filters">
+        <div class="wc-filter-group" id="domainFilters">
+            <button class="wc-filter-btn active" data-ns="" onclick="setDomain(this)">전체</button>
+            <button class="wc-filter-btn" data-ns="semiconductor-v2" onclick="setDomain(this)">🔬 반도체</button>
+            <button class="wc-filter-btn" data-ns="laborlaw" onclick="setDomain(this)">⚖️ 노동법</button>
+            <button class="wc-filter-btn" data-ns="field-training" onclick="setDomain(this)">🏭 현장실습</button>
+            <button class="wc-filter-btn" data-ns="kosha" onclick="setDomain(this)">🛡️ 안전보건</button>
+            <button class="wc-filter-btn" data-ns="msds" onclick="setDomain(this)">🧪 MSDS</button>
+        </div>
+        <div class="wc-filter-group" id="periodFilters">
+            <button class="wc-filter-btn" data-period="7d" onclick="setPeriod(this)">7일</button>
+            <button class="wc-filter-btn" data-period="30d" onclick="setPeriod(this)">30일</button>
+            <button class="wc-filter-btn active" data-period="all" onclick="setPeriod(this)">전체</button>
+        </div>
+    </div>
+
+    <!-- Word Cloud -->
+    <div class="wc-canvas-wrap" id="canvasWrap">
+        <canvas id="wordcloudCanvas"></canvas>
+    </div>
+    <div class="wc-stats" id="wcStats"></div>
+
+    <!-- Questions panel (shown on keyword click) -->
+    <div class="wc-questions-panel" id="questionsPanel">
+        <div class="wc-questions-title">
+            <span id="questionsPanelTitle"></span>
+            <button class="wc-questions-close" onclick="closeQuestionsPanel()">✕</button>
+        </div>
+        <div id="questionsList"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block body_scripts %}
+<script>
+    // Domain namespace map for navigation
+    const DOMAIN_PAGES = {
+        'semiconductor-v2': '/semiconductor',
+        'laborlaw': '/laborlaw',
+        'field-training': '/field-training',
+        'kosha': '/safeguide',
+        'msds': '/msds',
+    };
+    const DOMAIN_LABELS = {
+        'semiconductor-v2': '반도체',
+        'laborlaw': '노동법',
+        'field-training': '현장실습',
+        'kosha': '안전보건',
+        'msds': 'MSDS',
+    };
+
+    let _currentNs = '';
+    let _currentPeriod = 'all';
+    let _allKeywords = [];
+
+    function setDomain(btn) {
+        document.querySelectorAll('#domainFilters .wc-filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        _currentNs = btn.dataset.ns;
+        loadWordCloud();
+    }
+
+    function setPeriod(btn) {
+        document.querySelectorAll('#periodFilters .wc-filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        _currentPeriod = btn.dataset.period;
+        loadWordCloud();
+    }
+
+    async function loadWordCloud() {
+        const wrap = document.getElementById('canvasWrap');
+        const canvas = document.getElementById('wordcloudCanvas');
+        const stats = document.getElementById('wcStats');
+        closeQuestionsPanel();
+
+        try {
+            const params = new URLSearchParams({ limit: '100', period: _currentPeriod });
+            if (_currentNs) params.set('namespace', _currentNs);
+
+            const res = await fetch(`/api/v1/questions/wordcloud?${params}`);
+            const json = await res.json();
+
+            if (!json.success || !json.data.keywords.length) {
+                wrap.innerHTML = '<div class="wc-empty">공유된 질문이 부족하여 클라우드를 표시할 수 없습니다.<br>AI 답변 후 질문을 공유해보세요!</div>';
+                stats.textContent = '';
+                return;
+            }
+
+            // Restore canvas if replaced by empty message
+            if (!document.getElementById('wordcloudCanvas')) {
+                wrap.innerHTML = '<canvas id="wordcloudCanvas" style="width:100%;height:420px;cursor:pointer;"></canvas>';
+            }
+            const c = document.getElementById('wordcloudCanvas');
+            c.width = c.offsetWidth * (window.devicePixelRatio || 1);
+            c.height = c.offsetHeight * (window.devicePixelRatio || 1);
+
+            _allKeywords = json.data.keywords;
+            const maxWeight = Math.max(..._allKeywords.map(k => k.weight));
+
+            const colors = ['#6366f1', '#ef4444', '#f59e0b', '#10b981', '#ec4899', '#14b8a6', '#8b5cf6', '#0891b2'];
+
+            const list = _allKeywords.map(k => {
+                const size = Math.max(14, Math.round((k.weight / maxWeight) * 64));
+                return [k.text, size];
+            });
+
+            WordCloud(c, {
+                list: list,
+                gridSize: 10,
+                weightFactor: 1,
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+                color: () => colors[Math.floor(Math.random() * colors.length)],
+                backgroundColor: 'transparent',
+                rotateRatio: 0.25,
+                minRotation: -Math.PI / 8,
+                maxRotation: Math.PI / 8,
+                click: item => { if (item) showQuestionsForKeyword(item[0]); },
+                hover: (item) => { c.style.cursor = item ? 'pointer' : 'default'; },
+            });
+
+            stats.textContent = `총 ${json.data.total_questions}개 질문에서 ${_allKeywords.length}개 키워드 추출`;
+        } catch (e) {
+            console.warn('Word cloud load failed:', e);
+            wrap.innerHTML = '<div class="wc-empty">워드 클라우드를 불러올 수 없습니다.</div>';
+            stats.textContent = '';
+        }
+    }
+
+    async function showQuestionsForKeyword(keyword) {
+        const panel = document.getElementById('questionsPanel');
+        const title = document.getElementById('questionsPanelTitle');
+        const list = document.getElementById('questionsList');
+
+        title.textContent = `"${keyword}" 관련 질문`;
+        panel.style.display = '';
+
+        try {
+            const params = new URLSearchParams({ limit: '20' });
+            if (_currentNs) params.set('namespace', _currentNs);
+
+            const res = await fetch(`/api/v1/questions/popular?${params}`);
+            const json = await res.json();
+
+            if (!json.success) { list.innerHTML = '<div class="wc-empty">질문을 불러올 수 없습니다.</div>'; return; }
+
+            const filtered = json.data.questions.filter(q =>
+                q.query.toLowerCase().includes(keyword.toLowerCase())
+            );
+
+            if (!filtered.length) {
+                list.innerHTML = `<div class="wc-empty">해당 키워드가 포함된 질문이 없습니다.<br>키워드를 클릭하면 관련 도메인 페이지에서 검색할 수 있습니다.</div>
+                    <div style="text-align:center;margin-top:12px;">
+                        <button onclick="searchInDomain('${keyword.replace(/'/g, "\\'")}')" style="padding:8px 16px;border:1px solid var(--sf-border);border-radius:8px;background:var(--sf-card);color:var(--sf-text-1);cursor:pointer;font-family:inherit;">🔍 "${keyword}" 검색하기</button>
+                    </div>`;
+                return;
+            }
+
+            list.innerHTML = filtered.map(q => `
+                <div class="wc-q-item" onclick="navigateToQuestion('${encodeURIComponent(q.query)}', '${q.namespace || ''}')">
+                    <span class="wc-q-text">${escapeHtml(q.query)}</span>
+                    ${q.namespace ? `<span class="wc-q-domain">${DOMAIN_LABELS[q.namespace] || q.namespace}</span>` : ''}
+                    <span class="wc-q-likes">♥ ${q.like_count}</span>
+                </div>
+            `).join('');
+        } catch (e) {
+            list.innerHTML = '<div class="wc-empty">질문을 불러올 수 없습니다.</div>';
+        }
+
+        panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function navigateToQuestion(encodedQuery, namespace) {
+        const page = DOMAIN_PAGES[namespace] || '/semiconductor';
+        window.location.href = `${page}?q=${encodedQuery}`;
+    }
+
+    function searchInDomain(keyword) {
+        const page = _currentNs ? (DOMAIN_PAGES[_currentNs] || '/semiconductor') : '/semiconductor';
+        window.location.href = `${page}?q=${encodeURIComponent(keyword)}`;
+    }
+
+    function closeQuestionsPanel() {
+        document.getElementById('questionsPanel').style.display = 'none';
+    }
+
+    function escapeHtml(text) {
+        const d = document.createElement('div');
+        d.textContent = text;
+        return d.innerHTML;
+    }
+
+    // Initial load
+    document.addEventListener('DOMContentLoaded', loadWordCloud);
+</script>
+{% endblock %}

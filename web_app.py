@@ -387,6 +387,12 @@ def search_all():
     return render_template('domain.html', domain='all', config=config)
 
 
+@app.route('/wordcloud')
+def wordcloud():
+    """Shared questions word cloud page."""
+    return render_template('wordcloud.html')
+
+
 @app.route('/community')
 def community():
     """Community bulletin board page."""
