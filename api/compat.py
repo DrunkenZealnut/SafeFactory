@@ -18,7 +18,6 @@ def register_compat_routes(app, csrf=None):
     from api.v1.search import api_search, api_ask, api_ask_stream, api_pdf_resolve
     from api.v1.msds import msds_search, msds_detail, msds_identify
     from api.v1.health import api_health, api_domains
-    from api.v1.calculator import api_calculate_wage, api_calculate_insurance
     from api.v1.auth import api_auth_me, api_auth_logout
 
     # Collect POST view functions for CSRF exemption
@@ -49,10 +48,6 @@ def register_compat_routes(app, csrf=None):
     # Health & configuration
     _add('/api/health', 'compat_health', api_health, methods=['GET'])
     _add('/api/domains', 'compat_domains', api_domains, methods=['GET'])
-
-    # Calculator
-    _add('/api/calculate/wage', 'compat_calc_wage', api_calculate_wage, methods=['POST'])
-    _add('/api/calculate/insurance', 'compat_calc_insurance', api_calculate_insurance, methods=['POST'])
 
     # Auth
     _add('/api/auth/me', 'compat_auth_me', api_auth_me, methods=['GET'])

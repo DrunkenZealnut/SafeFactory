@@ -162,8 +162,8 @@ def _run_legal_analysis_pass(query, classification, law_refs_text, context):
     from services.singletons import get_gemini_client
     from google.genai import types as genai_types
 
-    q_type = classification.get('type', 'legal')
-    calc_type = classification.get('calc_type', '')
+    q_type = (classification or {}).get('type', 'legal')
+    calc_type = (classification or {}).get('calc_type', '')
 
     # Build a concise context snippet (first 1500 chars to stay within budget)
     context_snippet = ''
@@ -613,25 +613,12 @@ def run_rag_pipeline(data):
         'latencies': _timings,
     }
 
-    # Laborlaw: classify question, run calculator, search law API, and run analysis pass
+    # Laborlaw: search law API and run analysis pass
     if namespace == 'laborlaw':
-        classification = None
-        try:
-            from services.labor_classifier import classify_labor_question
-            from services.labor_calculator import run_labor_calculation
-            classification = classify_labor_question(query)
-            result['labor_classification'] = classification
-            if classification['type'] in ('calculation', 'hybrid'):
-                calc_result = run_labor_calculation(classification)
-                if calc_result:
-                    result['labor_calc_result'] = calc_result
-        except Exception as e:
-            logging.warning("[LaborLaw] Classification/calculation failed: %s", e)
-
         # Search for relevant law references via public API
         try:
             from services.law_api import search_labor_laws, format_law_references, has_multi_source
-            law_refs = search_labor_laws(query, classification)
+            law_refs = search_labor_laws(query)
             if law_refs:
                 result['law_references'] = law_refs
                 source_count = len(result.get('sources', []))
@@ -641,12 +628,11 @@ def run_rag_pipeline(data):
         except Exception as e:
             logging.warning("[LaborLaw] Law API search failed: %s", e)
 
-        # Multi-step reasoning: run analysis pass for legal/hybrid questions
-        if (classification and classification.get('type') in ('legal', 'hybrid')
-                and len(query) > 20):
+        # Multi-step reasoning: run analysis pass for substantive questions
+        if len(query) > 20:
             try:
                 analysis = _run_legal_analysis_pass(
-                    query, classification,
+                    query, None,
                     result.get('law_references_formatted', ''),
                     result.get('context', ''))
                 if analysis:
@@ -664,9 +650,9 @@ def build_llm_prompts(query, sources, context, namespace, calc_result=None,
     """Build separate system and user prompts for LLM call.
 
     Args:
-        calc_result: Optional dict from run_labor_calculation() with 'formatted' key.
+        calc_result: Unused (kept for API compatibility), always None.
         law_references: Optional formatted string of relevant law references from the Law API.
-        labor_classification: Optional dict from classify_labor_question() with 'type' and 'calc_type'.
+        labor_classification: Unused (kept for API compatibility), always None.
         legal_analysis: Optional string from _run_legal_analysis_pass() with structured analysis.
 
     Returns:
@@ -688,31 +674,6 @@ def build_llm_prompts(query, sources, context, namespace, calc_result=None,
 {context}
 
 **인용 규칙**: 위 참고 문서의 번호 [1], [2], ... 을 답변 본문에서 해당 정보 뒤에 인용하세요."""
-
-    # Inject precise calculation results for laborlaw
-    if calc_result and calc_result.get('formatted'):
-        user_prompt += f"""
-
-## 시스템 계산 결과 (정확한 수치)
-{calc_result['formatted']}
-
-위 계산 결과는 {datetime.now().year}년 기준 공식 요율로 정밀 계산된 수치입니다.
-이 수치를 답변에 그대로 사용하고, 직접 재계산하지 마세요."""
-
-    # Inject compliance warnings for detected violations
-    if calc_result:
-        result_data = calc_result.get('result') or {}
-        violation = str(result_data.get('위반_여부', ''))
-        if '위반' in violation:
-            user_prompt += """
-
-## ⚠️ 법 위반 감지
-시스템 분석 결과 법 위반 가능성이 감지되었습니다.
-답변에 반드시 다음을 포함하세요:
-1. 위반 사실과 법적 근거를 명확히 설명
-2. 사업주의 벌칙/제재 내용 (형사처벌, 과태료 등)
-3. 근로자가 취할 수 있는 구제 방법 (고용노동부 신고 1350, 노동위원회 등)
-4. 관련 소멸시효 및 기한 안내"""
 
     # Inject relevant law references from Law API
     if law_references:
@@ -747,12 +708,9 @@ def build_llm_prompts(query, sources, context, namespace, calc_result=None,
 
 위 분석을 참고하여 종합적이고 실용적인 답변을 작성하세요."""
 
-    # Inject classification-aware analysis mode instructions for laborlaw
-    if namespace == 'laborlaw' and labor_classification:
-        q_type = labor_classification.get('type', 'legal')
-
-        if q_type == 'legal':
-            user_prompt += """
+    # Inject legal analysis mode instructions for laborlaw
+    if namespace == 'laborlaw':
+        user_prompt += """
 
 ## 분석 모드: 법률 해석
 이 질문은 법률 해석이 필요한 질문입니다. 다음을 수행하세요:
@@ -761,26 +719,6 @@ def build_llm_prompts(query, sources, context, namespace, calc_result=None,
 3. 실제로 어떻게 행동해야 하는지 구체적 조언을 포함하세요 (신고처, 기한, 서류 등)
 4. 위반 사항이 감지되면 적극적으로 경고하세요
 5. 관련될 수 있는 다른 법률도 언급하세요"""
-
-        elif q_type == 'calculation':
-            user_prompt += """
-
-## 분석 모드: 계산 분석
-시스템 계산 결과를 기반으로 다음도 분석하세요:
-1. 계산 결과의 의미를 쉽게 설명하세요
-2. 최저임금 위반, 초과근로 등 법적 이슈가 있는지 체크하세요
-3. 절세나 최적화할 수 있는 팁이 있으면 제안하세요
-4. 비과세 한도, 보험료 상한 등 사용자에게 유리한 정보를 안내하세요"""
-
-        elif q_type == 'hybrid':
-            user_prompt += """
-
-## 분석 모드: 복합 분석
-계산과 법률 해석이 모두 필요한 질문입니다:
-1. 시스템 계산 결과를 먼저 제시하세요
-2. 해당 계산 결과의 법적 적합성을 분석하세요
-3. 위반 사항이 있으면 정확한 법적 근거와 함께 경고하세요
-4. 구체적인 조치 방법을 안내하세요"""
 
     user_prompt += """
 

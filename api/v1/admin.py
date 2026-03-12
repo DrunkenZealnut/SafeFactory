@@ -1813,21 +1813,6 @@ def admin_settings_update():
     )
 
 
-@v1_bp.route('/admin/calculator-rates', methods=['GET'])
-@admin_required
-def admin_calculator_rates():
-    """Return current calculator rates with freshness info."""
-    from calculator.rates import get_all_rates, get_rates_freshness
-
-    rates = get_all_rates()
-    freshness = get_rates_freshness()
-
-    return success_response(data={
-        'rates': rates,
-        'freshness': freshness,
-    })
-
-
 @v1_bp.route('/admin/settings/models', methods=['GET'])
 @admin_required
 def admin_settings_available_models():
