@@ -291,20 +291,6 @@ def ask_ai(system_prompt: str, user_prompt: str) -> tuple[str, str]:
     return "모든 AI 제공자 rate limit", 'none'
 
 
-def run_calculator(query: str) -> str | None:
-    """Run existing calculator for comparison."""
-    try:
-        from services.labor_classifier import classify_labor_question
-        from services.labor_calculator import run_labor_calculation
-        classification = classify_labor_question(query)
-        if classification['type'] in ('calculation', 'hybrid'):
-            result = run_labor_calculation(classification)
-            if result:
-                return result.get('formatted', '')
-    except Exception:
-        pass
-    return None
-
 
 # ---------------------------------------------------------------------------
 TEST_QUESTIONS = [
@@ -353,11 +339,6 @@ def main():
 
         print(f"\n--- AI 답변 (법제처 법령 본문 기반, {provider}) ---")
         print(answer)
-
-        # Step 4: 기존 계산기 비교
-        print(f"\n--- 기존 계산기 결과 (비교용) ---")
-        calc = run_calculator(question)
-        print(calc if calc else "(계산기 해당 없음)")
 
         print(f"\n총 소요시간: 법령조회 {api_time:.2f}초 + AI {ai_time:.2f}초 = {api_time+ai_time:.2f}초")
 

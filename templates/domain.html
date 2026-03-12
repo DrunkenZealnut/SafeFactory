@@ -1042,11 +1042,29 @@
         border: 1px solid rgba(var(--primary-color-rgb), 0.1);
         border-radius: 12px;
     }
+    .popular-questions-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 10px;
+    }
     .popular-questions-title {
         font-size: 0.85rem;
         font-weight: 600;
         color: var(--sf-text-2);
-        margin-bottom: 10px;
+        margin-bottom: 0;
+    }
+    .pq-cloud-link {
+        font-size: 0.78rem;
+        color: var(--sf-accent, #6366f1);
+        text-decoration: none;
+        padding: 3px 10px;
+        border-radius: 6px;
+        background: rgba(99, 102, 241, 0.08);
+        transition: background 0.2s;
+    }
+    .pq-cloud-link:hover {
+        background: rgba(99, 102, 241, 0.16);
     }
     .pq-item {
         display: flex;
@@ -1204,7 +1222,10 @@
 
                 <!-- Popular Questions -->
                 <div class="popular-questions" id="popularQuestions" style="display:none;">
-                    <div class="popular-questions-title">🔥 인기 질문</div>
+                    <div class="popular-questions-header">
+                        <div class="popular-questions-title">🔥 인기 질문</div>
+                        <a href="/wordcloud" class="pq-cloud-link">☁️ 클라우드 보기</a>
+                    </div>
                     <div id="popularQuestionsList"></div>
                 </div>
 

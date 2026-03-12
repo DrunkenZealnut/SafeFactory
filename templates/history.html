@@ -231,11 +231,11 @@
         </select>
         <select id="filterNamespace" onchange="loadHistory()">
             <option value="">전체 도메인</option>
-            <option value="semiconductor">반도체</option>
+            <option value="semiconductor-v2">반도체</option>
             <option value="laborlaw">노동법</option>
-            <option value="field-training">현장훈련</option>
-            <option value="safeguide">안전가이드</option>
-            <option value="msds">화학물질</option>
+            <option value="field-training">현장실습</option>
+            <option value="kosha">안전보건</option>
+            <option value="msds">MSDS</option>
         </select>
     </div>
 
@@ -249,18 +249,18 @@
 <script>
 const NAMESPACE_LABELS = {
     '': '전체',
-    'semiconductor': '반도체',
+    'semiconductor-v2': '반도체',
     'laborlaw': '노동법',
-    'field-training': '현장훈련',
-    'safeguide': '안전가이드',
-    'msds': '화학물질'
+    'field-training': '현장실습',
+    'kosha': '안전보건',
+    'msds': 'MSDS'
 };
 const NAMESPACE_PATHS = {
     '': '/search',
-    'semiconductor': '/semiconductor',
+    'semiconductor-v2': '/semiconductor',
     'laborlaw': '/laborlaw',
     'field-training': '/field-training',
-    'safeguide': '/safeguide',
+    'kosha': '/safeguide',
     'msds': '/msds'
 };
 
