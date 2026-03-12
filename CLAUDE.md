@@ -93,25 +93,45 @@ All API routes registered as Flask blueprints under `/api/v1/` in `api/v1/__init
 - `search.py` — `/search`, `/ask`, `/ask/stream`, PDF resolution
 - `admin.py` — settings CRUD, index stats, namespace sync/delete
 - `community.py` — posts, comments, likes (CRUD)
+- `questions.py` — shared questions, likes, word cloud keywords
+- `bookmarks.py` — user document bookmarks
 - `msds.py` — KOSHA chemical safety search
 - `calculator.py` — wage and insurance calculations
+- `index_ops.py` — Pinecone index operations
 - `health.py` — system health check
 - `news.py` — news aggregation
 - `auth.py` — OAuth callbacks
 
-API responses use `api/response.py` helpers for consistent JSON format.
+API responses use `api/response.py` helpers (`success_response`, `error_response`) for consistent JSON format. Rate limiting via `api.rate_limit()` decorator (no-op when flask-limiter unavailable).
 
 ### Database
 
 SQLite (`instance/app.db`) via Flask-SQLAlchemy. `models.py` defines:
 - Auth: `User`, `SocialAccount` (OAuth with encrypted tokens)
 - Community: `Post`, `Comment`, `PostLike`, `CommentLike`, `Category`, `PostAttachment`
-- Config: `SystemSettings`, `ProviderSettings`
+- Social Q&A: `SharedQuestion`, `QuestionLike` (shared AI questions with likes)
+- User Data: `SearchHistory`, `UserBookmark`, `Document`
+- Config: `SystemSetting`, `AdminLog`
+- Content: `NewsArticle`
 - Metadata: `safe_factory` table for document processing tracking (file hash, chunk count, vector IDs)
 
 ### Authentication
 
 OAuth-only (Google + Kakao) via authlib. Access/refresh tokens encrypted with Fernet derived from `SECRET_KEY`. CSRF protection via Flask-WTF on form routes; API routes (`v1_bp`) are CSRF-exempt.
+
+### Services Layer
+
+Key service modules beyond `singletons.py` and `rag_pipeline.py`:
+- `keyword_extractor.py` — regex-based Korean/English keyword extraction for word clouds
+- `law_api.py` / `law_drf_client.py` — external legal information API integration
+- `legal_source_router.py` — routes legal queries to appropriate data sources
+- `labor_calculator.py` / `labor_classifier.py` — wage/insurance calculation logic
+- `query_router.py` — routes queries to appropriate processing paths
+- `settings.py` — admin settings management with singleton cache invalidation
+
+### Frontend
+
+Jinja2 templates in `templates/` with inline `<script>` blocks. `templates/domain.html` is the main search/Q&A interface shared across all 5 domains (configured via `domain_config.py`). CDN libraries: marked.js (markdown), DOMPurify (XSS), Chart.js, wordcloud2.js.
 
 ## Key Implementation Details
 
@@ -121,6 +141,7 @@ OAuth-only (Google + Kakao) via authlib. Access/refresh tokens encrypted with Fe
 - **Serverless Pinecone**: `ServerlessSpec` with AWS us-east-1
 - **Embedding dimensions**: 1536 (text-embedding-3-small) or 3072 (text-embedding-3-large)
 - **Reranking**: Optional — either Pinecone Inference API or local cross-encoder (`sentence-transformers`)
+- **Streaming**: `/ask/stream` uses Server-Sent Events (SSE) for real-time LLM responses
 
 ## Extension Points
 
