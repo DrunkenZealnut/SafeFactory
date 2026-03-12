@@ -487,6 +487,8 @@ def api_ask_stream():
                     return ": heartbeat\n\n"
                 return None
 
+            answer_chunks = []
+
             if provider == 'gemini':
                 # Stream LLM response via Gemini
                 gemini = get_gemini_client()
@@ -496,6 +498,7 @@ def api_ask_stream():
                 )
                 for chunk in stream:
                     if chunk.text:
+                        answer_chunks.append(chunk.text)
                         token_event = json.dumps({'type': 'token', 'data': chunk.text}, ensure_ascii=False)
                         yield f"data: {token_event}\n\n"
                         last_heartbeat = time.monotonic()
@@ -516,6 +519,7 @@ def api_ask_stream():
                     max_tokens=answer_max_tokens,
                 ) as stream:
                     for text in stream.text_stream:
+                        answer_chunks.append(text)
                         token_event = json.dumps({'type': 'token', 'data': text}, ensure_ascii=False)
                         yield f"data: {token_event}\n\n"
                         last_heartbeat = time.monotonic()
@@ -532,6 +536,7 @@ def api_ask_stream():
                 for chunk in stream:
                     if chunk.choices and chunk.choices[0].delta.content:
                         token = chunk.choices[0].delta.content
+                        answer_chunks.append(token)
                         token_event = json.dumps({'type': 'token', 'data': token}, ensure_ascii=False)
                         yield f"data: {token_event}\n\n"
                         last_heartbeat = time.monotonic()
@@ -542,12 +547,14 @@ def api_ask_stream():
 
             # Save search history for logged-in users
             if current_user.is_authenticated:
+                full_answer = ''.join(answer_chunks)
                 _save_search_history(
                     user_id=current_user.id,
                     query=query,
                     query_type='ask',
                     namespace=namespace,
                     result_count=len(sources),
+                    answer_preview=full_answer[:200] if full_answer else None,
                 )
 
             # Send done event
