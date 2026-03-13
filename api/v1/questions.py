@@ -34,6 +34,9 @@ def api_question_share():
         answer_preview = (data.get('answer_preview') or '').strip()
         if answer_preview:
             answer_preview = answer_preview[:300]
+        answer_full = (data.get('answer_full') or '').strip() or None
+        if answer_full:
+            answer_full = answer_full[:10000]
 
         # Daily share limit
         today_start = datetime.now(timezone.utc).replace(
@@ -65,6 +68,7 @@ def api_question_share():
             query_hash=query_hash,
             namespace=namespace,
             answer_preview=answer_preview,
+            answer_full=answer_full,
         )
         db.session.add(sq)
         db.session.commit()
@@ -122,19 +126,35 @@ def api_question_wordcloud():
 @v1_bp.route('/questions/popular', methods=['GET'])
 @rate_limit("60 per minute")
 def api_question_popular():
-    """Get popular shared questions for a namespace, sorted by like_count."""
+    """Get popular shared questions, with optional pagination and sorting."""
     try:
         namespace = request.args.get('namespace', '').strip()
-        limit = min(max(1, request.args.get('limit', 10, type=int)), 20)
+        sort = request.args.get('sort', 'likes').strip()
+        include_answer = request.args.get('include_answer', '0') == '1'
+        page = request.args.get('page', None, type=int)
 
         q = db.session.query(SharedQuestion).filter_by(is_hidden=False)
         if namespace:
             q = q.filter_by(namespace=namespace)
 
-        questions = q.order_by(
-            SharedQuestion.like_count.desc(),
-            SharedQuestion.created_at.desc(),
-        ).limit(limit).all()
+        if sort == 'recent':
+            q = q.order_by(SharedQuestion.created_at.desc())
+        else:
+            q = q.order_by(
+                SharedQuestion.like_count.desc(),
+                SharedQuestion.created_at.desc(),
+            )
+
+        # Paginated mode (when page param is provided)
+        if page is not None:
+            page = max(1, page)
+            per_page = min(max(1, request.args.get('per_page', 20, type=int)), 50)
+            pagination = q.paginate(page=page, per_page=per_page, error_out=False)
+            questions = pagination.items
+        else:
+            # Legacy mode (limit only)
+            limit = min(max(1, request.args.get('limit', 10, type=int)), 20)
+            questions = q.limit(limit).all()
 
         # Check which ones the current user has liked
         liked_ids = set()
@@ -147,12 +167,22 @@ def api_question_popular():
                 ).all()
                 liked_ids = {lk.question_id for lk in liked}
 
-        return success_response(data={
+        data = {
             'questions': [
-                sq.to_dict(liked_by_me=(sq.id in liked_ids))
+                sq.to_dict(
+                    liked_by_me=(sq.id in liked_ids),
+                    include_answer=include_answer,
+                )
                 for sq in questions
             ],
-        })
+        }
+        if page is not None:
+            data['total'] = pagination.total
+            data['page'] = pagination.page
+            data['per_page'] = pagination.per_page
+            data['pages'] = pagination.pages
+
+        return success_response(data=data)
     except Exception:
         logging.exception('[Question] Popular list failed')
         return error_response('인기 질문 조회 중 오류가 발생했습니다.', 500)
@@ -219,8 +249,9 @@ def api_question_my():
 
         pagination = q.paginate(page=page, per_page=per_page, error_out=False)
 
+        include_answer = request.args.get('include_answer', '0') == '1'
         return success_response(data={
-            'items': [sq.to_dict(liked_by_me=False) for sq in pagination.items],
+            'items': [sq.to_dict(liked_by_me=False, include_answer=include_answer) for sq in pagination.items],
             'total': pagination.total,
             'page': pagination.page,
             'per_page': pagination.per_page,

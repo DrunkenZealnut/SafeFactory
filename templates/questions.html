@@ -1,0 +1,347 @@
+{% extends "base.html" %}
+{% block title %}공유 질문 - SafeFactory{% endblock %}
+{% block nav_questions %}active{% endblock %}
+{% block mobile_nav_questions %}active{% endblock %}
+
+{% block head_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/marked@17.0.2/lib/marked.umd.js"
+        integrity="sha384-HQ7B/VBz5B0fo8GBiEFD/BZsAVXM9iDzC+hpeY1M1cpYezmRrwJSQh5MkTEI8G/H"
+        crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"
+        integrity="sha384-gik/N9FKMJzCNEdOFBLitEJgKYPDhLiTwpJCOl0HiOU4Sp/7csqMJfeoPjYq3cPs"
+        crossorigin="anonymous"></script>
+<script defer src="/static/js/common.js"></script>
+{% endblock %}
+
+{% block head_extra %}
+    body { background: var(--sf-bg); }
+
+    .sq-container { max-width: 900px; margin: 0 auto; padding: 20px; }
+    .sq-header { text-align: center; padding: 30px 0 10px; }
+    .sq-header h1 { font-size: 1.8rem; color: var(--sf-text-1); margin-bottom: 6px; }
+    .sq-header p { color: var(--sf-text-3); font-size: 0.9rem; }
+    .sq-header-links { margin-top: 8px; }
+    .sq-header-links a { color: var(--sf-accent, #6366f1); text-decoration: none; font-size: 0.85rem; }
+    .sq-header-links a:hover { text-decoration: underline; }
+
+    /* Tabs */
+    .sq-tabs { display: flex; gap: 2px; background: var(--sf-card); border: 1px solid var(--sf-border); border-radius: 8px; padding: 3px; margin: 16px 0; max-width: 260px; margin-left: auto; margin-right: auto; }
+    .sq-tab { flex: 1; padding: 7px 14px; border: none; background: transparent; border-radius: 6px; font-size: 0.85rem; cursor: pointer; color: var(--sf-text-3); transition: all 0.2s; font-family: inherit; text-align: center; }
+    .sq-tab.active { background: var(--sf-accent, #6366f1); color: #fff; }
+
+    /* Filters */
+    .sq-filters { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin: 16px 0; }
+    .sq-filter-group { display: flex; gap: 2px; background: var(--sf-card); border: 1px solid var(--sf-border); border-radius: 8px; padding: 3px; }
+    .sq-filter-btn { padding: 5px 12px; border: none; background: transparent; border-radius: 6px; font-size: 0.8rem; cursor: pointer; color: var(--sf-text-3); transition: all 0.2s; font-family: inherit; }
+    .sq-filter-btn.active { background: var(--sf-accent, #6366f1); color: #fff; }
+    .sq-filter-btn:hover:not(.active) { background: rgba(99, 102, 241, 0.1); color: var(--sf-text-1); }
+    .sq-sort select { padding: 6px 10px; border: 1px solid var(--sf-border); border-radius: 8px; background: var(--sf-card); color: var(--sf-text-2); font-size: 0.82rem; font-family: inherit; }
+
+    /* Question card */
+    .sq-card { background: var(--sf-card); border: 1px solid var(--sf-border); border-radius: 12px; margin-bottom: 10px; overflow: hidden; transition: border-color 0.2s; }
+    .sq-card:hover { border-color: rgba(99, 102, 241, 0.3); }
+    .sq-card-header { padding: 14px 16px; cursor: pointer; display: flex; align-items: flex-start; gap: 10px; }
+    .sq-card-toggle { color: var(--sf-text-4); font-size: 0.75rem; flex-shrink: 0; margin-top: 3px; transition: transform 0.2s; }
+    .sq-card.open .sq-card-toggle { transform: rotate(90deg); }
+    .sq-card-body { flex: 1; min-width: 0; }
+    .sq-card-query { font-size: 0.92rem; color: var(--sf-text-1); line-height: 1.5; word-break: break-word; }
+    .sq-card-meta { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 0.78rem; color: var(--sf-text-4); flex-wrap: wrap; }
+    .sq-domain-badge { padding: 2px 7px; border-radius: 4px; background: rgba(99, 102, 241, 0.1); color: var(--sf-accent, #6366f1); font-size: 0.72rem; }
+    .sq-card-actions { flex-shrink: 0; display: flex; align-items: center; gap: 8px; }
+    .sq-like-btn { border: none; background: none; cursor: pointer; font-size: 0.85rem; color: var(--sf-text-3); padding: 4px 8px; border-radius: 6px; transition: all 0.15s; font-family: inherit; }
+    .sq-like-btn:hover { background: rgba(239, 68, 68, 0.08); }
+    .sq-like-btn.liked { color: #ef4444; }
+    .sq-delete-btn { border: none; background: none; cursor: pointer; font-size: 0.8rem; color: var(--sf-text-4); padding: 4px 6px; border-radius: 6px; }
+    .sq-delete-btn:hover { color: #ef4444; background: rgba(239, 68, 68, 0.08); }
+
+    /* Answer accordion */
+    .sq-answer { display: none; padding: 0 16px 14px; border-top: 1px solid var(--sf-border); }
+    .sq-card.open .sq-answer { display: block; }
+    .sq-answer-label { font-size: 0.8rem; color: var(--sf-text-3); margin: 12px 0 8px; display: flex; align-items: center; gap: 6px; }
+    .sq-answer-content { font-size: 0.88rem; color: var(--sf-text-2); line-height: 1.7; }
+    .sq-answer-content h1, .sq-answer-content h2, .sq-answer-content h3 { font-size: 1rem; margin: 12px 0 6px; color: var(--sf-text-1); }
+    .sq-answer-content p { margin: 6px 0; }
+    .sq-answer-content ul, .sq-answer-content ol { padding-left: 20px; margin: 6px 0; }
+    .sq-answer-content code { background: rgba(99,102,241,0.08); padding: 1px 5px; border-radius: 4px; font-size: 0.84rem; }
+    .sq-answer-content pre { background: rgba(0,0,0,0.15); padding: 12px; border-radius: 8px; overflow-x: auto; margin: 8px 0; }
+    .sq-answer-content pre code { background: none; padding: 0; }
+    .sq-answer-empty { color: var(--sf-text-4); font-size: 0.85rem; padding: 12px 0; }
+    .sq-answer-empty a { color: var(--sf-accent, #6366f1); text-decoration: none; }
+    .sq-answer-empty a:hover { text-decoration: underline; }
+
+    /* Empty / loading */
+    .sq-empty { text-align: center; color: var(--sf-text-4); padding: 60px 20px; font-size: 0.9rem; }
+    .sq-loading { text-align: center; padding: 40px; color: var(--sf-text-4); }
+
+    /* Pagination */
+    .sq-pagination { display: flex; justify-content: center; gap: 4px; margin: 20px 0; }
+    .sq-page-btn { min-width: 36px; height: 36px; border: 1px solid var(--sf-border); border-radius: 8px; background: var(--sf-card); color: var(--sf-text-3); cursor: pointer; font-size: 0.82rem; font-family: inherit; display: flex; align-items: center; justify-content: center; }
+    .sq-page-btn.active { background: var(--sf-accent, #6366f1); color: #fff; border-color: var(--sf-accent, #6366f1); }
+    .sq-page-btn:hover:not(.active) { border-color: var(--sf-accent, #6366f1); color: var(--sf-accent, #6366f1); }
+    .sq-page-btn:disabled { opacity: 0.4; cursor: default; }
+
+    .sq-login-msg { text-align: center; padding: 40px 20px; color: var(--sf-text-3); }
+    .sq-login-msg a { color: var(--sf-accent, #6366f1); }
+
+    @media (max-width: 768px) {
+        .sq-header h1 { font-size: 1.4rem; }
+        .sq-filters { flex-direction: column; align-items: stretch; }
+        .sq-filter-btn { padding: 5px 8px; font-size: 0.76rem; }
+        .sq-card-header { padding: 12px; }
+    }
+{% endblock %}
+
+{% block content %}
+<div class="sq-container">
+    <div class="sq-header">
+        <h1>❓ 공유 질문</h1>
+        <p>다른 사용자들이 공유한 AI 질문과 답변을 탐색하세요</p>
+        <div class="sq-header-links">
+            <a href="/wordcloud">☁️ 워드클라우드 보기</a>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="sq-tabs">
+        <button class="sq-tab active" onclick="switchTab('all')">전체 질문</button>
+        <button class="sq-tab" onclick="switchTab('my')">내 질문</button>
+    </div>
+
+    <!-- Filters (all tab) -->
+    <div class="sq-filters" id="filtersAll">
+        <div class="sq-filter-group" id="domainFilters">
+            <button class="sq-filter-btn active" data-ns="" onclick="setDomain(this)">전체</button>
+            <button class="sq-filter-btn" data-ns="semiconductor-v2" onclick="setDomain(this)">🔬 반도체</button>
+            <button class="sq-filter-btn" data-ns="field-training" onclick="setDomain(this)">🏭 현장실습</button>
+            <button class="sq-filter-btn" data-ns="kosha" onclick="setDomain(this)">🛡️ 안전보건</button>
+            <button class="sq-filter-btn" data-ns="msds" onclick="setDomain(this)">🧪 MSDS</button>
+        </div>
+        <div class="sq-sort">
+            <select id="sortSelect" onchange="loadQuestions()">
+                <option value="likes">인기순</option>
+                <option value="recent">최신순</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Question list -->
+    <div id="questionList">
+        <div class="sq-loading">불러오는 중...</div>
+    </div>
+
+    <!-- Pagination -->
+    <div class="sq-pagination" id="pagination"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const DOMAIN_LABELS = {
+    'semiconductor-v2': '반도체',
+    'field-training': '현장실습',
+    'kosha': '안전보건',
+    'msds': 'MSDS',
+};
+const DOMAIN_PAGES = {
+    'semiconductor-v2': '/semiconductor',
+    'field-training': '/field-training',
+    'kosha': '/safeguide',
+    'msds': '/msds',
+};
+const isLoggedIn = {{ 'true' if current_user.is_authenticated else 'false' }};
+
+let _currentTab = 'all';
+let _currentNs = '';
+let _currentPage = 1;
+
+function switchTab(tab) {
+    _currentTab = tab;
+    _currentPage = 1;
+    document.querySelectorAll('.sq-tab').forEach(t => t.classList.remove('active'));
+    document.querySelector(`.sq-tab[onclick="switchTab('${tab}')"]`).classList.add('active');
+    document.getElementById('filtersAll').style.display = tab === 'all' ? '' : 'none';
+    loadQuestions();
+}
+
+function setDomain(btn) {
+    document.querySelectorAll('#domainFilters .sq-filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    _currentNs = btn.dataset.ns;
+    _currentPage = 1;
+    loadQuestions();
+}
+
+async function loadQuestions() {
+    const list = document.getElementById('questionList');
+    const pag = document.getElementById('pagination');
+    list.innerHTML = '<div class="sq-loading">불러오는 중...</div>';
+    pag.innerHTML = '';
+
+    try {
+        let url, json;
+        if (_currentTab === 'my') {
+            if (!isLoggedIn) {
+                list.innerHTML = '<div class="sq-login-msg">로그인 후 이용 가능합니다. <a href="/login">로그인</a></div>';
+                return;
+            }
+            url = `/api/v1/questions/my?page=${_currentPage}&per_page=20&include_answer=1`;
+            const res = await fetch(url);
+            json = await res.json();
+            if (!json.success) { list.innerHTML = '<div class="sq-empty">불러올 수 없습니다.</div>'; return; }
+            renderCards(json.data.items, true);
+            renderPagination(json.data);
+        } else {
+            const sort = document.getElementById('sortSelect').value;
+            const params = new URLSearchParams({ page: _currentPage, per_page: 20, sort, include_answer: '1' });
+            if (_currentNs) params.set('namespace', _currentNs);
+            url = `/api/v1/questions/popular?${params}`;
+            const res = await fetch(url);
+            json = await res.json();
+            if (!json.success) { list.innerHTML = '<div class="sq-empty">불러올 수 없습니다.</div>'; return; }
+            renderCards(json.data.questions, false);
+            renderPagination(json.data);
+        }
+    } catch (e) {
+        console.warn('Load failed:', e);
+        list.innerHTML = '<div class="sq-empty">질문을 불러올 수 없습니다.</div>';
+    }
+}
+
+function renderCards(items, isMyTab) {
+    const list = document.getElementById('questionList');
+    if (!items.length) {
+        list.innerHTML = `<div class="sq-empty">${isMyTab ? '공유한 질문이 없습니다.' : '공유된 질문이 없습니다.'}</div>`;
+        return;
+    }
+    list.innerHTML = items.map(q => {
+        const domain = DOMAIN_LABELS[q.namespace] || '';
+        const domainEmoji = q.namespace === 'semiconductor-v2' ? '🔬' : q.namespace === 'field-training' ? '🏭' : q.namespace === 'kosha' ? '🛡️' : q.namespace === 'msds' ? '🧪' : '';
+        const likeClass = q.liked_by_me ? 'liked' : '';
+        const likeIcon = q.liked_by_me ? '♥' : '♡';
+        const deleteBtn = isMyTab ? `<button class="sq-delete-btn" onclick="event.stopPropagation(); deleteQuestion(${q.id}, this)" title="삭제">🗑️</button>` : '';
+        const hasAnswer = q.answer_full && q.answer_full.trim();
+        const answerHtml = hasAnswer
+            ? `<div class="sq-answer-label"><span>🤖</span> AI 답변</div><div class="sq-answer-content" id="answer-${q.id}"></div>`
+            : `<div class="sq-answer-empty">답변이 저장되지 않았습니다. <a href="${DOMAIN_PAGES[q.namespace] || '/semiconductor'}?q=${encodeURIComponent(q.query)}">도메인에서 직접 질문하기 →</a></div>`;
+
+        return `
+        <div class="sq-card" id="card-${q.id}" data-answer="${hasAnswer ? escapeAttr(q.answer_full) : ''}">
+            <div class="sq-card-header" onclick="toggleCard(${q.id})">
+                <span class="sq-card-toggle">▶</span>
+                <div class="sq-card-body">
+                    <div class="sq-card-query">${escapeHtml(q.query)}</div>
+                    <div class="sq-card-meta">
+                        ${domain ? `<span class="sq-domain-badge">${domainEmoji} ${domain}</span>` : ''}
+                        ${q.author ? `<span>${escapeHtml(q.author.name)}</span>` : ''}
+                        <span>${timeAgo(q.created_at)}</span>
+                    </div>
+                </div>
+                <div class="sq-card-actions" onclick="event.stopPropagation()">
+                    <button class="sq-like-btn ${likeClass}" onclick="toggleLike(${q.id}, this)" title="좋아요">
+                        <span class="like-icon">${likeIcon}</span> <span class="like-count">${q.like_count}</span>
+                    </button>
+                    ${deleteBtn}
+                </div>
+            </div>
+            <div class="sq-answer">${answerHtml}</div>
+        </div>`;
+    }).join('');
+}
+
+function toggleCard(id) {
+    const card = document.getElementById(`card-${id}`);
+    const wasOpen = card.classList.contains('open');
+    card.classList.toggle('open');
+
+    // Render markdown on first open
+    if (!wasOpen) {
+        const el = document.getElementById(`answer-${id}`);
+        if (el && !el.dataset.rendered) {
+            const raw = card.dataset.answer;
+            if (raw) {
+                el.innerHTML = DOMPurify.sanitize(marked.parse(raw));
+            }
+            el.dataset.rendered = '1';
+        }
+    }
+}
+
+async function toggleLike(id, btn) {
+    if (!isLoggedIn) { showToast('로그인 후 이용 가능합니다.'); return; }
+    try {
+        const res = await fetch(`/api/v1/questions/${id}/like`, { method: 'POST' });
+        const json = await res.json();
+        if (json.success) {
+            btn.querySelector('.like-icon').textContent = json.data.liked ? '♥' : '♡';
+            btn.querySelector('.like-count').textContent = json.data.like_count;
+            btn.classList.toggle('liked', json.data.liked);
+        }
+    } catch (e) { console.warn('Like failed:', e); }
+}
+
+async function deleteQuestion(id, btn) {
+    if (!confirm('이 질문을 삭제하시겠습니까?')) return;
+    try {
+        const res = await fetch(`/api/v1/questions/${id}`, { method: 'DELETE' });
+        const json = await res.json();
+        if (json.success) {
+            document.getElementById(`card-${id}`).remove();
+            showToast('질문이 삭제되었습니다.');
+        }
+    } catch (e) { showToast('삭제에 실패했습니다.', 'error'); }
+}
+
+function renderPagination(data) {
+    const pag = document.getElementById('pagination');
+    if (!data.pages || data.pages <= 1) { pag.innerHTML = ''; return; }
+
+    let html = '';
+    html += `<button class="sq-page-btn" onclick="goPage(${data.page - 1})" ${data.page <= 1 ? 'disabled' : ''}>&lt;</button>`;
+
+    const start = Math.max(1, data.page - 2);
+    const end = Math.min(data.pages, data.page + 2);
+    for (let i = start; i <= end; i++) {
+        html += `<button class="sq-page-btn ${i === data.page ? 'active' : ''}" onclick="goPage(${i})">${i}</button>`;
+    }
+
+    html += `<button class="sq-page-btn" onclick="goPage(${data.page + 1})" ${data.page >= data.pages ? 'disabled' : ''}>&gt;</button>`;
+    pag.innerHTML = html;
+}
+
+function goPage(p) {
+    _currentPage = p;
+    loadQuestions();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function timeAgo(isoStr) {
+    if (!isoStr) return '';
+    const diff = (Date.now() - new Date(isoStr).getTime()) / 1000;
+    if (diff < 60) return '방금 전';
+    if (diff < 3600) return Math.floor(diff / 60) + '분 전';
+    if (diff < 86400) return Math.floor(diff / 3600) + '시간 전';
+    if (diff < 604800) return Math.floor(diff / 86400) + '일 전';
+    return new Date(isoStr).toLocaleDateString('ko-KR');
+}
+
+function escapeHtml(text) {
+    const d = document.createElement('div');
+    d.textContent = text;
+    return d.innerHTML;
+}
+
+function escapeAttr(text) {
+    return (text || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function showToast(msg, type) {
+    if (typeof window.showToast === 'function' && window.showToast !== showToast) {
+        window.showToast(msg, type);
+        return;
+    }
+    alert(msg);
+}
+
+document.addEventListener('DOMContentLoaded', loadQuestions);
+</script>
+{% endblock %}

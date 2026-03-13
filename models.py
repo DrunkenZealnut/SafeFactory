@@ -748,6 +748,7 @@ class SharedQuestion(db.Model):
     query_hash = db.Column(db.String(32), nullable=False)
     namespace = db.Column(db.String(100), nullable=False, default='')
     answer_preview = db.Column(db.String(300), nullable=True)
+    answer_full = db.Column(db.Text, nullable=True)
     like_count = db.Column(db.Integer, nullable=False, default=0)
     is_hidden = db.Column(db.Boolean, nullable=False, default=False)
     created_at = db.Column(
@@ -760,8 +761,8 @@ class SharedQuestion(db.Model):
 
     DAILY_SHARE_LIMIT = 10
 
-    def to_dict(self, liked_by_me=False):
-        return {
+    def to_dict(self, liked_by_me=False, include_answer=False):
+        d = {
             'id': self.id,
             'query': self.query,
             'namespace': self.namespace,
@@ -774,6 +775,9 @@ class SharedQuestion(db.Model):
             'liked_by_me': liked_by_me,
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }
+        if include_answer:
+            d['answer_full'] = self.answer_full
+        return d
 
 
 class QuestionLike(db.Model):

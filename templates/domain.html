@@ -4,12 +4,10 @@
 {# Active nav tab based on current path #}
 {% set domain_key = request.path.strip('/') %}
 {% block nav_semiconductor %}{{ 'active' if domain_key == 'semiconductor' else '' }}{% endblock %}
-{% block nav_laborlaw %}{{ 'active' if domain_key == 'laborlaw' else '' }}{% endblock %}
 {% block nav_field_training %}{{ 'active' if domain_key == 'field-training' else '' }}{% endblock %}
 {% block nav_safeguide %}{{ 'active' if domain_key == 'safeguide' else '' }}{% endblock %}
 {% block nav_msds %}{{ 'active' if domain_key == 'msds' else '' }}{% endblock %}
 {% block mobile_nav_semiconductor %}{{ 'active' if domain_key == 'semiconductor' else '' }}{% endblock %}
-{% block mobile_nav_laborlaw %}{{ 'active' if domain_key == 'laborlaw' else '' }}{% endblock %}
 {% block mobile_nav_field_training %}{{ 'active' if domain_key == 'field-training' else '' }}{% endblock %}
 {% block mobile_nav_safeguide %}{{ 'active' if domain_key == 'safeguide' else '' }}{% endblock %}
 {% block mobile_nav_msds %}{{ 'active' if domain_key == 'msds' else '' }}{% endblock %}
@@ -1415,6 +1413,7 @@
                     query: _lastAskedQuery,
                     namespace: _lastAskedNamespace,
                     answer_preview: _lastAnswerPreview,
+                    answer_full: window._lastAnswerMd || '',
                 })
             });
             const json = await res.json();

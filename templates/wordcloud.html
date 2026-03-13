@@ -165,6 +165,7 @@
     <div class="wc-header">
         <h1>☁️ 질문 클라우드</h1>
         <p>공유된 질문에서 추출한 핵심 키워드를 한눈에 확인하세요</p>
+        <a href="/questions" style="display:inline-block;margin-top:10px;font-size:0.85rem;color:var(--sf-accent,#6366f1);text-decoration:none;">📋 질문 목록 보기 →</a>
     </div>
 
     <!-- Filters -->
@@ -172,7 +173,6 @@
         <div class="wc-filter-group" id="domainFilters">
             <button class="wc-filter-btn active" data-ns="" onclick="setDomain(this)">전체</button>
             <button class="wc-filter-btn" data-ns="semiconductor-v2" onclick="setDomain(this)">🔬 반도체</button>
-            <button class="wc-filter-btn" data-ns="laborlaw" onclick="setDomain(this)">⚖️ 노동법</button>
             <button class="wc-filter-btn" data-ns="field-training" onclick="setDomain(this)">🏭 현장실습</button>
             <button class="wc-filter-btn" data-ns="kosha" onclick="setDomain(this)">🛡️ 안전보건</button>
             <button class="wc-filter-btn" data-ns="msds" onclick="setDomain(this)">🧪 MSDS</button>
@@ -201,19 +201,17 @@
 </div>
 {% endblock %}
 
-{% block body_scripts %}
+{% block scripts %}
 <script>
     // Domain namespace map for navigation
     const DOMAIN_PAGES = {
         'semiconductor-v2': '/semiconductor',
-        'laborlaw': '/laborlaw',
         'field-training': '/field-training',
         'kosha': '/safeguide',
         'msds': '/msds',
     };
     const DOMAIN_LABELS = {
         'semiconductor-v2': '반도체',
-        'laborlaw': '노동법',
         'field-training': '현장실습',
         'kosha': '안전보건',
         'msds': 'MSDS',

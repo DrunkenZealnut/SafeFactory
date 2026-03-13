@@ -351,12 +351,6 @@ def semiconductor():
     return render_template('domain.html', domain='semiconductor', config=config)
 
 
-@app.route('/laborlaw')
-def laborlaw():
-    """Labor law domain page."""
-    config = DOMAIN_CONFIG['laborlaw']
-    return render_template('domain.html', domain='laborlaw', config=config)
-
 
 @app.route('/field-training')
 def field_training():
@@ -384,6 +378,12 @@ def search_all():
     """Cross-domain unified search page."""
     config = DOMAIN_CONFIG['all']
     return render_template('domain.html', domain='all', config=config)
+
+
+@app.route('/questions')
+def questions():
+    """Shared questions browsing page."""
+    return render_template('questions.html')
 
 
 @app.route('/wordcloud')
