@@ -918,8 +918,8 @@
                 </p>
                 <form class="search-form" id="askForm">
                     <div class="search-input-group">
-                        <label for="askQuery">질문 <span style="color: #9c27b0; font-size: 0.85rem;">(@로 문서 범위 지정 가능)</span></label>
-                        <textarea id="askQuery" name="query" placeholder="예: CVD와 PVD의 차이점은 무엇인가요?&#10;예: @반도체_제품_기획 에서 제품 기획 프로세스 설명해줘&#10;예: @패키지/ 폴더의 문서에서 조립 공정 종류는?" required></textarea>
+                        <label for="askQuery">질문</label>
+                        <textarea id="askQuery" name="query" placeholder="예: CVD와 PVD의 차이점은 무엇인가요?&#10;예: 반도체 패키징 공정에 대해 설명해주세요&#10;예: 웨이퍼 제조 과정의 주요 단계는?" required></textarea>
                     </div>
                     <div class="search-row">
                         <div class="search-input-group">
@@ -944,18 +944,6 @@
                         </div>
                     </div>
                 </form>
-
-                <div class="hint">
-                    <strong>💡 Tip:</strong> <code>@</code>를 사용하여 검색 범위를 좁힐 수 있습니다.<br>
-                    • <code>@파일명</code> - 특정 파일에서만 검색 (예: <code>@반도체_아키텍처</code>)<br>
-                    • <code>@폴더명/</code> - 특정 폴더에서만 검색 (예: <code>@패키지/</code>)<br>
-                    • 여러 개 사용 가능: <code>@제품_기획 @아키텍처 CVD 공정 비교</code>
-                </div>
-
-                <div class="hint" style="background: rgba(156, 39, 176, 0.1); border-color: rgba(156, 39, 176, 0.3); margin-top: 10px;">
-                    <strong>📁 사용 가능한 문서:</strong>
-                    <span id="availableSources" style="color: #ce93d8;">로딩 중...</span>
-                </div>
 
                 <!-- Loading -->
                 <div class="loading" id="askLoading">
@@ -1606,57 +1594,8 @@
 
         // escapeHtml function moved to common.js
 
-        // Load available sources for @ mention hints
-        async function loadSources() {
-            try {
-                const namespace = document.getElementById('askNamespace').value;
-                const response = await fetch(`/api/sources?namespace=${encodeURIComponent(namespace)}`);
-                const data = await response.json();
-
-                if (data.success) {
-                    const sourcesEl = document.getElementById('availableSources');
-                    const folders = data.data.folders.slice(0, 5);
-                    const files = data.data.files.slice(0, 5);
-
-                    let hints = [];
-                    if (folders.length > 0) {
-                        // Extract short folder names
-                        const shortFolders = folders.map(f => {
-                            const parts = f.split('/');
-                            return parts[parts.length - 1];
-                        }).filter(f => f.length > 0).slice(0, 3);
-                        hints.push(...shortFolders.map(f => `@${f}/`));
-                    }
-                    if (files.length > 0) {
-                        // Extract keywords from file names
-                        const keywords = files.map(f => {
-                            // Extract meaningful part from filename
-                            const match = f.match(/_([\uAC00-\uD7AF_]+)\./);
-                            return match ? match[1].split('_').slice(0, 2).join('_') : null;
-                        }).filter(k => k).slice(0, 3);
-                        hints.push(...keywords.map(k => `@${k}`));
-                    }
-
-                    if (hints.length > 0) {
-                        sourcesEl.innerHTML = hints.map(h =>
-                            `<code style="background: rgba(156,39,176,0.2); padding: 2px 6px; border-radius: 4px; margin: 2px;">${escapeHtml(h)}</code>`
-                        ).join(' ');
-                    } else {
-                        sourcesEl.textContent = '문서 없음';
-                    }
-                }
-            } catch (error) {
-                console.error('Failed to load sources:', error);
-                document.getElementById('availableSources').textContent = '로드 실패';
-            }
-        }
-
-        // Reload sources when namespace changes
-        document.getElementById('askNamespace').addEventListener('change', loadSources);
-
         // Initial load
         loadStats();
-        setTimeout(loadSources, 1000); // Load sources after stats
     </script>
 </body>
 </html>

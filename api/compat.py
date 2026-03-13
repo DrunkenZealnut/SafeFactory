@@ -14,7 +14,7 @@ def register_compat_routes(app, csrf=None):
               functions are explicitly exempted from CSRF checks (they
               are JSON API endpoints, not form submissions).
     """
-    from api.v1.index_ops import api_stats, api_namespaces, api_sources, api_delete
+    from api.v1.index_ops import api_stats, api_namespaces, api_delete
     from api.v1.search import api_search, api_ask, api_ask_stream, api_pdf_resolve
     from api.v1.msds import msds_search, msds_detail, msds_identify
     from api.v1.health import api_health, api_domains
@@ -31,7 +31,6 @@ def register_compat_routes(app, csrf=None):
     # Index operations
     _add('/api/stats', 'compat_stats', api_stats, methods=['GET'])
     _add('/api/namespaces', 'compat_namespaces', api_namespaces, methods=['GET'])
-    _add('/api/sources', 'compat_sources', api_sources, methods=['GET'])
     _add('/api/delete', 'compat_delete', api_delete, methods=['POST'])
 
     # Search & RAG

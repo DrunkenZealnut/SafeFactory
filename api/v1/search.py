@@ -310,9 +310,11 @@ def api_ask():
         law_refs_formatted = pipeline.get('law_references_formatted')
         labor_classification = pipeline.get('labor_classification')
         legal_analysis = pipeline.get('legal_analysis')
+        safety_refs = pipeline.get('safety_references')
         messages = build_llm_messages(query, sources, context, namespace,
                                       calc_result, law_refs_formatted,
-                                      labor_classification, legal_analysis)
+                                      labor_classification, legal_analysis,
+                                      safety_refs)
         provider, model = _resolve_llm(namespace)
         if not _VALID_MODEL_RE.match(model):
             logging.error('Invalid model name in settings: %s', model)
@@ -368,6 +370,8 @@ def api_ask():
             'keywords_extracted': keywords if use_enhancement else None,
             'law_references': law_refs_raw if law_refs_raw else None,
             'confidence': confidence,
+            'detected_namespace': pipeline.get('detected_namespace'),
+            'detected_domain_label': pipeline.get('detected_domain_label'),
         }
         # Debug mode: expose pipeline diagnostics
         if data.get('debug'):
@@ -423,9 +427,11 @@ def api_ask_stream():
     law_refs_raw = pipeline.get('law_references')
     labor_classification = pipeline.get('labor_classification')
     legal_analysis = pipeline.get('legal_analysis')
+    safety_refs = pipeline.get('safety_references')
     messages = build_llm_messages(query, sources, context, namespace,
                                   calc_result, law_refs_formatted,
-                                  labor_classification, legal_analysis)
+                                  labor_classification, legal_analysis,
+                                  safety_refs)
     provider, model = _resolve_llm(namespace)
     if not _VALID_MODEL_RE.match(model):
         logging.error('Invalid model name in settings: %s', model)
@@ -462,6 +468,8 @@ def api_ask_stream():
                     'query_variations': enhanced_queries if use_enhancement else None,
                     'keywords_extracted': keywords if use_enhancement else None,
                     'law_references': law_refs_raw if law_refs_raw else None,
+                    'detected_namespace': pipeline.get('detected_namespace'),
+                    'detected_domain_label': pipeline.get('detected_domain_label'),
             }
             # Debug mode: expose pipeline diagnostics
             if data.get('debug'):

@@ -68,10 +68,11 @@ FileLoader → ImageDescriber(Vision API) / SemanticChunker → EmbeddingGenerat
                                                                               MetadataManager (SQLite tracking)
 ```
 
-**7-Phase RAG Pipeline** (`services/rag_pipeline.py` → Web):
+**RAG Pipeline** (`services/rag_pipeline.py` → Web):
 ```
-Query → QueryEnhancer(multi-query) → @mention filter → Vector+BM25 search
-      → RRF fusion → Reranker(cross-encoder) → ContextOptimizer → Gemini LLM → Response with citations
+Query → DomainClassifier(auto-routing) → QueryEnhancer(multi-query) → Vector+BM25 search
+      → RRF fusion → Reranker(cross-encoder) → ContextOptimizer → SafetyCrossSearch(semiconductor)
+      → Gemini LLM → Response with citations
 ```
 
 ### Service Layer Pattern
@@ -85,7 +86,11 @@ Query → QueryEnhancer(multi-query) → @mention filter → Vector+BM25 search
 - Custom LLM system prompt (`DOMAIN_PROMPTS`)
 - Domain-specific metadata filters (`services/filters.py`)
 
-Domains: `''` (semiconductor/default), `laborlaw`, `field-training`, `safeguide`, `msds`
+Domains: `semiconductor-v2` (default), `laborlaw`, `field-training`, `kosha`, `msds`
+
+### Automatic Domain Routing
+
+`services/query_router.py` contains `classify_domain()` which auto-routes queries to the best-matching namespace using keyword scoring. Each namespace has `high` (weight 1.0) and `low` (weight 0.3) keywords. The current page's namespace gets a bonus (+0.5). Below the confidence threshold (0.3), queries stay in the default namespace. This replaced the previous @mention-based manual filtering system.
 
 ### API Structure
 
@@ -97,7 +102,7 @@ All API routes registered as Flask blueprints under `/api/v1/` in `api/v1/__init
 - `bookmarks.py` — user document bookmarks
 - `msds.py` — KOSHA chemical safety search
 - `calculator.py` — wage and insurance calculations
-- `index_ops.py` — Pinecone index operations
+- `index_ops.py` — Pinecone index operations (stats, namespaces, delete)
 - `health.py` — system health check
 - `news.py` — news aggregation
 - `auth.py` — OAuth callbacks
@@ -126,7 +131,7 @@ Key service modules beyond `singletons.py` and `rag_pipeline.py`:
 - `law_api.py` / `law_drf_client.py` — external legal information API integration
 - `legal_source_router.py` — routes legal queries to appropriate data sources
 - `labor_calculator.py` / `labor_classifier.py` — wage/insurance calculation logic
-- `query_router.py` — routes queries to appropriate processing paths
+- `query_router.py` — query type classification and automatic domain routing (`classify_domain`, `classify_query_type`)
 - `settings.py` — admin settings management with singleton cache invalidation
 
 ### Frontend
@@ -142,6 +147,7 @@ Jinja2 templates in `templates/` with inline `<script>` blocks. `templates/domai
 - **Embedding dimensions**: 1536 (text-embedding-3-small) or 3072 (text-embedding-3-large)
 - **Reranking**: Optional — either Pinecone Inference API or local cross-encoder (`sentence-transformers`)
 - **Streaming**: `/ask/stream` uses Server-Sent Events (SSE) for real-time LLM responses
+- **Safety cross-search**: Semiconductor domain answers automatically search `kosha` namespace for safety/health context and append it as supplementary references
 
 ## Extension Points
 

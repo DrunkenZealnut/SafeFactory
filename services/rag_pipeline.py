@@ -17,8 +17,8 @@ from services.domain_config import (
     VISUAL_GUIDELINES,
     NAMESPACE_DOMAIN_MAP,
 )
-from services.filters import parse_mentions, build_domain_filter
-from services.query_router import classify_query_type, QUERY_TYPE_CONFIG
+from services.filters import build_domain_filter
+from services.query_router import classify_query_type, classify_domain, QUERY_TYPE_CONFIG
 from services.singletons import (
     get_agent,
     get_query_enhancer,
@@ -30,7 +30,6 @@ from services.singletons import (
 
 MIN_RELEVANCE_SCORE = float(os.environ.get('MIN_RELEVANCE_SCORE', '0.2'))
 MIN_TOKEN_COUNT = int(os.environ.get('MIN_TOKEN_COUNT', '30'))
-TOP_K_MENTION_MULT = int(os.environ.get('TOP_K_MENTION_MULT', '3'))
 TOP_K_NO_BM25_MULT = int(os.environ.get('TOP_K_NO_BM25_MULT', '4'))
 TOP_K_DEFAULT_MULT = int(os.environ.get('TOP_K_DEFAULT_MULT', '3'))
 
@@ -200,6 +199,68 @@ def _run_legal_analysis_pass(query, classification, law_refs_text, context):
     return resp.text or ''
 
 
+# ---------------------------------------------------------------------------
+# Cross-domain safety search (semiconductor → kosha)
+# ---------------------------------------------------------------------------
+SAFETY_CROSS_SEARCH_TOP_K = 5
+SAFETY_CROSS_SEARCH_MIN_SCORE = 0.3
+SAFETY_CROSS_SEARCH_MAX_RESULTS = 3
+SAFETY_CROSS_SEARCH_MAX_CHARS = 1500
+SAFETY_CROSS_SEARCH_NAMESPACE = 'kosha'
+
+
+def _search_safety_context(query: str) -> str:
+    """Cross-search kosha namespace for safety/health content related to semiconductor query.
+
+    Args:
+        query: Search query (after mention parsing).
+
+    Returns:
+        Formatted safety references string for prompt injection.
+        Empty string if no relevant results found.
+    """
+    try:
+        agent = get_agent()
+        results = agent.search(
+            query=query,
+            top_k=SAFETY_CROSS_SEARCH_TOP_K,
+            namespace=SAFETY_CROSS_SEARCH_NAMESPACE,
+        )
+
+        # Filter by minimum relevance score
+        results = [r for r in results if r.get('score', 0) >= SAFETY_CROSS_SEARCH_MIN_SCORE]
+
+        if not results:
+            return ''
+
+        # Take top N results
+        results = results[:SAFETY_CROSS_SEARCH_MAX_RESULTS]
+
+        # Format as safety references
+        parts = []
+        total_chars = 0
+        for i, r in enumerate(results):
+            metadata = r.get('metadata', {})
+            content = metadata.get('content', '')
+            source_file = metadata.get('source_file', 'Unknown')
+
+            # Truncate content to stay within budget
+            remaining = SAFETY_CROSS_SEARCH_MAX_CHARS - total_chars
+            if remaining <= 0:
+                break
+            if len(content) > remaining:
+                content = content[:remaining] + '...'
+
+            parts.append(f"[S{i+1}] (출처: {source_file})\n{content}")
+            total_chars += len(content) + len(source_file) + 20  # overhead
+
+        return '\n\n'.join(parts)
+
+    except Exception as e:
+        logging.warning("[SafetyCross] Cross-search failed: %s", e)
+        return ''
+
+
 def find_related_images(source_file: str) -> list:
     """Find related images from the same document folder."""
     images = []
@@ -251,21 +312,22 @@ def run_rag_pipeline(data):
 
     skip_bm25 = os.environ.get('SKIP_BM25_HYBRID', '').lower() in ('true', '1', 'yes')
 
-    # Parse @mentions for source filtering
-    clean_query, mention_filters = parse_mentions(query)
-
-    # Build search query
-    if mention_filters:
-        filter_keywords = ' '.join([f['value'].replace('_', ' ') for f in mention_filters])
-        if clean_query and len(clean_query) >= 3:
-            search_query = f"{filter_keywords} {clean_query}"
-        else:
-            search_query = filter_keywords
-    else:
-        search_query = clean_query if clean_query else query
-
+    search_query = query
     agent = get_agent()
     _timings = {}
+
+    # ========================================
+    # Phase 0: Domain Classification (auto-routing)
+    # ========================================
+    detected_namespace = None
+    detected_domain_label = None
+    if namespace != 'all':
+        detected_namespace, domain_confidence, detected_domain_label = classify_domain(query, namespace)
+        if detected_namespace and detected_namespace != namespace and domain_confidence > 0:
+            logging.info("[DomainRouter] Override namespace: %s → %s (label=%s)",
+                         namespace, detected_namespace, detected_domain_label)
+            namespace = detected_namespace
+
     domain_key = NAMESPACE_DOMAIN_MAP.get(namespace, 'semiconductor')
 
     # Query type classification for routing
@@ -355,9 +417,7 @@ def run_rag_pipeline(data):
     # Search with multiple query variations and merge results
     # When BM25 is skipped, fetch more candidates so the reranker has a wider pool
     top_k_mult = route_cfg.get('top_k_mult', TOP_K_DEFAULT_MULT)
-    if mention_filters:
-        search_top_k = top_k * TOP_K_MENTION_MULT
-    elif skip_bm25:
+    if skip_bm25:
         search_top_k = top_k * TOP_K_NO_BM25_MULT  # Wider recall when relying on reranker alone
     else:
         search_top_k = top_k * top_k_mult  # Route-aware fetch multiplier
@@ -402,38 +462,6 @@ def run_rag_pipeline(data):
     logging.info("[Search] Retrieved %d unique documents from %d queries", len(results), len(enhanced_queries))
     _timings['phase2_search_ms'] = round((time.perf_counter() - _t0) * 1000)
 
-    # ========================================
-    # Phase 3: Apply mention filters
-    # ========================================
-    _t0 = time.perf_counter()
-    if mention_filters and results:
-        filtered_results = []
-        for r in results:
-            source_file = unicodedata.normalize('NFC', r.get('metadata', {}).get('source_file', ''))
-            filename = unicodedata.normalize('NFC', r.get('metadata', {}).get('filename', ''))
-
-            match = False
-            for f in mention_filters:
-                filter_value = unicodedata.normalize('NFC', f['value'].lower())
-                if f['type'] == 'file':
-                    if filter_value in filename.lower():
-                        match = True
-                        break
-                elif f['type'] == 'folder':
-                    if filter_value in source_file.lower():
-                        match = True
-                        break
-                elif f['type'] == 'keyword':
-                    if filter_value in source_file.lower():
-                        match = True
-                        break
-
-            if match:
-                filtered_results.append(r)
-
-        results = filtered_results
-        logging.info("[Filter] After mention filtering: %d documents", len(results))
-
     if not results and namespace != 'laborlaw':
         return {
             'early_response': True,
@@ -443,8 +471,6 @@ def run_rag_pipeline(data):
                 'enhancement_used': use_enhancement
             }
         }
-
-    _timings['phase3_filter_ms'] = round((time.perf_counter() - _t0) * 1000)
 
     # ========================================
     # Phase 4: Hybrid Search (BM25 + Vector)
@@ -610,8 +636,22 @@ def run_rag_pipeline(data):
         'keywords': keywords,
         'use_enhancement': use_enhancement,
         'query_type': query_type,
+        'detected_namespace': detected_namespace,
+        'detected_domain_label': detected_domain_label,
         'latencies': _timings,
     }
+
+    # ========================================
+    # Phase 7.5: Safety Cross-Search (semiconductor only)
+    # ========================================
+    if namespace in ('', 'semiconductor-v2'):
+        try:
+            safety_refs = _search_safety_context(search_query)
+            if safety_refs:
+                result['safety_references'] = safety_refs
+                logging.info("[SafetyCross] Found safety context (%d chars)", len(safety_refs))
+        except Exception as e:
+            logging.warning("[SafetyCross] Failed: %s", e)
 
     # Laborlaw: search law API and run analysis pass
     if namespace == 'laborlaw':
@@ -646,7 +686,7 @@ def run_rag_pipeline(data):
 
 def build_llm_prompts(query, sources, context, namespace, calc_result=None,
                       law_references=None, labor_classification=None,
-                      legal_analysis=None):
+                      legal_analysis=None, safety_references=None):
     """Build separate system and user prompts for LLM call.
 
     Args:
@@ -654,6 +694,7 @@ def build_llm_prompts(query, sources, context, namespace, calc_result=None,
         law_references: Optional formatted string of relevant law references from the Law API.
         labor_classification: Unused (kept for API compatibility), always None.
         legal_analysis: Optional string from _run_legal_analysis_pass() with structured analysis.
+        safety_references: Optional formatted string of related safety/health content from kosha namespace.
 
     Returns:
         tuple: (system_prompt, user_prompt)
@@ -708,6 +749,17 @@ def build_llm_prompts(query, sources, context, namespace, calc_result=None,
 
 위 분석을 참고하여 종합적이고 실용적인 답변을 작성하세요."""
 
+    # Inject safety/health cross-search results for semiconductor domain
+    if safety_references:
+        user_prompt += f"""
+
+## 관련 안전보건 참고자료
+{safety_references}
+
+위 안전보건 자료를 참고하여, 답변 말미에 "⚠️ 관련 안전보건 정보" 섹션을 추가하세요.
+해당 공정/물질의 유해물질, 보호구, 안전수칙, 응급조치 등을 간결하게 안내하세요.
+관련성이 낮으면 이 섹션을 생략하세요."""
+
     # Inject legal analysis mode instructions for laborlaw
     if namespace == 'laborlaw':
         user_prompt += """
@@ -737,11 +789,11 @@ def build_llm_prompts(query, sources, context, namespace, calc_result=None,
 
 def build_llm_messages(query, sources, context, namespace, calc_result=None,
                        law_references=None, labor_classification=None,
-                       legal_analysis=None):
+                       legal_analysis=None, safety_references=None):
     """Build OpenAI-format messages for LLM call (kept for compatibility)."""
     system_prompt, user_prompt = build_llm_prompts(
         query, sources, context, namespace, calc_result, law_references,
-        labor_classification, legal_analysis
+        labor_classification, legal_analysis, safety_references
     )
     return [
         {"role": "system", "content": system_prompt},
