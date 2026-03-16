@@ -836,6 +836,49 @@ def run_rag_pipeline(data):
         }
 
     # ========================================
+    # Phase 3: Graph Enrichment (GraphRAG)
+    # ========================================
+    _t0 = time.perf_counter()
+    try:
+        from services.graph_config import get_graph_config
+        _graph_cfg = get_graph_config(namespace)
+        if _graph_cfg.get('enabled') and use_enhancement:
+            from services.singletons import get_graph_searcher
+            _gs = get_graph_searcher()
+            _graph_results = _gs.search(
+                query=search_query,
+                namespace=namespace,
+                hop_depth=_graph_cfg.get('hop_depth', 2),
+                max_results=_graph_cfg.get('max_graph_results', 10),
+            )
+            if _graph_results:
+                existing_ids = {r.get('id') for r in results}
+                new_chunk_ids = [
+                    gr.chunk_vector_id for gr in _graph_results
+                    if gr.chunk_vector_id not in existing_ids
+                ]
+                if new_chunk_ids:
+                    _agent = get_agent()
+                    _idx = _agent.index
+                    _fetched = _idx.fetch(ids=new_chunk_ids, namespace=namespace)
+                    _graph_score_map = {gr.chunk_vector_id: gr for gr in _graph_results}
+                    for _vid, _vec in _fetched.vectors.items():
+                        _meta = _vec.metadata or {}
+                        _gr = _graph_score_map.get(_vid)
+                        results.append({
+                            'id': _vid,
+                            'score': _gr.graph_score if _gr else 0.0,
+                            'content': _meta.get('content', ''),
+                            'metadata': _meta,
+                            'graph_path': ' > '.join(_gr.entity_path) if _gr else '',
+                        })
+                    logging.info("[Graph Enrichment] Added %d graph-discovered chunks", len(new_chunk_ids))
+    except Exception as _ge:
+        logging.warning("[Graph Enrichment] Failed (fallback to vector-only): %s", _ge)
+
+    _timings['phase3_graph_ms'] = round((time.perf_counter() - _t0) * 1000)
+
+    # ========================================
     # Phase 4: Hybrid Search (BM25 + Vector)
     # ========================================
     _t0 = time.perf_counter()

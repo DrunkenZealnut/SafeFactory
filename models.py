@@ -706,6 +706,7 @@ class SearchHistory(db.Model):
     search_mode = db.Column(db.String(20), nullable=True)
     result_count = db.Column(db.Integer, nullable=False, default=0)
     answer_preview = db.Column(db.String(200), nullable=True)
+    answer_text = db.Column(db.Text, nullable=True)
     created_at = db.Column(
         db.DateTime, nullable=False,
         default=lambda: datetime.now(timezone.utc),
@@ -715,8 +716,8 @@ class SearchHistory(db.Model):
 
     MAX_PER_USER = 500
 
-    def to_dict(self):
-        return {
+    def to_dict(self, include_answer=False):
+        d = {
             'id': self.id,
             'query': self.query,
             'query_type': self.query_type,
@@ -724,8 +725,12 @@ class SearchHistory(db.Model):
             'search_mode': self.search_mode,
             'result_count': self.result_count,
             'answer_preview': self.answer_preview,
+            'has_answer': bool(self.answer_text),
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }
+        if include_answer:
+            d['answer_text'] = self.answer_text
+        return d
 
 
 # ---------------------------------------------------------------------------
@@ -845,3 +850,91 @@ class UserBookmark(db.Model):
             'file_type': self.file_type,
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }
+
+
+# ---------------------------------------------------------------------------
+# Knowledge Graph (GraphRAG)
+# ---------------------------------------------------------------------------
+
+class KGEntity(db.Model):
+    """Knowledge Graph entity node."""
+
+    __tablename__ = 'kg_entities'
+    __table_args__ = (
+        db.Index('ix_kg_entity_ns_type', 'namespace', 'entity_type'),
+        db.Index('ix_kg_entity_name_norm', 'name_normalized'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    name_normalized = db.Column(db.String(200), nullable=False)
+    entity_type = db.Column(db.String(50), nullable=False)
+    namespace = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text)
+    aliases_json = db.Column(db.Text, default='[]')
+    created_at = db.Column(
+        db.DateTime, nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+    source_relations = db.relationship(
+        'KGRelation', foreign_keys='KGRelation.source_id',
+        backref='source_entity', lazy='dynamic', cascade='all, delete-orphan',
+    )
+    target_relations = db.relationship(
+        'KGRelation', foreign_keys='KGRelation.target_id',
+        backref='target_entity', lazy='dynamic', cascade='all, delete-orphan',
+    )
+    chunks = db.relationship(
+        'KGEntityChunk', backref='entity', lazy='dynamic', cascade='all, delete-orphan',
+    )
+
+    @property
+    def aliases(self):
+        import json as _json
+        return _json.loads(self.aliases_json) if self.aliases_json else []
+
+    @aliases.setter
+    def aliases(self, value):
+        import json as _json
+        self.aliases_json = _json.dumps(value, ensure_ascii=False)
+
+
+class KGRelation(db.Model):
+    """Knowledge Graph relationship edge."""
+
+    __tablename__ = 'kg_relations'
+    __table_args__ = (
+        db.Index('ix_kg_rel_source', 'source_id'),
+        db.Index('ix_kg_rel_target', 'target_id'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    source_id = db.Column(
+        db.Integer, db.ForeignKey('kg_entities.id', ondelete='CASCADE'), nullable=False,
+    )
+    target_id = db.Column(
+        db.Integer, db.ForeignKey('kg_entities.id', ondelete='CASCADE'), nullable=False,
+    )
+    relation_type = db.Column(db.String(50), nullable=False)
+    confidence = db.Column(db.Float, default=0.8)
+    evidence_chunk_id = db.Column(db.String(200))
+    namespace = db.Column(db.String(100), nullable=False)
+
+
+class KGEntityChunk(db.Model):
+    """Entity-to-chunk mapping."""
+
+    __tablename__ = 'kg_entity_chunks'
+    __table_args__ = (
+        db.Index('ix_kg_ec_entity', 'entity_id'),
+        db.Index('ix_kg_ec_chunk', 'chunk_vector_id'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    entity_id = db.Column(
+        db.Integer, db.ForeignKey('kg_entities.id', ondelete='CASCADE'), nullable=False,
+    )
+    chunk_vector_id = db.Column(db.String(200), nullable=False)
+    relevance_score = db.Column(db.Float, default=1.0)
+    namespace = db.Column(db.String(100), nullable=False)
