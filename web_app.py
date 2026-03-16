@@ -83,6 +83,7 @@ init_oauth(app)
 
 # Import shared configuration
 from services.domain_config import DOCUMENTS_PATH, DOMAIN_CONFIG
+from services.major_config import MAJOR_CONFIG, DEFAULT_MAJOR, get_major_config, get_all_major_keys
 
 # Register API blueprints and CORS (pass csrf so compat routes are exempted)
 app.jinja_env.globals['now'] = lambda: datetime.now(timezone.utc)
@@ -101,6 +102,18 @@ with app.app_context():
     seed_categories()
     seed_system_settings()
     ensure_provider_settings()
+
+    # Migration: add 'major' column to users table if not present
+    from sqlalchemy import inspect as sa_inspect
+    inspector = sa_inspect(db.engine)
+    user_columns = [c['name'] for c in inspector.get_columns('users')]
+    if 'major' not in user_columns:
+        with db.engine.connect() as conn:
+            conn.execute(db.text(
+                "ALTER TABLE users ADD COLUMN major VARCHAR(50) DEFAULT 'semiconductor'"
+            ))
+            conn.commit()
+        logging.info("[Migration] Added 'major' column to users table")
 
 # Register explicit shutdown for singleton httpx clients
 from services.singletons import shutdown_all
@@ -318,16 +331,23 @@ def logout():
 
 @app.route('/')
 def home():
-    """Home page with domain selection (public)."""
-    return render_template('home.html', domains=DOMAIN_CONFIG)
+    """Home page — major-aware dashboard."""
+    if current_user.is_authenticated and current_user.major:
+        major_key = current_user.major
+    else:
+        major_key = DEFAULT_MAJOR
+    major_cfg = get_major_config(major_key)
+    return render_template('home.html', domains=DOMAIN_CONFIG,
+                           major_key=major_key, major_config=major_cfg)
 
 
 @app.route('/mypage')
 @login_required
 def mypage():
-    """User profile page."""
+    """User profile page with major selection."""
     social_accounts = SocialAccount.query.filter_by(user_id=current_user.id).all()
-    return render_template('mypage.html', social_accounts=social_accounts)
+    return render_template('mypage.html', social_accounts=social_accounts,
+                           major_config=MAJOR_CONFIG, current_major=current_user.major or DEFAULT_MAJOR)
 
 
 @app.route('/history')
@@ -344,40 +364,43 @@ def my_documents():
     return render_template('my_documents.html')
 
 
+@app.route('/learn')
+def learn():
+    """Major-based unified learning environment."""
+    if current_user.is_authenticated and current_user.major:
+        major_key = current_user.major
+    else:
+        major_key = DEFAULT_MAJOR
+
+    config = get_major_config(major_key)
+    domain_style_config = {
+        'title': config['name'],
+        'namespace': config['namespaces']['primary'],
+        'major': major_key,
+        'icon': config['icon'],
+        'color': config['color'],
+        'gradient': config['gradient'],
+        'description': config['description'],
+        'sample_questions': config['sample_questions'],
+    }
+    return render_template('domain.html', domain='learn', config=domain_style_config, major=major_key)
+
+
+# Legacy domain routes → redirect to /learn
 @app.route('/semiconductor')
-def semiconductor():
-    """Semiconductor domain page."""
-    config = DOMAIN_CONFIG['semiconductor']
-    return render_template('domain.html', domain='semiconductor', config=config)
-
-
-
 @app.route('/field-training')
-def field_training():
-    """Field training safety domain page."""
-    config = DOMAIN_CONFIG['field-training']
-    return render_template('domain.html', domain='field-training', config=config)
-
-
 @app.route('/safeguide')
-def safeguide():
-    """Safety guide (안전보건공단) domain page."""
-    config = DOMAIN_CONFIG['safeguide']
-    return render_template('domain.html', domain='safeguide', config=config)
+@app.route('/search')
+def legacy_domain_redirect():
+    """Redirect old domain routes to unified /learn."""
+    return redirect(url_for('learn'))
 
 
 @app.route('/msds')
 def msds():
-    """MSDS chemical information page."""
+    """MSDS chemical information page (cross-major common tool)."""
     config = DOMAIN_CONFIG['msds']
     return render_template('msds.html', domain='msds', config=config)
-
-
-@app.route('/search')
-def search_all():
-    """Cross-domain unified search page."""
-    config = DOMAIN_CONFIG['all']
-    return render_template('domain.html', domain='all', config=config)
 
 
 @app.route('/questions')

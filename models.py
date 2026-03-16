@@ -97,6 +97,7 @@ class User(db.Model, UserMixin):
         default=lambda: datetime.now(timezone.utc),
     )
     last_login = db.Column(db.DateTime, nullable=True)
+    major = db.Column(db.String(50), nullable=True, default='semiconductor')
 
     social_accounts = db.relationship(
         'SocialAccount', back_populates='user', cascade='all, delete-orphan',
@@ -113,6 +114,7 @@ class User(db.Model, UserMixin):
             'is_active': self.is_active,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'last_login': self.last_login.isoformat() if self.last_login else None,
+            'major': self.major,
             'providers': [sa.provider for sa in self.social_accounts],
         }
 

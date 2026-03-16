@@ -1,46 +1,51 @@
 /* ===================================================================
-   SafeFactory Light Theme
+   SafeFactory Theme — Industrial Precision
+   - 네이비 + 앰버 기반 산업안전 전문 플랫폼 디자인
    - 이 파일의 :root 변수만 변경하면 전체 테마가 전환됩니다.
-   - 모든 템플릿에서 <link>로 가져와 사용합니다.
    =================================================================== */
 
 :root {
     /* ── 배경 계층 ── */
-    --sf-bg:            #f5f7fb;
+    --sf-bg:            #f8f9fb;
     --sf-card-bg:       #ffffff;
     --sf-nav-bg:        #ffffff;
-    --sf-border:        #e5e7eb;
-    --sf-border-light:  #f3f4f6;
+    --sf-surface:       #f1f3f7;
+    --sf-border:        #e2e8f0;
+    --sf-border-light:  #f1f5f9;
 
-    /* ── 브랜드 퍼플 ── */
-    --sf-purple:         #7c3aed;
-    --sf-purple-light:   #a78bfa;
-    --sf-purple-lighter: #ede9fe;
-    --sf-purple-dark:    #6d28d9;
+    /* ── 브랜드: 네이비 + 앰버 ── */
+    --sf-purple:         #1e293b;
+    --sf-purple-light:   #475569;
+    --sf-purple-lighter: #f1f5f9;
+    --sf-purple-dark:    #0f172a;
+
+    /* ── 앰버 액센트 ── */
+    --sf-amber:         #f59e0b;
+    --sf-amber-light:   #fbbf24;
+    --sf-amber-dark:    #d97706;
 
     /* ── 텍스트 계층 ── */
-    --sf-text-1: #1f2937;
-    --sf-text-2: #4b5563;
-    --sf-text-3: #9ca3af;
-    --sf-text-4: #d1d5db;
+    --sf-text-1: #0f172a;
+    --sf-text-2: #475569;
+    --sf-text-3: #94a3b8;
+    --sf-text-4: #cbd5e1;
 
     /* ── 도메인 액센트 ── */
     --sf-blue:      #3b82f6;
-    --sf-amber:     #f59e0b;
     --sf-red:       #ef4444;
     --sf-violet:    #8b5cf6;
     --sf-green:     #10b981;
     --sf-cyan:      #06b6d4;
-    --sf-community: #7c4dff;
+    --sf-community: #1e293b;
 
     /* ── 그림자 ── */
-    --sf-shadow-sm:  0 1px 2px rgba(0, 0, 0, 0.04);
-    --sf-shadow-md:  0 4px 12px rgba(0, 0, 0, 0.06);
-    --sf-shadow-lg:  0 12px 40px rgba(0, 0, 0, 0.08);
+    --sf-shadow-sm:  0 1px 3px rgba(15, 23, 42, 0.04);
+    --sf-shadow-md:  0 4px 16px rgba(15, 23, 42, 0.06);
+    --sf-shadow-lg:  0 16px 48px rgba(15, 23, 42, 0.08);
 
     /* ── 독립 페이지용 (login, admin) ── */
-    --sf-page-bg:    #f5f7fb;
+    --sf-page-bg:    #f8f9fb;
     --sf-input-bg:   #ffffff;
-    --sf-input-border: #e5e7eb;
-    --sf-heading-color: #7c3aed;
+    --sf-input-border: #e2e8f0;
+    --sf-heading-color: #1e293b;
 }

@@ -15,3 +15,4 @@ from api.v1 import admin       # noqa: E402, F401
 from api.v1 import news        # noqa: E402, F401
 from api.v1 import bookmarks   # noqa: E402, F401
 from api.v1 import questions   # noqa: E402, F401
+from api.v1 import user        # noqa: E402, F401

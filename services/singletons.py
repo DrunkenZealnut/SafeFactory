@@ -44,9 +44,9 @@ def get_gemini_client():
     global _gemini_client
     instance = _gemini_client
     if instance is None:
+        from google import genai
         with _lock:
             if _gemini_client is None:
-                from google import genai
                 _gemini_client = genai.Client(
                     api_key=_require_env("GEMINI_API_KEY")
                 )
@@ -59,9 +59,9 @@ def get_anthropic_client():
     global _anthropic_client
     instance = _anthropic_client
     if instance is None:
+        import anthropic
         with _lock:
             if _anthropic_client is None:
-                import anthropic
                 _anthropic_client = anthropic.Anthropic(
                     api_key=_require_env("ANTHROPIC_API_KEY")
                 )
@@ -74,11 +74,11 @@ def get_openai_client():
     global _openai_client
     instance = _openai_client
     if instance is None:
+        import certifi
+        import httpx
+        from openai import OpenAI
         with _lock:
             if _openai_client is None:
-                import certifi
-                import httpx
-                from openai import OpenAI
                 http_client = httpx.Client(verify=certifi.where())
                 _openai_client = OpenAI(
                     api_key=_require_env("OPENAI_API_KEY"),
@@ -94,9 +94,10 @@ def get_agent():
     global _agent
     instance = _agent
     if instance is None:
+        # Import outside lock to avoid deadlock with Python's import lock
+        from src.agent import PineconeAgent
         with _lock:
             if _agent is None:
-                from src.agent import PineconeAgent
                 _agent = PineconeAgent(
                     openai_api_key=_require_env("OPENAI_API_KEY"),
                     pinecone_api_key=_require_env("PINECONE_API_KEY"),
@@ -119,10 +120,10 @@ def get_query_enhancer():
     global _query_enhancer
     instance = _query_enhancer
     if instance is None:
+        from services.settings import get_setting
+        from src.query_enhancer import QueryEnhancer
         with _lock:
             if _query_enhancer is None:
-                from services.settings import get_setting
-                from src.query_enhancer import QueryEnhancer
                 provider = get_setting('llm_query_provider', 'openai')
                 model = get_setting('llm_query_model', 'gpt-4o-mini')
                 env_key = _PROVIDER_ENV_KEYS.get(provider, 'OPENAI_API_KEY')
@@ -138,10 +139,10 @@ def get_context_optimizer():
     global _context_optimizer
     instance = _context_optimizer
     if instance is None:
+        from services.settings import get_setting
+        from src.context_optimizer import ContextOptimizer
         with _lock:
             if _context_optimizer is None:
-                from services.settings import get_setting
-                from src.context_optimizer import ContextOptimizer
                 provider = get_setting('llm_context_provider', 'openai')
                 model = get_setting('llm_context_model', 'gpt-4o-mini')
                 env_key = _PROVIDER_ENV_KEYS.get(provider, 'OPENAI_API_KEY')
@@ -161,9 +162,9 @@ def get_pinecone_client():
     global _pinecone_client
     instance = _pinecone_client
     if instance is None:
+        from pinecone import Pinecone
         with _lock:
             if _pinecone_client is None:
-                from pinecone import Pinecone
                 _pinecone_client = Pinecone(api_key=_require_env("PINECONE_API_KEY"))
             instance = _pinecone_client
     return instance
@@ -174,9 +175,9 @@ def get_reranker_instance():
     global _reranker
     instance = _reranker
     if instance is None:
+        from src.reranker import get_reranker
         with _lock:
             if _reranker is None:
-                from src.reranker import get_reranker
                 pc = get_pinecone_client()
                 _reranker = get_reranker(use_cross_encoder=True, pinecone_client=pc)
             instance = _reranker
@@ -188,9 +189,9 @@ def get_hybrid_searcher_instance():
     global _hybrid_searcher
     instance = _hybrid_searcher
     if instance is None:
+        from src.hybrid_searcher import get_hybrid_searcher
         with _lock:
             if _hybrid_searcher is None:
-                from src.hybrid_searcher import get_hybrid_searcher
                 _hybrid_searcher = get_hybrid_searcher()
             instance = _hybrid_searcher
     return instance
@@ -207,9 +208,9 @@ def get_law_drf_client():
         oc = os.getenv('LAW_OC', '')
         if not oc:
             return None
+        from services.law_drf_client import LawDrfClient
         with _lock:
             if _law_drf_client is None:
-                from services.law_drf_client import LawDrfClient
                 _law_drf_client = LawDrfClient(oc=oc)
             instance = _law_drf_client
     return instance
@@ -220,9 +221,9 @@ def get_uploader():
     global _uploader
     instance = _uploader
     if instance is None:
+        from src.pinecone_uploader import PineconeUploader
         with _lock:
             if _uploader is None:
-                from src.pinecone_uploader import PineconeUploader
                 _uploader = PineconeUploader(
                     api_key=_require_env("PINECONE_API_KEY"),
                     index_name=os.getenv("PINECONE_INDEX_NAME", "document-index"),
@@ -247,10 +248,12 @@ def _close_if_possible(instance):
 
 def invalidate_query_enhancer():
     """Reset QueryEnhancer so it is re-created with the latest model setting."""
+    from src.query_enhancer import clear_enhancement_cache
     global _query_enhancer
     with _lock:
         old, _query_enhancer = _query_enhancer, None
     _close_if_possible(old)
+    clear_enhancement_cache()
 
 
 def invalidate_context_optimizer():
@@ -275,7 +278,9 @@ def shutdown_all():
     Call this at application shutdown (e.g. via atexit) to ensure
     httpx.Client connections are properly released.
     """
+    from src.query_enhancer import shutdown_enhancement_executor
     with _lock:
         to_close = [_query_enhancer, _context_optimizer, _reranker]
     for inst in to_close:
         _close_if_possible(inst)
+    shutdown_enhancement_executor()

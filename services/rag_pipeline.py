@@ -4,6 +4,7 @@ import concurrent.futures
 import hashlib
 import logging
 import os
+import re
 import time
 import unicodedata
 from datetime import datetime
@@ -19,6 +20,13 @@ from services.domain_config import (
 )
 from services.filters import build_domain_filter
 from services.query_router import classify_query_type, classify_domain, QUERY_TYPE_CONFIG
+from services.major_config import (
+    resolve_search_context,
+    get_major_config,
+    build_major_prompt,
+    DEFAULT_MAJOR,
+    MAJOR_CONFIG,
+)
 from services.singletons import (
     get_agent,
     get_query_enhancer,
@@ -27,6 +35,7 @@ from services.singletons import (
     get_hybrid_searcher_instance,
     get_uploader,
 )
+from src.query_enhancer import EnhancementResult
 
 MIN_RELEVANCE_SCORE = float(os.environ.get('MIN_RELEVANCE_SCORE', '0.2'))
 MIN_TOKEN_COUNT = int(os.environ.get('MIN_TOKEN_COUNT', '30'))
@@ -137,16 +146,6 @@ def compute_answer_confidence(answer: str, sources: list, context: str) -> dict:
         }
     }
 
-
-def _get_num_variations(query: str) -> int:
-    """쿼리 길이에 따라 멀티쿼리 변형 수를 동적으로 결정."""
-    length = len(query)
-    if length < 15:
-        return 1   # 짧은 키워드 쿼리 — 변형 불필요
-    elif length < 40:
-        return 2   # 일반 쿼리
-    else:
-        return 3   # 긴 복잡한 쿼리
 
 
 def _run_legal_analysis_pass(query, classification, law_refs_text, context):
@@ -261,6 +260,303 @@ def _search_safety_context(query: str) -> str:
         return ''
 
 
+# ---------------------------------------------------------------------------
+# MSDS Cross-Search (auto-link hazardous substances to MSDS data)
+# ---------------------------------------------------------------------------
+MSDS_CROSS_SEARCH_MAX_CHEMICALS = 3
+MSDS_CROSS_SEARCH_NAMESPACES = {'', 'semiconductor-v2', 'field-training', 'kosha', 'all'}
+
+# Trigger keywords indicating hazardous substance discussion
+_CHEMICAL_TRIGGER_RE = re.compile(
+    r'유해물질|화학물질|유기용제|유해가스|유해인자|독성|발암물질|'
+    r'취급주의|노출기준|허용농도|보호구|화학적 인자|화학적 유해|'
+    r'MSDS|GHS|CAS|SDS|물질안전보건'
+)
+
+# Common industrial chemicals (Korean names)
+_KNOWN_CHEMICALS = [
+    # Solvents
+    '벤젠', '톨루엔', '자일렌', '스티렌', '에틸벤젠',
+    '아세톤', '메탄올', '에탄올', '이소프로판올', '이소프로필알코올',
+    '포름알데히드', '아세트알데히드', '글루타르알데히드',
+    '트리클로로에틸렌', '테트라클로로에틸렌', '디클로로메탄', '클로로포름',
+    '이황화탄소', '사염화탄소', '노말헥산',
+    '에틸렌글리콜', '프로필렌글리콜',
+    # Acids & bases
+    '염산', '황산', '질산', '불산', '인산', '초산', '아세트산',
+    '수산화나트륨', '수산화칼륨', '가성소다',
+    # Gases
+    '암모니아', '일산화탄소', '이산화질소', '이산화황', '황화수소',
+    '아르신', '포스핀', '디보란', '실란', '포스겐', '시안화수소',
+    '에틸렌옥사이드', '산화에틸렌',
+    # Semiconductor-specific
+    'NMP', 'HMDS', 'TMAH', 'BOE', 'PGMEA', 'PGME',
+    # Oxidizers
+    '과산화수소', '차아염소산나트륨',
+    # Metals (2+ chars only to avoid false positives)
+    '수은', '카드뮴', '크롬', '비소', '니켈', '망간', '코발트', '베릴륨',
+    # Fibers & dusts
+    '석면', '실리카',
+    # Organics
+    '페놀', '크레졸', '나프탈렌', '이소시아네이트',
+    '아크릴로니트릴', '아크릴산',
+    # Halogens
+    '염소', '브롬', '불소',
+    # Common names
+    '시너', '신나',
+]
+
+# CAS number pattern
+_CAS_NUMBER_RE = re.compile(r'\b(\d{2,7}-\d{2}-\d)\b')
+
+# Semiconductor process → representative hazardous chemicals mapping
+# When a process keyword is detected, its chemicals become MSDS lookup candidates
+_PROCESS_CHEMICAL_MAP = {
+    # CMP (Chemical Mechanical Planarization/Polishing)
+    'CMP': ['실리카', '과산화수소', '수산화칼륨'],
+    '슬러리': ['실리카', '과산화수소', '수산화칼륨'],
+    'slurry': ['실리카', '과산화수소', '수산화칼륨'],
+    '연마': ['실리카', '과산화수소'],
+    # Etching
+    '식각': ['불산', '인산', '질산'],
+    '에칭': ['불산', '인산', '질산'],
+    '습식식각': ['불산', '황산', '과산화수소'],
+    '건식식각': ['염소', '불소', '아르신'],
+    'wet etch': ['불산', '황산', '과산화수소'],
+    'dry etch': ['염소', '불소'],
+    # Cleaning
+    '세정': ['황산', '과산화수소', '불산'],
+    'cleaning': ['황산', '과산화수소', '불산'],
+    'SC-1': ['암모니아', '과산화수소'],
+    'SC-2': ['염산', '과산화수소'],
+    'SPM': ['황산', '과산화수소'],
+    'DHF': ['불산'],
+    'BOE': ['불산'],
+    'piranha': ['황산', '과산화수소'],
+    # Photolithography
+    '포토': ['PGMEA', 'PGME', 'TMAH'],
+    '리소그래피': ['PGMEA', 'PGME', 'TMAH'],
+    '현상': ['TMAH'],
+    '감광액': ['PGMEA', 'PGME'],
+    'PR': ['PGMEA', 'PGME'],
+    'photoresist': ['PGMEA', 'PGME', 'TMAH'],
+    # CVD / Deposition
+    'CVD': ['실란', '포스핀', '디보란', '암모니아'],
+    'PECVD': ['실란', '암모니아'],
+    'LPCVD': ['실란', '디보란'],
+    'ALD': ['TMAH', '암모니아'],
+    # Diffusion / Ion Implantation
+    '확산': ['포스핀', '디보란', '아르신'],
+    '이온주입': ['아르신', '포스핀', '디보란'],
+    # SOD (Spin-On Dielectric)
+    'SOD': ['NMP', 'PGMEA'],
+    'spin on': ['NMP', 'PGMEA'],
+}
+
+
+def _extract_chemical_names(query: str, context: str) -> list:
+    """Extract chemical substance names from query and context.
+
+    Returns up to MSDS_CROSS_SEARCH_MAX_CHEMICALS chemical names.
+    Uses three sources: direct chemical mentions, CAS numbers, and
+    process-to-chemical mapping (e.g. "CMP" → silica, H2O2, KOH).
+    """
+    text = f"{query} {context[:5000]}"
+    text_lower = text.lower()
+
+    # Check for chemical trigger keywords, known chemicals, CAS numbers,
+    # or process keywords in query+context
+    has_trigger = bool(_CHEMICAL_TRIGGER_RE.search(text))
+    query_has_chemical = any(chem in query for chem in _KNOWN_CHEMICALS)
+    query_has_cas = bool(_CAS_NUMBER_RE.search(query))
+    has_process = any(
+        proc.lower() in text_lower or proc in text
+        for proc in _PROCESS_CHEMICAL_MAP
+    )
+    if not has_trigger and not query_has_chemical and not query_has_cas and not has_process:
+        return []
+
+    found = []
+    seen = set()
+    max_chems = MSDS_CROSS_SEARCH_MAX_CHEMICALS
+
+    # Priority 1: chemicals explicitly in the query
+    for chem in _KNOWN_CHEMICALS:
+        if chem in query and chem not in seen:
+            found.append(chem)
+            seen.add(chem)
+
+    # Priority 2: process-keyword mapping (query first, then context)
+    for source in (query, text):
+        if len(found) >= max_chems:
+            break
+        source_lower = source.lower()
+        for proc, chems in _PROCESS_CHEMICAL_MAP.items():
+            if len(found) >= max_chems:
+                break
+            if proc.lower() in source_lower or proc in source:
+                for chem in chems:
+                    if len(found) >= max_chems:
+                        break
+                    if chem not in seen:
+                        found.append(chem)
+                        seen.add(chem)
+
+    # Priority 3: CAS numbers in query
+    if len(found) < max_chems:
+        for m in _CAS_NUMBER_RE.finditer(query):
+            cas = m.group(1)
+            if cas not in seen:
+                found.append(cas)
+                seen.add(cas)
+
+    # Priority 4: chemicals in context
+    if len(found) < max_chems:
+        for chem in _KNOWN_CHEMICALS:
+            if len(found) >= max_chems:
+                break
+            if chem in text and chem not in seen:
+                found.append(chem)
+                seen.add(chem)
+
+    # Priority 5: CAS numbers in context
+    if len(found) < max_chems:
+        for m in _CAS_NUMBER_RE.finditer(text):
+            if len(found) >= max_chems:
+                break
+            cas = m.group(1)
+            if cas not in seen:
+                found.append(cas)
+                seen.add(cas)
+
+    return found[:max_chems]
+
+
+def _format_msds_items(items: list) -> str:
+    """Format MSDS detail items into readable text."""
+    lines = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        name = item.get('msdsItemNameKor', '')
+        detail = item.get('itemDetail', '')
+        if not detail or not detail.strip():
+            continue
+        detail = detail.strip()[:300]
+        if name:
+            lines.append(f"  - {name}: {detail}")
+        else:
+            lines.append(f"  - {detail}")
+    return '\n'.join(lines[:8])
+
+
+def _fetch_single_msds_summary(client, chem_name: str):
+    """Fetch MSDS summary for a single chemical.
+
+    Returns (formatted_text, chem_info_dict) or (None, None).
+    """
+    try:
+        is_cas = bool(_CAS_NUMBER_RE.match(chem_name))
+        result = client.search_chemicals(
+            search_word=chem_name,
+            search_type=1 if is_cas else 0,
+            num_of_rows=1,
+        )
+        if not result.get('success') or not result.get('items'):
+            return None, None
+
+        item = result['items'][0]
+        chem_id = item.get('chemId', '')
+        if not chem_id:
+            return None, None
+
+        name_kr = item.get('chemNameKor', chem_name)
+        cas_no = item.get('casNo', '')
+
+        header = f"### {name_kr}"
+        if cas_no:
+            header += f" (CAS: {cas_no})"
+
+        sections = [header]
+        section_labels = {
+            '02': '유해성·위험성',
+            '04': '응급조치요령',
+            '08': '노출방지·개인보호구',
+        }
+
+        # Fetch key sections in parallel
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as ex:
+            futs = {
+                ex.submit(client.get_chemical_detail, chem_id, code): label
+                for code, label in section_labels.items()
+            }
+            for fut in concurrent.futures.as_completed(futs, timeout=8):
+                label = futs[fut]
+                try:
+                    detail = fut.result()
+                    if detail.get('success') and detail.get('items'):
+                        fmt = _format_msds_items(detail['items'])
+                        if fmt:
+                            sections.append(f"**{label}:**\n{fmt}")
+                except Exception:
+                    pass
+
+        if len(sections) <= 1:
+            return None, None
+
+        chem_info = {'name': name_kr, 'cas_no': cas_no, 'chem_id': chem_id}
+        return '\n'.join(sections), chem_info
+
+    except Exception as e:
+        logging.debug("[MSDSCross] Fetch failed for '%s': %s", chem_name, e)
+        return None, None
+
+
+def _search_msds_context(chemical_names: list) -> tuple:
+    """Search MSDS API for detected chemicals and return formatted summary.
+
+    Args:
+        chemical_names: List of chemical names or CAS numbers to search.
+
+    Returns:
+        Tuple of (formatted_text, chemicals_info_list).
+        formatted_text: MSDS summary string for LLM prompt injection.
+        chemicals_info_list: List of dicts with name/cas_no/chem_id for frontend.
+    """
+    try:
+        from msds_client import MsdsApiClient
+        client = MsdsApiClient()
+
+        if not client.API_KEY:
+            logging.debug("[MSDSCross] Skipped — no MSDS_API_KEY")
+            return '', []
+
+        parts = []
+        chemicals_info = []
+
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=MSDS_CROSS_SEARCH_MAX_CHEMICALS
+        ) as ex:
+            futs = {
+                ex.submit(_fetch_single_msds_summary, client, name): name
+                for name in chemical_names
+            }
+            for fut in concurrent.futures.as_completed(futs, timeout=15):
+                try:
+                    text, info = fut.result()
+                    if text and info:
+                        parts.append(text)
+                        chemicals_info.append(info)
+                except Exception:
+                    pass
+
+        return '\n\n'.join(parts), chemicals_info
+
+    except Exception as e:
+        logging.warning("[MSDSCross] MSDS cross-search failed: %s", e)
+        return '', []
+
+
 def find_related_images(source_file: str) -> list:
     """Find related images from the same document folder."""
     images = []
@@ -293,11 +589,175 @@ def find_related_images(source_file: str) -> list:
     return images[:10]  # Limit to 10 images
 
 
+# ---------------------------------------------------------------------------
+# Phase 1 & 2 helper functions (extracted from run_rag_pipeline)
+# ---------------------------------------------------------------------------
+
+def _content_hash(content: str) -> str:
+    """Content hash for search result deduplication."""
+    return hashlib.sha256(content[:5000].encode()).hexdigest()
+
+
+def _enhance_query(
+    search_query: str,
+    namespace: str,
+    route_cfg: dict,
+    use_enhancement: bool,
+) -> EnhancementResult:
+    """Phase 1: Query enhancement.
+
+    Delegates synonym expansion, multi-query, HyDE, and keyword extraction
+    to QueryEnhancer.enhance_query().
+
+    Args:
+        search_query: Original search query.
+        namespace: Pinecone namespace.
+        route_cfg: Routing config from QUERY_TYPE_CONFIG.
+        use_enhancement: Whether enhancement is enabled.
+
+    Returns:
+        EnhancementResult (original-only when enhancement is disabled).
+    """
+    if not use_enhancement:
+        return EnhancementResult(
+            original=search_query,
+            variations=[search_query],
+        )
+
+    try:
+        query_enhancer = get_query_enhancer()
+        domain = NAMESPACE_DOMAIN_MAP.get(namespace, 'semiconductor')
+
+        return query_enhancer.enhance_query(
+            query=search_query,
+            domain=domain,
+            use_multi_query=route_cfg.get('use_multi_query', True),
+            use_hyde=route_cfg.get('use_hyde', False),
+            use_keywords=True,
+        )
+    except Exception as e:
+        logging.warning("[Query Enhancement] Failed: %s, using original query", e)
+        return EnhancementResult(
+            original=search_query,
+            variations=[search_query],
+        )
+
+
+def _search_single_query(
+    agent,
+    query: str,
+    namespace: str,
+    top_k: int,
+    domain_filter: dict,
+    is_all_namespace: bool,
+) -> list:
+    """Execute a single vector search with one retry on failure.
+
+    Args:
+        agent: PineconeAgent instance.
+        query: Search query text.
+        namespace: Pinecone namespace.
+        top_k: Max results to return.
+        domain_filter: Metadata filter.
+        is_all_namespace: Whether to search all namespaces.
+
+    Returns:
+        Search results list (empty list on failure).
+    """
+    for attempt in range(2):
+        try:
+            if is_all_namespace:
+                try:
+                    uploader = get_uploader()
+                    stats = uploader.get_stats()
+                    ns_list = [ns for ns in stats.get('namespaces', {}).keys() if ns]
+                except Exception:
+                    ns_list = ['semiconductor', 'laborlaw', 'field-training']
+                return agent.search_all_namespaces(
+                    query=query,
+                    namespaces=ns_list,
+                    top_k=top_k,
+                    filter=domain_filter,
+                )
+            else:
+                return agent.search(
+                    query=query,
+                    top_k=top_k,
+                    namespace=namespace,
+                    filter=domain_filter,
+                )
+        except Exception as e:
+            if attempt == 0:
+                logging.warning(
+                    "[Search] Attempt 1 failed for '%.30s...': %s — retrying",
+                    query, e,
+                )
+                time.sleep(0.5)
+            else:
+                logging.warning(
+                    "[Search] Attempt 2 failed for '%.30s...': %s",
+                    query, e,
+                )
+    return []
+
+
+def _search_with_variations(
+    agent,
+    enhancement: EnhancementResult,
+    namespace: str,
+    domain_filter: dict,
+    search_top_k: int,
+) -> list:
+    """Phase 2: Multi-query search with dedup merging.
+
+    Searches with regular queries (original + variations + synonym expansion)
+    and HyDE queries separately, deduplicating by content hash.
+
+    Args:
+        agent: PineconeAgent instance.
+        enhancement: Phase 1 EnhancementResult.
+        namespace: Pinecone namespace.
+        domain_filter: Metadata filter.
+        search_top_k: Top-k for each Pinecone search call.
+
+    Returns:
+        Deduplicated search results list.
+    """
+    is_all_ns = (namespace == 'all')
+    all_results = []
+    seen_ids = set()
+
+    def _collect(query: str):
+        results = _search_single_query(
+            agent, query, namespace, search_top_k, domain_filter, is_all_ns,
+        )
+        for r in results:
+            content = r.get('metadata', {}).get('content', '')
+            cid = _content_hash(content)
+            if cid not in seen_ids:
+                seen_ids.add(cid)
+                all_results.append(r)
+
+    # Regular queries (original + multi-query variations + synonym expansion)
+    for eq in enhancement.search_queries:
+        _collect(eq)
+
+    # HyDE queries (separate pool)
+    for hq in enhancement.hyde_queries:
+        _collect(hq)
+
+    logging.info(
+        "[Search] Retrieved %d unique documents from %d queries",
+        len(all_results),
+        len(enhancement.search_queries) + len(enhancement.hyde_queries),
+    )
+    return all_results
+
+
 def run_rag_pipeline(data):
     """Shared RAG search pipeline (Phase 1-7). Returns dict with context, sources, messages, tools, etc.
     Raises ValueError if query is empty. Returns early dict with 'answer' key if no results found."""
     query = data.get('query', '').strip()
-    namespace = data.get('namespace', '')
     try:
         top_k = max(1, min(int(data.get('top_k', 20)), 100))
     except (ValueError, TypeError):
@@ -305,7 +765,12 @@ def run_rag_pipeline(data):
         top_k = 20
     use_enhancement = data.get('use_enhancement', True)
 
-    logging.info("[API/ask] Query: %.50s..., Namespace: %s, TopK: %d, Enhanced: %s", query, namespace, top_k, use_enhancement)
+    # Resolve major/namespace from request (supports both major and legacy namespace params)
+    from flask_login import current_user
+    _user = current_user if hasattr(current_user, 'major') and current_user.is_authenticated else None
+    major_key, namespace = resolve_search_context(data, _user)
+    logging.info("[API/ask] Query: %.50s..., Major: %s, Namespace: %s, TopK: %d, Enhanced: %s",
+                 query, major_key, namespace, top_k, use_enhancement)
 
     if not query:
         raise ValueError('질문을 입력해주세요.')
@@ -339,127 +804,25 @@ def run_rag_pipeline(data):
     # Phase 1: Query Enhancement
     # ========================================
     _t0 = time.perf_counter()
-    enhanced_queries = [search_query]
-    keywords = []
-
-    use_multi_query = route_cfg.get('use_multi_query', True)
-    use_hyde = route_cfg.get('use_hyde', False)
-
-    if use_enhancement:
-        try:
-            query_enhancer = get_query_enhancer()
-            domain = NAMESPACE_DOMAIN_MAP.get(namespace, 'semiconductor')
-
-            # Expand query with domain-specific synonyms before multi-query generation
-            expanded_query = query_enhancer.expand_with_synonyms(search_query, domain)
-            if expanded_query != search_query:
-                logging.info("[Synonym Expansion] '%s' → '%s'", search_query, expanded_query)
-
-            # Run query enhancement calls in parallel for lower latency
-            with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-                future_multi = None
-                if use_multi_query:
-                    num_variations = _get_num_variations(search_query)
-                    future_multi = executor.submit(query_enhancer.multi_query, search_query, num_variations)
-
-                future_hyde = None
-                if use_hyde and len(search_query) >= 10:
-                    future_hyde = executor.submit(query_enhancer.hyde, search_query, domain)
-
-                future_keywords = executor.submit(query_enhancer.extract_keywords_fast, search_query)
-
-                if future_multi:
-                    try:
-                        enhanced_queries = future_multi.result(timeout=10)
-                    except Exception as e:
-                        logging.warning("[Query Enhancement] multi_query failed: %s", e)
-                        enhanced_queries = [search_query]
-                    logging.info("[Query Enhancement] Generated %d query variations", len(enhanced_queries))
-                else:
-                    logging.info("[Query Enhancement] multi_query skipped (query_type=%s)", query_type)
-
-                if future_hyde:
-                    try:
-                        hyde_doc = future_hyde.result(timeout=10)
-                        if hyde_doc and hyde_doc != search_query:
-                            enhanced_queries.append(hyde_doc)
-                            logging.info("[HyDE] Added hypothetical document query")
-                    except Exception as e:
-                        logging.warning("[HyDE] Failed: %s", e)
-                else:
-                    logging.info("[HyDE] Skipped (query_type=%s)", query_type)
-
-                try:
-                    keywords = future_keywords.result(timeout=10)
-                except Exception as e:
-                    logging.warning("[Query Enhancement] keywords failed: %s", e)
-                    keywords = []
-                logging.info("[Query Enhancement] Keywords: %s", keywords)
-
-                # Add synonym-expanded query as an additional variation
-                if expanded_query != search_query and expanded_query not in enhanced_queries:
-                    enhanced_queries.append(expanded_query)
-                    logging.info("[Synonym Expansion] Added expanded query as variation")
-
-        except Exception as e:
-            logging.warning("[Query Enhancement] Failed: %s, using original query", e)
-            enhanced_queries = [search_query]
-
+    enhancement = _enhance_query(search_query, namespace, route_cfg, use_enhancement)
+    enhanced_queries = enhancement.all_queries
+    keywords = enhancement.keywords
     _timings['phase1_enhancement_ms'] = round((time.perf_counter() - _t0) * 1000)
 
     # ========================================
     # Phase 2: Multi-Query Search (with domain metadata filtering)
     # ========================================
-    # Build domain-aware metadata filter from query and namespace
     domain_filter = build_domain_filter(search_query, namespace)
 
     _t0 = time.perf_counter()
-    # Search with multiple query variations and merge results
-    # When BM25 is skipped, fetch more candidates so the reranker has a wider pool
     top_k_mult = route_cfg.get('top_k_mult', TOP_K_DEFAULT_MULT)
     if skip_bm25:
-        search_top_k = top_k * TOP_K_NO_BM25_MULT  # Wider recall when relying on reranker alone
+        search_top_k = top_k * TOP_K_NO_BM25_MULT
     else:
-        search_top_k = top_k * top_k_mult  # Route-aware fetch multiplier
-    is_all_namespace = (namespace == 'all')
-    all_results = []
-    seen_ids = set()
-
-    for eq in enhanced_queries:
-        try:
-            if is_all_namespace:
-                # Multi-namespace simultaneous query via Pinecone server-side parallelism
-                try:
-                    uploader = get_uploader()
-                    stats = uploader.get_stats()
-                    ns_list = [ns for ns in stats.get('namespaces', {}).keys() if ns]
-                except Exception:
-                    ns_list = ['semiconductor', 'laborlaw', 'field-training']
-                results = agent.search_all_namespaces(
-                    query=eq,
-                    namespaces=ns_list,
-                    top_k=search_top_k,
-                    filter=domain_filter
-                )
-            else:
-                results = agent.search(
-                    query=eq,
-                    top_k=search_top_k,
-                    namespace=namespace,
-                    filter=domain_filter
-                )
-            for r in results:
-                # Deduplicate by content hash
-                content = r.get('metadata', {}).get('content', '')
-                content_id = hashlib.sha256(content[:5000].encode()).hexdigest()
-                if content_id not in seen_ids:
-                    seen_ids.add(content_id)
-                    all_results.append(r)
-        except Exception as e:
-            logging.warning("[Search] Failed for query '%.30s...': %s", eq, e)
-
-    results = all_results
-    logging.info("[Search] Retrieved %d unique documents from %d queries", len(results), len(enhanced_queries))
+        search_top_k = top_k * top_k_mult
+    results = _search_with_variations(
+        agent, enhancement, namespace, domain_filter, search_top_k,
+    )
     _timings['phase2_search_ms'] = round((time.perf_counter() - _t0) * 1000)
 
     if not results and namespace != 'laborlaw':
@@ -642,9 +1005,13 @@ def run_rag_pipeline(data):
     }
 
     # ========================================
-    # Phase 7.5: Safety Cross-Search (semiconductor only)
+    # Phase 7.5: Safety Cross-Search (major-config based)
     # ========================================
-    if namespace in ('', 'semiconductor-v2'):
+    # Search safety namespace if the major defines one and current NS is the primary
+    major_cfg = get_major_config(major_key) if major_key else None
+    safety_ns = major_cfg['namespaces'].get('safety') if major_cfg else None
+    primary_ns = major_cfg['namespaces'].get('primary') if major_cfg else None
+    if safety_ns and namespace in ('', primary_ns):
         try:
             safety_refs = _search_safety_context(search_query)
             if safety_refs:
@@ -652,6 +1019,22 @@ def run_rag_pipeline(data):
                 logging.info("[SafetyCross] Found safety context (%d chars)", len(safety_refs))
         except Exception as e:
             logging.warning("[SafetyCross] Failed: %s", e)
+
+    # ========================================
+    # Phase 7.6: MSDS Cross-Search (auto-link hazardous substances)
+    # ========================================
+    if namespace in MSDS_CROSS_SEARCH_NAMESPACES:
+        try:
+            chemical_names = _extract_chemical_names(search_query, context)
+            if chemical_names:
+                msds_refs, msds_chems = _search_msds_context(chemical_names)
+                if msds_refs:
+                    result['msds_references'] = msds_refs
+                    result['msds_chemicals'] = msds_chems
+                    logging.info("[MSDSCross] Found MSDS data for %d chemicals: %s",
+                                 len(msds_chems), [c['name'] for c in msds_chems])
+        except Exception as e:
+            logging.warning("[MSDSCross] Failed: %s", e)
 
     # Laborlaw: search law API and run analysis pass
     if namespace == 'laborlaw':
@@ -686,7 +1069,8 @@ def run_rag_pipeline(data):
 
 def build_llm_prompts(query, sources, context, namespace, calc_result=None,
                       law_references=None, labor_classification=None,
-                      legal_analysis=None, safety_references=None):
+                      legal_analysis=None, safety_references=None,
+                      msds_references=None):
     """Build separate system and user prompts for LLM call.
 
     Args:
@@ -695,6 +1079,7 @@ def build_llm_prompts(query, sources, context, namespace, calc_result=None,
         labor_classification: Unused (kept for API compatibility), always None.
         legal_analysis: Optional string from _run_legal_analysis_pass() with structured analysis.
         safety_references: Optional formatted string of related safety/health content from kosha namespace.
+        msds_references: Optional formatted string of MSDS data for hazardous substances detected in context.
 
     Returns:
         tuple: (system_prompt, user_prompt)
@@ -760,6 +1145,17 @@ def build_llm_prompts(query, sources, context, namespace, calc_result=None,
 해당 공정/물질의 유해물질, 보호구, 안전수칙, 응급조치 등을 간결하게 안내하세요.
 관련성이 낮으면 이 섹션을 생략하세요."""
 
+    # Inject MSDS cross-search results for hazardous substances
+    if msds_references:
+        user_prompt += f"""
+
+## 관련 MSDS (물질안전보건자료) 요약
+{msds_references}
+
+위 MSDS 정보를 참고하여, 답변에서 해당 유해물질이 언급될 때 "🧪 MSDS 요약" 섹션을 추가하세요.
+유해성·위험성, 응급조치, 보호구 정보를 간결하게 안내하세요.
+관련성이 낮으면 이 섹션을 생략하세요."""
+
     # Inject legal analysis mode instructions for laborlaw
     if namespace == 'laborlaw':
         user_prompt += """
@@ -789,11 +1185,13 @@ def build_llm_prompts(query, sources, context, namespace, calc_result=None,
 
 def build_llm_messages(query, sources, context, namespace, calc_result=None,
                        law_references=None, labor_classification=None,
-                       legal_analysis=None, safety_references=None):
+                       legal_analysis=None, safety_references=None,
+                       msds_references=None):
     """Build OpenAI-format messages for LLM call (kept for compatibility)."""
     system_prompt, user_prompt = build_llm_prompts(
         query, sources, context, namespace, calc_result, law_references,
-        labor_classification, legal_analysis, safety_references
+        labor_classification, legal_analysis, safety_references,
+        msds_references,
     )
     return [
         {"role": "system", "content": system_prompt},

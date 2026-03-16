@@ -3,11 +3,18 @@ Query Enhancer Module
 Implements query expansion and enhancement techniques for improved RAG retrieval.
 """
 
+import atexit
+import concurrent.futures
+import hashlib
 import logging
 import os
 import re
+import threading
+import time as _time
+
 import certifi
 import httpx
+from dataclasses import dataclass, field
 from typing import List, Optional
 from openai import OpenAI
 
@@ -16,6 +23,103 @@ from src import HttpClientMixin
 # Set SSL certificate environment variables
 os.environ.setdefault('SSL_CERT_FILE', certifi.where())
 os.environ.setdefault('REQUESTS_CA_BUNDLE', certifi.where())
+
+
+# ---------------------------------------------------------------------------
+# Module-level ThreadPoolExecutor (reused across all requests)
+# ---------------------------------------------------------------------------
+_enhancement_executor = concurrent.futures.ThreadPoolExecutor(
+    max_workers=3,
+    thread_name_prefix="query-enhance",
+)
+atexit.register(_enhancement_executor.shutdown, wait=False)
+
+
+def shutdown_enhancement_executor():
+    """Shut down the module-level executor. Called from singletons.shutdown_all()."""
+    _enhancement_executor.shutdown(wait=False)
+
+
+# ---------------------------------------------------------------------------
+# TTL Cache for multi-query results
+# ---------------------------------------------------------------------------
+_cache_lock = threading.Lock()
+_multi_query_cache: dict = {}  # key -> (result, timestamp)
+_CACHE_TTL = 300   # 5 minutes
+_CACHE_MAX = 200   # max entries
+
+
+def _make_cache_key(query: str, num_variations: int) -> str:
+    return hashlib.md5(f"{query}:{num_variations}".encode()).hexdigest()
+
+
+def _cache_get(key: str) -> Optional[List[str]]:
+    """Look up multi-query result in TTL cache."""
+    with _cache_lock:
+        entry = _multi_query_cache.get(key)
+        if entry is None:
+            return None
+        result, ts = entry
+        if _time.time() - ts > _CACHE_TTL:
+            del _multi_query_cache[key]
+            return None
+        return result
+
+
+def _cache_set(key: str, value: List[str]):
+    """Store multi-query result in TTL cache."""
+    with _cache_lock:
+        if len(_multi_query_cache) >= _CACHE_MAX:
+            # Evict oldest 20%
+            sorted_keys = sorted(
+                _multi_query_cache,
+                key=lambda k: _multi_query_cache[k][1],
+            )
+            for k in sorted_keys[:_CACHE_MAX // 5]:
+                del _multi_query_cache[k]
+        _multi_query_cache[key] = (value, _time.time())
+
+
+def clear_enhancement_cache():
+    """Clear the entire cache. Called from singletons.invalidate_query_enhancer()."""
+    with _cache_lock:
+        _multi_query_cache.clear()
+
+
+# ---------------------------------------------------------------------------
+# EnhancementResult dataclass
+# ---------------------------------------------------------------------------
+@dataclass
+class EnhancementResult:
+    """Structured result from query enhancement pipeline."""
+    original: str
+    variations: List[str] = field(default_factory=list)
+    hyde_doc: Optional[str] = None
+    expanded_query: Optional[str] = None
+    keywords: List[str] = field(default_factory=list)
+
+    @property
+    def search_queries(self) -> List[str]:
+        """Queries for vector search (original + multi-query variations + synonym expansion).
+
+        Original query is always first (variations[0]).
+        """
+        queries = list(self.variations) if self.variations else [self.original]
+        if self.expanded_query and self.expanded_query not in queries:
+            queries.append(self.expanded_query)
+        return queries
+
+    @property
+    def hyde_queries(self) -> List[str]:
+        """HyDE-based queries, kept separate from regular variations."""
+        if self.hyde_doc and self.hyde_doc != self.original:
+            return [self.hyde_doc]
+        return []
+
+    @property
+    def all_queries(self) -> List[str]:
+        """All search queries (regular + HyDE). Backwards-compatible with enhanced_queries list."""
+        return self.search_queries + self.hyde_queries
 
 
 # Domain-specific synonym mappings for query expansion
@@ -122,9 +226,6 @@ class QueryEnhancer(HttpClientMixin):
             self._http_client = httpx.Client(verify=certifi.where())
             self.client = OpenAI(api_key=openai_api_key, http_client=self._http_client, timeout=60.0)
 
-
-
-
     def _chat_complete(self, messages, temperature=None, max_tokens=500):
         """Dispatch chat completion to the configured provider."""
         temp = temperature if temperature is not None else self.temperature
@@ -194,6 +295,17 @@ class QueryEnhancer(HttpClientMixin):
             return f"{query} ({' '.join(added)})"
         return query
 
+    @staticmethod
+    def _get_num_variations(query: str) -> int:
+        """Dynamically determine multi-query variation count based on query length."""
+        length = len(query)
+        if length < 15:
+            return 1   # Short keyword query — minimal variations
+        elif length < 40:
+            return 2   # Normal query
+        else:
+            return 3   # Long complex query
+
     def multi_query(self, query: str, num_variations: int = 3) -> List[str]:
         """
         Generate multiple query variations for broader retrieval.
@@ -205,6 +317,13 @@ class QueryEnhancer(HttpClientMixin):
         Returns:
             List of query variations including the original
         """
+        # Check cache first
+        cache_key = _make_cache_key(query, num_variations)
+        cached = _cache_get(cache_key)
+        if cached is not None:
+            logging.info("[Multi-Query Cache] HIT for '%.30s...'", query)
+            return cached
+
         prompt = f"""주어진 질문을 {num_variations}가지 다른 방식으로 재구성해주세요.
 각 변형은 원래 질문과 동일한 정보를 찾지만 다른 단어나 관점을 사용해야 합니다.
 
@@ -233,7 +352,11 @@ class QueryEnhancer(HttpClientMixin):
                 if cleaned and cleaned != query:
                     result.append(cleaned)
 
-            return result[:num_variations + 1]
+            result = result[:num_variations + 1]
+
+            # Store in cache
+            _cache_set(cache_key, result)
+            return result
 
         except Exception as e:
             logging.warning("Multi-query generation failed: %s", e)
@@ -368,39 +491,90 @@ class QueryEnhancer(HttpClientMixin):
         query: str,
         domain: str = "general",
         use_multi_query: bool = True,
-        use_hyde: bool = True,
-        use_keywords: bool = True
-    ) -> dict:
-        """
-        Apply all enhancement techniques to a query.
+        use_hyde: bool = False,
+        use_keywords: bool = True,
+    ) -> EnhancementResult:
+        """Apply all enhancement techniques in parallel and return structured result.
 
         Args:
-            query: Original user query
-            domain: Domain context
-            use_multi_query: Whether to generate query variations
-            use_hyde: Whether to generate hypothetical document
-            use_keywords: Whether to extract keywords
+            query: Original user query.
+            domain: Domain key (e.g., 'semiconductor', 'laborlaw').
+            use_multi_query: Whether to generate query variations.
+            use_hyde: Whether to generate hypothetical document.
+            use_keywords: Whether to extract keywords.
 
         Returns:
-            Dictionary containing enhanced query components
+            EnhancementResult with structured query expansion data.
         """
-        result = {
-            "original": query,
-            "variations": [query],
-            "hyde_doc": None,
-            "keywords": []
-        }
+        # 1. Synonym expansion (synchronous, fast)
+        expanded_query = self.expand_with_synonyms(query, domain)
+        if expanded_query == query:
+            expanded_query = None
+        else:
+            logging.info("[Synonym Expansion] '%s' → '%s'", query, expanded_query)
 
+        # 2. Submit parallel tasks: multi_query + HyDE + keywords
+        variations = [query]
+        hyde_doc = None
+        keywords = []
+
+        futures = {}
         if use_multi_query:
-            result["variations"] = self.multi_query(query)
-
-        if use_hyde:
-            result["hyde_doc"] = self.hyde(query, domain)
-
+            num_vars = self._get_num_variations(query)
+            futures['multi'] = _enhancement_executor.submit(
+                self.multi_query, query, num_vars,
+            )
+        if use_hyde and len(query) >= 10:
+            futures['hyde'] = _enhancement_executor.submit(
+                self.hyde, query, domain,
+            )
         if use_keywords:
-            result["keywords"] = self.extract_keywords(query)
+            futures['keywords'] = _enhancement_executor.submit(
+                self.extract_keywords_fast, query,
+            )
 
-        return result
+        # 3. Collect results
+        if 'multi' in futures:
+            try:
+                variations = futures['multi'].result(timeout=10)
+                logging.info(
+                    "[Query Enhancement] Generated %d query variations",
+                    len(variations),
+                )
+            except Exception as e:
+                logging.warning("[Query Enhancement] multi_query failed: %s", e)
+                variations = [query]
+        else:
+            logging.info("[Query Enhancement] multi_query skipped")
+
+        if 'hyde' in futures:
+            try:
+                hyde_doc = futures['hyde'].result(timeout=10)
+                if hyde_doc == query:
+                    hyde_doc = None
+                elif hyde_doc:
+                    logging.info("[HyDE] Generated hypothetical document")
+            except Exception as e:
+                logging.warning("[HyDE] Failed: %s", e)
+                hyde_doc = None
+        else:
+            logging.info("[HyDE] Skipped")
+
+        if 'keywords' in futures:
+            try:
+                keywords = futures['keywords'].result(timeout=10)
+                logging.info("[Query Enhancement] Keywords: %s", keywords)
+            except Exception as e:
+                logging.warning("[Query Enhancement] keywords failed: %s", e)
+                keywords = []
+
+        return EnhancementResult(
+            original=query,
+            variations=variations,
+            hyde_doc=hyde_doc,
+            expanded_query=expanded_query,
+            keywords=keywords,
+        )
 
 
 if __name__ == "__main__":
@@ -428,11 +602,14 @@ if __name__ == "__main__":
         keywords = enhancer.extract_keywords(test_query)
         print(f"Keywords: {keywords}")
 
-        print("\n=== Full Enhancement ===")
-        enhanced = enhancer.enhance_query(test_query, domain="semiconductor")
-        print(f"Original: {enhanced['original']}")
-        print(f"Variations: {enhanced['variations']}")
-        print(f"Keywords: {enhanced['keywords']}")
-        print(f"HyDE (first 100 chars): {enhanced['hyde_doc'][:100]}...")
+        print("\n=== Full Enhancement (EnhancementResult) ===")
+        result = enhancer.enhance_query(test_query, domain="semiconductor", use_hyde=True)
+        print(f"Original: {result.original}")
+        print(f"Variations: {result.variations}")
+        print(f"Expanded: {result.expanded_query}")
+        print(f"Keywords: {result.keywords}")
+        print(f"HyDE: {result.hyde_doc[:100] if result.hyde_doc else 'None'}...")
+        print(f"Search queries: {result.search_queries}")
+        print(f"All queries: {result.all_queries}")
     else:
         print("OPENAI_API_KEY not found")

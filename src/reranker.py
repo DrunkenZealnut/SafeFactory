@@ -363,6 +363,99 @@ class PineconeReranker:
         return result[:top_k]
 
 
+class CohereReranker:
+    """
+    Reranker using Cohere Rerank API.
+    Uses rerank-v3.5 (multilingual, 4096 tokens) for high-quality
+    cross-encoder reranking with excellent Korean language support.
+    """
+
+    def __init__(self, api_key: str, model: str = "rerank-v3.5"):
+        import cohere
+        self.client = cohere.Client(api_key)
+        self.model = model
+
+    def rerank(
+        self,
+        query: str,
+        docs: List[Dict[str, Any]],
+        top_k: int = 10,
+        content_key: str = "content"
+    ) -> List[Dict[str, Any]]:
+        if not docs:
+            return []
+
+        # rerank-v3.5 supports up to 4096 tokens per document
+        max_doc_chars = 8000  # conservative estimate for Korean (~2 chars/token)
+
+        documents = []
+        for doc in docs:
+            content = doc.get(content_key) or doc.get('metadata', {}).get('content', '')
+            documents.append(content[:max_doc_chars] if content else "")
+
+        try:
+            result = self.client.rerank(
+                model=self.model,
+                query=query,
+                documents=documents,
+                top_n=min(top_k, len(docs)),
+                return_documents=False,
+            )
+
+            reranked = []
+            for item in result.results:
+                idx = item.index
+                if idx >= len(docs):
+                    logging.warning("Cohere rerank returned out-of-range index %d (len=%d)", idx, len(docs))
+                    continue
+                doc = docs[idx].copy() if isinstance(docs[idx], dict) else dict(docs[idx])
+                doc['rerank_score'] = float(item.relevance_score)
+                doc['original_score'] = doc.get('score', 0)
+                reranked.append(doc)
+
+            return reranked
+
+        except Exception as e:
+            logging.error("Cohere reranking failed: %s", e)
+            return docs[:top_k]
+
+    def hybrid_rerank(
+        self,
+        query: str,
+        docs: List[Dict[str, Any]],
+        top_k: int = 10,
+        rerank_weight: float = RERANK_WEIGHT,
+        original_weight: float = ORIGINAL_WEIGHT
+    ) -> List[Dict[str, Any]]:
+        """Combine Cohere rerank scores with original retrieval scores."""
+        reranked = self.rerank(query, docs, top_k=len(docs))
+        if not reranked or not any(d.get('rerank_score') is not None for d in reranked):
+            return reranked[:top_k]
+
+        rerank_scores = [d.get('rerank_score', 0) for d in reranked]
+        original_scores = [d.get('original_score', d.get('score', 0)) for d in reranked]
+
+        def normalize(scores):
+            if not scores:
+                return []
+            min_s, max_s = min(scores), max(scores)
+            if max_s == min_s:
+                return [0.5] * len(scores)
+            return [(s - min_s) / (max_s - min_s) for s in scores]
+
+        norm_rerank = normalize(rerank_scores)
+        norm_original = normalize(original_scores)
+
+        for i, doc in enumerate(reranked):
+            doc['combined_score'] = (
+                rerank_weight * norm_rerank[i] +
+                original_weight * norm_original[i]
+            )
+
+        result = sorted(reranked, key=lambda x: x.get('combined_score', 0), reverse=True)
+        return result[:top_k]
+
+
 class LightweightReranker:
     """
     Lightweight reranker using keyword matching when cross-encoder is unavailable.
@@ -443,7 +536,7 @@ def get_reranker(
     """
     Factory function to get appropriate reranker.
 
-    Priority: PineconeReranker > local CrossEncoder > LightweightReranker
+    Priority: CohereReranker > PineconeReranker > local CrossEncoder > LightweightReranker
 
     Args:
         use_cross_encoder: Whether to use cross-encoder
@@ -455,15 +548,25 @@ def get_reranker(
     """
     use_local = os.environ.get('USE_LOCAL_RERANKER', '').lower() in ('true', '1', 'yes')
 
-    # Try Pinecone Inference reranker first (unless forced local)
-    if pinecone_client and not use_local:
-        try:
-            reranker = PineconeReranker(pinecone_client)
-            # Quick validation: check if inference API is accessible
-            logging.info("Using Pinecone Inference reranker (bge-reranker-v2-m3)")
-            return reranker
-        except Exception as e:
-            logging.warning("Pinecone reranker init failed: %s, falling back to local", e)
+    if not use_local:
+        # Try Cohere reranker first (rerank-v3.5, 4096 tokens, excellent multilingual)
+        cohere_api_key = os.environ.get('COHERE_API_KEY', '')
+        if cohere_api_key:
+            try:
+                reranker = CohereReranker(cohere_api_key)
+                logging.info("Using Cohere reranker (rerank-v3.5)")
+                return reranker
+            except Exception as e:
+                logging.warning("Cohere reranker init failed: %s, falling back", e)
+
+        # Try Pinecone Inference reranker
+        if pinecone_client:
+            try:
+                reranker = PineconeReranker(pinecone_client)
+                logging.info("Using Pinecone Inference reranker (bge-reranker-v2-m3)")
+                return reranker
+            except Exception as e:
+                logging.warning("Pinecone reranker init failed: %s, falling back to local", e)
 
     # Fallback to local cross-encoder
     if use_cross_encoder and CROSS_ENCODER_AVAILABLE:

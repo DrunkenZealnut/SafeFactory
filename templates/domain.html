@@ -135,13 +135,14 @@
     }
 
     .btn-ai {
-        background: linear-gradient(135deg, var(--sf-purple) 0%, var(--sf-purple-dark) 100%);
+        background: var(--sf-purple);
         color: #fff;
     }
 
     .btn-ai:hover {
         transform: scale(1.02);
-        box-shadow: 0 5px 20px rgba(124, 58, 237, 0.3);
+        background: var(--sf-purple-light);
+        box-shadow: 0 5px 20px rgba(30, 41, 59, 0.25);
     }
 
     .btn:disabled {
@@ -220,8 +221,8 @@
     }
 
     .result-meta span.type-json {
-        background: rgba(124, 58, 237, 0.08);
-        color: #a78bfa;
+        background: rgba(30, 41, 59, 0.06);
+        color: var(--sf-purple-light);
     }
 
     .result-content {
@@ -236,8 +237,8 @@
 
     /* AI Answer Styles */
     .ai-answer-container {
-        background: rgba(124, 58, 237, 0.04);
-        border: 1px solid rgba(124, 58, 237, 0.15);
+        background: rgba(30, 41, 59, 0.03);
+        border: 1px solid rgba(30, 41, 59, 0.1);
         border-radius: 16px;
         padding: 25px;
         margin-bottom: 25px;
@@ -492,7 +493,7 @@
 
     /* Citation styling */
     .ai-answer-content a[href^="#source-"] {
-        background: linear-gradient(135deg, var(--sf-purple) 0%, var(--sf-purple-dark) 100%);
+        background: var(--sf-purple);
         color: #fff;
         padding: 1px 6px;
         border-radius: 4px;
@@ -506,7 +507,7 @@
 
     .ai-answer-content a[href^="#source-"]:hover {
         transform: scale(1.1);
-        box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
+        box-shadow: 0 2px 8px rgba(30, 41, 59, 0.25);
     }
 
     .streaming-cursor {
@@ -527,8 +528,8 @@
     }
 
     @keyframes highlight-pulse {
-        0% { box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.6); }
-        100% { box-shadow: 0 0 0 3px rgba(124, 58, 237, 0); }
+        0% { box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.6); }
+        100% { box-shadow: 0 0 0 3px rgba(245, 158, 11, 0); }
     }
 
     .sources-section {
@@ -593,13 +594,13 @@
     }
 
     .source-meta-tag.category {
-        background: rgba(124, 58, 237, 0.08);
+        background: rgba(30, 41, 59, 0.06);
         color: var(--primary-color);
     }
 
     .source-meta-tag.section-type {
-        background: rgba(124, 58, 237, 0.08);
-        color: #a78bfa;
+        background: rgba(30, 41, 59, 0.06);
+        color: var(--sf-purple-light);
     }
 
     .source-meta-tag.ncs-code {
@@ -755,14 +756,14 @@
 
     .tab.active {
         color: var(--primary-color);
-        border-bottom-color: var(--primary-color);
+        border-bottom-color: var(--sf-amber);
         background: rgba(var(--primary-color-rgb), 0.05);
     }
 
     .tab.ai-tab.active {
-        color: #a78bfa;
-        border-bottom-color: var(--sf-purple);
-        background: rgba(124, 58, 237, 0.05);
+        color: var(--sf-purple);
+        border-bottom-color: var(--sf-amber);
+        background: rgba(245, 158, 11, 0.05);
     }
 
     .tab-content {
@@ -995,9 +996,9 @@
     }
 
     .provenance-badge.rrf {
-        background: rgba(139, 92, 246, 0.15);
-        color: #a78bfa;
-        border: 1px solid rgba(139, 92, 246, 0.3);
+        background: rgba(30, 41, 59, 0.1);
+        color: var(--sf-purple-light);
+        border: 1px solid rgba(30, 41, 59, 0.2);
     }
 
     /* Bookmark button on result cards */
@@ -1054,15 +1055,15 @@
     }
     .pq-cloud-link {
         font-size: 0.78rem;
-        color: var(--sf-accent, #6366f1);
+        color: var(--sf-amber-dark);
         text-decoration: none;
         padding: 3px 10px;
         border-radius: 6px;
-        background: rgba(99, 102, 241, 0.08);
+        background: rgba(245, 158, 11, 0.08);
         transition: background 0.2s;
     }
     .pq-cloud-link:hover {
-        background: rgba(99, 102, 241, 0.16);
+        background: rgba(245, 158, 11, 0.16);
     }
     .pq-item {
         display: flex;
@@ -1147,31 +1148,31 @@
         top: 100%;
         left: 0;
         right: 0;
-        background: #1e2a3a;
-        border: 1px solid rgba(255,255,255,0.12);
+        background: var(--sf-card-bg);
+        border: 1px solid var(--sf-border);
         border-radius: 10px;
         margin-top: 4px;
         z-index: 100;
         overflow: hidden;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        box-shadow: var(--sf-shadow-lg);
     }
     .recent-queries-dropdown .rq-title {
         padding: 8px 14px 4px;
         font-size: 0.75rem;
-        color: #888;
+        color: var(--sf-text-3);
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
     .recent-queries-dropdown .rq-item {
         padding: 9px 14px;
         cursor: pointer;
-        color: #d0d0d0;
+        color: var(--sf-text-2);
         font-size: 0.9rem;
         transition: background 0.15s;
     }
     .recent-queries-dropdown .rq-item:hover {
-        background: rgba(0,212,255,0.1);
-        color: #fff;
+        background: rgba(245, 158, 11, 0.06);
+        color: var(--sf-text-1);
     }
 {% endblock %}
 
@@ -1189,12 +1190,15 @@
         <!-- Tab Navigation -->
         <div class="tabs">
             <div class="tab ai-tab active" data-tab="ask">🤖 AI 질문</div>
-            <div class="tab" data-tab="search">🔍 벡터 검색</div>
+            <div class="tab" data-tab="search">🔍 키워드 검색</div>
         </div>
 
         <!-- AI Ask Tab -->
         <div class="tab-content active" id="tab-ask">
             <div class="tab-body">
+                <div class="hint" style="margin-bottom: 12px; padding: 10px 14px; background: rgba(var(--primary-color-rgb), 0.06); border-radius: 8px; font-size: 0.88em; color: #666; line-height: 1.6;">
+                    <strong>AI 질문이란?</strong> 궁금한 내용을 자유롭게 입력하면, AI가 관련 문서를 분석하여 종합적인 답변을 만들어줍니다.
+                </div>
                 <form class="search-form" id="askForm">
                     <div class="search-input-group">
                         <label for="askQuery">질문</label>
@@ -1202,13 +1206,13 @@
                     </div>
                     <div class="search-row">
                         <div class="search-input-group" style="display: flex; align-items: flex-end;">
-                            <button type="submit" class="btn btn-ai" style="width: 100%;">
-                                🤖 AI 답변 받기
+                            <button type="submit" class="btn btn-ai" id="askSubmitBtn" style="width: 100%;">
+                                🤖 질문하기
                             </button>
                         </div>
                     </div>
                     <select id="askNamespace" name="namespace" hidden><option value="">전체</option></select>
-                    <select id="askTopK" name="topK" hidden><option value="10" selected>10</option></select>
+                    <select id="askTopK" name="topK" hidden><option value="20" selected>20</option></select>
                 </form>
 
                 <div class="hint">
@@ -1237,7 +1241,7 @@
                 <div class="results-container" id="askResultsContainer">
                     <div class="empty-state" id="askEmptyState">
                         <div class="icon">🤖</div>
-                        <p>질문을 입력하고 'AI 답변 받기' 버튼을 클릭하세요</p>
+                        <p>질문을 입력하고 '질문하기' 버튼을 클릭하세요</p>
                     </div>
                 </div>
             </div>
@@ -1246,15 +1250,18 @@
         <!-- Search Tab -->
         <div class="tab-content" id="tab-search">
             <div class="tab-body">
+                <div class="hint" style="margin-bottom: 12px; padding: 10px 14px; background: rgba(var(--primary-color-rgb), 0.06); border-radius: 8px; font-size: 0.88em; color: #666; line-height: 1.6;">
+                    <strong>키워드 검색이란?</strong> 찾고 싶은 단어나 문장을 입력하면, 관련된 문서 원문을 바로 보여줍니다. AI 답변 없이 문서만 빠르게 확인할 때 유용합니다.
+                </div>
 
                 <!-- Search Mode Selector -->
                 <div class="search-mode-selector" id="searchModeSelector">
-                    <button type="button" class="search-mode-btn active" data-mode="vector">🎯 벡터</button>
-                    <button type="button" class="search-mode-btn" data-mode="hybrid">⚡ 하이브리드</button>
-                    <button type="button" class="search-mode-btn" data-mode="keyword">🔤 키워드</button>
+                    <button type="button" class="search-mode-btn active" data-mode="vector">🎯 의미 검색</button>
+                    <button type="button" class="search-mode-btn" data-mode="hybrid">⚡ 통합 검색</button>
+                    <button type="button" class="search-mode-btn" data-mode="keyword">🔤 키워드 검색</button>
                 </div>
                 <div class="search-mode-info" id="searchModeInfo">
-                    벡터 유사도 기반으로 의미적으로 유사한 문서를 검색합니다.
+                    입력한 내용과 의미가 비슷한 문서를 찾아줍니다.
                 </div>
 
                 <form class="search-form" id="searchForm">
@@ -1327,8 +1334,9 @@
 
 {% block scripts %}
 <script>
-    // Default namespace configuration
+    // Default namespace and major configuration
     const DEFAULT_NAMESPACE = '{{ config.namespace }}';
+    const CURRENT_MAJOR = '{{ major|default("") }}';
 
     // Active chart instances for cleanup
     let activeCharts = [];
@@ -1470,9 +1478,9 @@
     // Search mode state
     let currentSearchMode = 'vector';
     const modeDescriptions = {
-        'vector': '벡터 유사도 기반으로 의미적으로 유사한 문서를 검색합니다.',
-        'hybrid': 'BM25 키워드 매칭 + 벡터 유사도를 RRF로 결합하여 검색합니다.',
-        'keyword': '벡터 검색 결과에서 BM25 키워드 관련도 순으로 재정렬합니다.'
+        'vector': '입력한 내용과 의미가 비슷한 문서를 찾아줍니다.',
+        'hybrid': '의미 검색과 키워드 검색을 함께 사용하여 더 정확한 결과를 보여줍니다.',
+        'keyword': '입력한 단어가 포함된 문서를 키워드 일치 순으로 보여줍니다.'
     };
 
     document.querySelectorAll('.search-mode-btn').forEach(btn => {
@@ -1747,12 +1755,17 @@
         const query = document.getElementById('askQuery').value;
         const namespace = document.getElementById('askNamespace').value;
         const topK = document.getElementById('askTopK').value;
+        const askBtn = document.getElementById('askSubmitBtn');
 
         _lastAskedQuery = query;
         _lastAskedNamespace = namespace || DEFAULT_NAMESPACE;
 
         const loading = document.getElementById('askLoading');
         const resultsContainer = document.getElementById('askResultsContainer');
+
+        // Disable button during AI response
+        askBtn.disabled = true;
+        askBtn.textContent = '⏳ 답변 생성 중...';
 
         loading.classList.add('active');
         resultsContainer.innerHTML = '';
@@ -1761,7 +1774,7 @@
             const response = await fetch('/api/ask/stream', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ query, namespace, top_k: topK })
+                body: JSON.stringify({ query, namespace, top_k: topK, major: CURRENT_MAJOR || undefined })
             });
 
             // Check if response is JSON (error or early response)
@@ -1769,6 +1782,8 @@
             if (contentType.includes('application/json')) {
                 const data = await response.json();
                 loading.classList.remove('active');
+                askBtn.disabled = false;
+                askBtn.textContent = '🤖 질문하기';
                 if (data.success && data.data) {
                     _lastAnswerPreview = (data.data.answer || '').substring(0, 300);
                     renderAskResults(resultsContainer, data.data, data.data.answer || '', null);
@@ -1843,6 +1858,8 @@
             }
 
             loading.classList.remove('active');
+            askBtn.disabled = false;
+            askBtn.textContent = '🤖 질문하기';
 
             // If stream ended without done event, render what we have
             if (answerText && metadata && !document.querySelector('.sources-section')) {
@@ -1852,6 +1869,8 @@
         } catch (error) {
             console.error('Fetch error:', error);
             loading.classList.remove('active');
+            askBtn.disabled = false;
+            askBtn.textContent = '🤖 질문하기';
             showToast('AI 답변 생성 중 오류가 발생했습니다: ' + error.message, 'error');
         }
     });
@@ -1876,7 +1895,7 @@
             const response = await fetch('/api/search', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ query, namespace, top_k: topK, file_type: fileType, search_mode: currentSearchMode })
+                body: JSON.stringify({ query, namespace, top_k: topK, file_type: fileType, search_mode: currentSearchMode, major: CURRENT_MAJOR || undefined })
             });
 
             const data = await response.json();
@@ -1984,6 +2003,15 @@
         const title = document.getElementById('pdfModalTitle');
 
         title.textContent = sourceFile.split('/').pop();
+
+        // For non-document files (images, JSON), skip PDF resolve and show text directly
+        const lowerFile = sourceFile.toLowerCase();
+        if (lowerFile.endsWith('.jpeg') || lowerFile.endsWith('.jpg') || lowerFile.endsWith('.png') || lowerFile.endsWith('.gif') || lowerFile.endsWith('.json')) {
+            modal.classList.add('active');
+            showTextFallback(body, sourceIndex);
+            return;
+        }
+
         body.innerHTML = '<div class="pdf-modal-loading">문서를 찾는 중...</div>';
         modal.classList.add('active');
 
@@ -2028,8 +2056,8 @@
         if (content) {
             body.innerHTML = `
                 <div style="padding: 24px; overflow-y: auto; height: 100%;">
-                    <div style="background: rgba(255,152,0,0.1); border: 1px solid rgba(255,152,0,0.3); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 0.85rem; color: #bbb;">
-                        PDF 원본 파일이 서버에 없어 텍스트 내용을 표시합니다.
+                    <div style="background: rgba(99,162,255,0.08); border: 1px solid rgba(99,162,255,0.25); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 0.85rem; color: #aac4e0;">
+                        📄 원본 텍스트 내용입니다.
                     </div>
                     <div class="ai-answer-content" style="font-size: 0.9rem; line-height: 1.7; color: #ddd;">${renderMarkdown(content)}</div>
                 </div>`;

@@ -178,6 +178,74 @@
         background: rgba(239, 68, 68, 0.25);
     }
 
+    /* Major selection */
+    .major-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 12px;
+    }
+
+    .major-card {
+        padding: 16px;
+        border-radius: 14px;
+        background: rgba(0, 0, 0, 0.2);
+        border: 2px solid rgba(255, 255, 255, 0.08);
+        cursor: pointer;
+        transition: all 0.2s;
+        text-align: center;
+    }
+
+    .major-card:hover {
+        border-color: rgba(255, 255, 255, 0.2);
+        background: rgba(0, 0, 0, 0.3);
+    }
+
+    .major-card.active {
+        border-color: var(--major-color, #6366f1);
+        background: rgba(99, 102, 241, 0.12);
+    }
+
+    .major-card.disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+
+    .major-card-icon {
+        font-size: 2rem;
+        margin-bottom: 8px;
+    }
+
+    .major-card-name {
+        font-weight: 600;
+        color: #e0e0e0;
+        font-size: 1rem;
+    }
+
+    .major-card-desc {
+        color: #888;
+        font-size: 0.78rem;
+        margin-top: 4px;
+    }
+
+    .major-badge {
+        display: inline-block;
+        margin-top: 8px;
+        padding: 2px 10px;
+        border-radius: 8px;
+        font-size: 0.72rem;
+        font-weight: 500;
+    }
+
+    .major-badge.selected {
+        background: rgba(99, 102, 241, 0.2);
+        color: #6366f1;
+    }
+
+    .major-badge.coming {
+        background: rgba(255, 255, 255, 0.06);
+        color: #666;
+    }
+
     @media (max-width: 480px) {
         .profile-header {
             flex-direction: column;
@@ -251,9 +319,69 @@
             </div>
         </div>
 
+        <!-- Major Selection -->
+        <div class="profile-card">
+            <div class="section-title">내 전공 선택</div>
+            <div class="major-grid">
+                {% for key, cfg in major_config.items() %}
+                <div class="major-card {% if key == current_major %}active{% endif %}"
+                     style="--major-color: {{ cfg.color }}"
+                     {% if true %}onclick="selectMajor('{{ key }}')"{% endif %}>
+                    <div class="major-card-icon">
+                        {% if cfg.icon == 'cpu' %}💻{% elif cfg.icon == 'zap' %}⚡{% elif cfg.icon == 'wrench' %}⚙️{% elif cfg.icon == 'flask' %}🧪{% else %}📚{% endif %}
+                    </div>
+                    <div class="major-card-name">{{ cfg.name }}</div>
+                    <div class="major-card-desc">{{ cfg.description }}</div>
+                    {% if key == current_major %}
+                    <span class="major-badge selected">선택됨</span>
+                    {% endif %}
+                </div>
+                {% endfor %}
+
+                <!-- 준비 중인 전공 -->
+                <div class="major-card disabled">
+                    <div class="major-card-icon">⚡</div>
+                    <div class="major-card-name">전기전자과</div>
+                    <div class="major-card-desc">준비 중</div>
+                    <span class="major-badge coming">준비 중</span>
+                </div>
+                <div class="major-card disabled">
+                    <div class="major-card-icon">⚙️</div>
+                    <div class="major-card-name">기계과</div>
+                    <div class="major-card-desc">준비 중</div>
+                    <span class="major-badge coming">준비 중</span>
+                </div>
+                <div class="major-card disabled">
+                    <div class="major-card-icon">🧪</div>
+                    <div class="major-card-name">화공과</div>
+                    <div class="major-card-desc">준비 중</div>
+                    <span class="major-badge coming">준비 중</span>
+                </div>
+            </div>
+        </div>
+
         <form action="/logout" method="POST" class="logout-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn-danger">로그아웃</button>
         </form>
     </div>
+
+    <script>
+    function selectMajor(majorKey) {
+        fetch('/api/v1/user/major', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({major: majorKey}),
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'ok') {
+                location.reload();
+            } else {
+                alert(data.message || '전공 변경에 실패했습니다.');
+            }
+        })
+        .catch(() => alert('전공 변경에 실패했습니다.'));
+    }
+    </script>
 {% endblock %}

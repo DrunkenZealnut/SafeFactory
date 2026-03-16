@@ -6,7 +6,7 @@
     <title>{% block title %}SafeFactory{% endblock %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;900&family=Outfit:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/theme.css">
     <style>
 
@@ -52,30 +52,29 @@
         }
         .sf-nav-logo-icon { font-size: 24px; }
         .sf-nav-logo-text {
+            font-family: 'Outfit', 'Noto Sans KR', sans-serif;
             font-size: 18px;
-            font-weight: 800;
+            font-weight: 700;
             color: var(--sf-purple);
+            letter-spacing: -0.5px;
         }
+        .sf-nav-logo-text .accent { color: var(--sf-amber-dark); }
 
         /* Center Tabs */
         .sf-nav-tabs {
             display: flex;
-            gap: 4px;
-            background: var(--sf-card-bg);
-            border: 1px solid var(--sf-border);
-            border-radius: 14px;
-            padding: 4px;
+            gap: 2px;
             overflow-x: auto;
             scrollbar-width: none;
         }
         .sf-nav-tabs::-webkit-scrollbar { display: none; }
 
         .sf-nav-tab {
-            font-size: 13px;
+            font-size: 13.5px;
             font-weight: 500;
             color: var(--sf-text-3);
-            padding: 8px 14px;
-            border-radius: 10px;
+            padding: 8px 16px;
+            border-radius: 8px;
             cursor: pointer;
             transition: all 0.2s;
             display: flex;
@@ -83,15 +82,26 @@
             gap: 5px;
             text-decoration: none;
             white-space: nowrap;
+            position: relative;
         }
         .sf-nav-tab:hover {
             color: var(--sf-text-1);
-            background: rgba(124, 58, 237, 0.06);
+            background: var(--sf-surface, rgba(0, 0, 0, 0.03));
         }
         .sf-nav-tab.active {
-            background: linear-gradient(135deg, var(--sf-purple), var(--sf-purple-dark));
-            color: #fff;
+            background: transparent;
+            color: var(--sf-purple);
             font-weight: 600;
+        }
+        .sf-nav-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -13px;
+            left: 16px;
+            right: 16px;
+            height: 2px;
+            background: var(--sf-amber, #f59e0b);
+            border-radius: 1px;
         }
 
         /* Right Actions */
@@ -123,16 +133,16 @@
             font-size: 13px;
             font-weight: 600;
             color: #fff;
-            background: linear-gradient(135deg, var(--sf-purple), var(--sf-purple-dark));
+            background: var(--sf-purple);
             padding: 9px 20px;
-            border-radius: 10px;
+            border-radius: 8px;
             cursor: pointer;
             border: none;
             text-decoration: none;
-            transition: opacity 0.2s;
+            transition: all 0.2s;
             white-space: nowrap;
         }
-        .sf-nav-login-btn:hover { opacity: 0.85; }
+        .sf-nav-login-btn:hover { background: var(--sf-purple-light); box-shadow: var(--sf-shadow-md); }
 
         .sf-nav-user {
             display: flex;
@@ -165,14 +175,15 @@
         }
         .sf-nav-admin {
             font-size: 12px;
-            color: var(--sf-purple);
+            color: var(--sf-amber-dark, #d97706);
             text-decoration: none;
             padding: 5px 10px;
             border-radius: 6px;
-            background: rgba(124, 58, 237, 0.08);
+            background: rgba(245, 158, 11, 0.08);
+            font-weight: 600;
             transition: all 0.2s;
         }
-        .sf-nav-admin:hover { background: rgba(124, 58, 237, 0.15); }
+        .sf-nav-admin:hover { background: rgba(245, 158, 11, 0.15); }
 
         .logout-form {
             display: inline;
@@ -271,11 +282,11 @@
         }
         .sf-mobile-menu-links a:hover,
         .sf-mobile-menu-links a.active {
-            background: rgba(124, 58, 237, 0.06);
+            background: rgba(30, 41, 59, 0.04);
             color: var(--sf-text-1);
         }
         .sf-mobile-menu-links a.active {
-            background: linear-gradient(135deg, var(--sf-purple), var(--sf-purple-dark));
+            background: var(--sf-purple);
             color: #fff;
         }
 
@@ -329,17 +340,14 @@
         <div class="sf-nav-inner">
             <a href="/" class="sf-nav-logo">
                 <span class="sf-nav-logo-icon">🏭</span>
-                <span class="sf-nav-logo-text">SafeFactory</span>
+                <span class="sf-nav-logo-text">Safe<span class="accent">Factory</span></span>
             </a>
 
             <div class="sf-nav-tabs">
                 <a href="/" class="sf-nav-tab {% block nav_home %}{% endblock %}">🏠 홈</a>
-                <a href="/semiconductor" class="sf-nav-tab {% block nav_semiconductor %}{% endblock %}">🔬 반도체</a>
-                <a href="/field-training" class="sf-nav-tab {% block nav_field_training %}{% endblock %}">🏭 현장실습</a>
-                <a href="/safeguide" class="sf-nav-tab {% block nav_safeguide %}{% endblock %}">🛡️ 안전보건</a>
+                <a href="/learn" class="sf-nav-tab {% block nav_learn %}{% endblock %}">📚 학습하기</a>
                 <a href="/msds" class="sf-nav-tab {% block nav_msds %}{% endblock %}">🧪 MSDS</a>
-                <a href="/wordcloud" class="sf-nav-tab {% block nav_wordcloud %}{% endblock %}">☁️ 클라우드</a>
-                <a href="/questions" class="sf-nav-tab {% block nav_questions %}{% endblock %}">❓ 질문</a>
+                <a href="/questions" class="sf-nav-tab {% block nav_questions %}{% endblock %}">❓ 공유질문</a>
                 <a href="/community" class="sf-nav-tab {% block nav_community %}{% endblock %}">💬 커뮤니티</a>
                 <a href="/news" class="sf-nav-tab {% block nav_news %}{% endblock %}">📰 뉴스</a>
             </div>
@@ -378,18 +386,15 @@
         <div class="sf-mobile-menu-header">
             <a href="/" class="sf-nav-logo">
                 <span class="sf-nav-logo-icon">🏭</span>
-                <span class="sf-nav-logo-text">SafeFactory</span>
+                <span class="sf-nav-logo-text">Safe<span class="accent">Factory</span></span>
             </a>
             <button class="sf-mobile-menu-close" onclick="sfMobileMenuClose()" aria-label="메뉴 닫기">✕</button>
         </div>
         <div class="sf-mobile-menu-links">
             <a href="/" class="{% block mobile_nav_home %}{% endblock %}">🏠 홈</a>
-            <a href="/semiconductor" class="{% block mobile_nav_semiconductor %}{% endblock %}">🔬 반도체</a>
-            <a href="/field-training" class="{% block mobile_nav_field_training %}{% endblock %}">🏭 현장실습</a>
-            <a href="/safeguide" class="{% block mobile_nav_safeguide %}{% endblock %}">🛡️ 안전보건</a>
+            <a href="/learn" class="{% block mobile_nav_learn %}{% endblock %}">📚 학습하기</a>
             <a href="/msds" class="{% block mobile_nav_msds %}{% endblock %}">🧪 MSDS</a>
-            <a href="/wordcloud" class="{% block mobile_nav_wordcloud %}{% endblock %}">☁️ 클라우드</a>
-            <a href="/questions" class="{% block mobile_nav_questions %}{% endblock %}">❓ 질문</a>
+            <a href="/questions" class="{% block mobile_nav_questions %}{% endblock %}">❓ 공유질문</a>
             <a href="/community" class="{% block mobile_nav_community %}{% endblock %}">💬 커뮤니티</a>
             <a href="/news" class="{% block mobile_nav_news %}{% endblock %}">📰 뉴스</a>
         </div>

@@ -5,77 +5,175 @@
 {% block mobile_nav_home %}active{% endblock %}
 
 {% block head_extra %}
-    /* ===== Hero Section ===== */
+    /* ===== Hero Carousel ===== */
     .hero {
-        text-align: center;
-        padding: 36px 24px 24px;
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 28px 24px 24px;
+    }
+    .carousel {
+        background: var(--sf-card-bg);
+        border: 1px solid var(--sf-border);
+        border-radius: 20px;
+        overflow: hidden;
         position: relative;
     }
-    .hero::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 600px;
-        height: 400px;
-        background: radial-gradient(ellipse, rgba(124,58,237,0.06) 0%, transparent 70%);
-        pointer-events: none;
+    .carousel-track {
+        display: flex;
+        transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        will-change: transform;
     }
-    .hero-badge {
+    .carousel-slide {
+        min-width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 32px 40px;
+        gap: 20px;
+    }
+    .slide-content {
+        flex: 1;
+        min-width: 0;
+    }
+    .slide-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 4px 12px;
+        border-radius: 6px;
+        margin-bottom: 10px;
+    }
+    .slide-title {
+        font-family: 'Outfit', 'Noto Sans KR', sans-serif;
+        font-size: 24px;
+        font-weight: 800;
+        color: var(--sf-text-1);
+        line-height: 1.3;
+        letter-spacing: -0.3px;
+        margin-bottom: 6px;
+    }
+    .slide-desc {
+        font-size: 13px;
+        color: var(--sf-text-2);
+        line-height: 1.7;
+        margin-bottom: 16px;
+        max-width: 420px;
+    }
+    .slide-cta {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--sf-purple);
+        text-decoration: none;
+        padding: 8px 18px;
+        border: 1px solid var(--sf-border);
+        border-radius: 10px;
+        transition: all 0.2s;
+    }
+    .slide-cta:hover {
+        background: var(--sf-purple);
+        color: #fff;
+        border-color: var(--sf-purple);
+    }
+    .slide-visual {
+        flex-shrink: 0;
+        width: 140px;
+        height: 140px;
+        border-radius: 18px;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 6px;
-        background: rgba(124,58,237,0.06);
-        border: 1px solid rgba(124,58,237,0.15);
-        border-radius: 20px;
-        padding: 6px 16px;
-        font-size: 12px;
-        font-weight: 500;
-        color: var(--sf-purple);
-        margin: 0 auto 20px;
-        width: fit-content;
+        position: relative;
     }
-    .hero-badge .pulse {
-        width: 6px;
-        height: 6px;
-        background: #22c55e;
-        border-radius: 50%;
-        animation: pulse-glow 2s infinite;
-    }
-    @keyframes pulse-glow {
-        0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.4); }
-        50% { box-shadow: 0 0 0 6px rgba(34,197,94,0); }
-    }
-    .hero-title {
-        font-size: 36px;
-        font-weight: 900;
-        background: linear-gradient(135deg, var(--sf-purple), var(--sf-purple-dark), #4c1d95);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        margin: 0 auto 10px;
-        line-height: 1.25;
-        text-align: center;
-    }
-    .hero-subtitle {
-        font-size: 14px;
-        color: var(--sf-text-2);
-        font-weight: 400;
-        line-height: 1.7;
-        margin-bottom: 24px;
-        text-align: center;
-    }
-    .hero-subtitle strong {
-        color: var(--sf-text-1);
-        font-weight: 600;
+    .slide-visual svg {
+        width: 72px;
+        height: 72px;
     }
 
-    /* ===== Unified Search Bar ===== */
+    /* Slide color variants */
+    .slide-learn .slide-badge { background: rgba(59,130,246,0.08); color: #2563eb; }
+    .slide-learn .slide-visual { background: linear-gradient(135deg, rgba(59,130,246,0.06), rgba(59,130,246,0.12)); }
+    .slide-msds .slide-badge { background: rgba(16,185,129,0.08); color: #059669; }
+    .slide-msds .slide-visual { background: linear-gradient(135deg, rgba(16,185,129,0.06), rgba(16,185,129,0.12)); }
+    .slide-questions .slide-badge { background: rgba(245,158,11,0.08); color: #d97706; }
+    .slide-questions .slide-visual { background: linear-gradient(135deg, rgba(245,158,11,0.06), rgba(245,158,11,0.12)); }
+    .slide-community .slide-badge { background: rgba(6,182,212,0.08); color: #0891b2; }
+    .slide-community .slide-visual { background: linear-gradient(135deg, rgba(6,182,212,0.06), rgba(6,182,212,0.12)); }
+    .slide-news .slide-badge { background: rgba(139,92,246,0.08); color: #7c3aed; }
+    .slide-news .slide-visual { background: linear-gradient(135deg, rgba(139,92,246,0.06), rgba(139,92,246,0.12)); }
+
+    /* Carousel navigation */
+    .carousel-nav {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 0 40px 20px;
+    }
+    .carousel-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        border: none;
+        background: var(--sf-border);
+        cursor: pointer;
+        padding: 0;
+        transition: all 0.3s;
+    }
+    .carousel-dot.active {
+        width: 24px;
+        border-radius: 4px;
+        background: var(--sf-purple);
+    }
+    .carousel-arrows {
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        transform: translateY(-50%);
+        display: flex;
+        justify-content: space-between;
+        padding: 0 12px;
+        pointer-events: none;
+        z-index: 2;
+    }
+    .carousel-arrow {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: var(--sf-card-bg);
+        border: 1px solid var(--sf-border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        cursor: pointer;
+        pointer-events: auto;
+        transition: all 0.2s;
+        color: var(--sf-text-2);
+        box-shadow: var(--sf-shadow-sm);
+        opacity: 0;
+    }
+    .carousel:hover .carousel-arrow { opacity: 1; }
+    .carousel-arrow:hover {
+        background: var(--sf-purple);
+        color: #fff;
+        border-color: var(--sf-purple);
+    }
+
+    /* ===== Search Bar ===== */
+    .search-section {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 0 24px 8px;
+    }
     .search-container {
         max-width: 720px;
-        margin: 0 auto 16px;
+        margin: 0 auto;
     }
     .unified-search {
         display: flex;
@@ -90,7 +188,7 @@
     }
     .unified-search:focus-within {
         border-color: var(--sf-purple);
-        box-shadow: 0 0 0 3px rgba(124,58,237,0.1), var(--sf-shadow-sm);
+        box-shadow: 0 0 0 3px rgba(30,41,59,0.08), var(--sf-shadow-sm);
     }
     .search-icon { font-size: 20px; flex-shrink: 0; }
     .search-input {
@@ -105,38 +203,11 @@
         min-width: 0;
     }
     .search-input::placeholder { color: var(--sf-text-4); }
-
-    .search-domain-select {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        background: rgba(124,58,237,0.06);
-        border: 1px solid rgba(124,58,237,0.15);
-        border-radius: 8px;
-        padding: 6px 10px;
-        font-size: 12px;
-        color: var(--sf-purple);
-        font-weight: 500;
-        flex-shrink: 0;
-        cursor: pointer;
-        transition: background 0.2s;
-        font-family: inherit;
-        position: relative;
-    }
-    .search-domain-select:hover { background: rgba(124,58,237,0.12); }
-    .search-domain-select select {
-        position: absolute;
-        inset: 0;
-        opacity: 0;
-        cursor: pointer;
-        font-size: 14px;
-    }
-
     .search-submit {
         width: 44px;
         height: 44px;
         border-radius: 14px;
-        background: linear-gradient(135deg, var(--sf-purple), var(--sf-purple-dark));
+        background: var(--sf-purple);
         border: none;
         display: flex;
         align-items: center;
@@ -144,11 +215,10 @@
         font-size: 18px;
         cursor: pointer;
         flex-shrink: 0;
-        transition: transform 0.2s;
+        transition: all 0.2s;
         color: #fff;
     }
-    .search-submit:hover { transform: scale(1.05); }
-
+    .search-submit:hover { background: var(--sf-purple-light); transform: scale(1.05); }
     .search-hints {
         display: flex;
         justify-content: center;
@@ -167,48 +237,65 @@
         transition: all 0.2s;
     }
     .search-hint:hover {
-        border-color: rgba(124,58,237,0.3);
-        color: var(--sf-purple);
-        background: rgba(124,58,237,0.04);
+        border-color: rgba(245,158,11,0.4);
+        color: var(--sf-amber-dark);
+        background: rgba(245,158,11,0.04);
     }
 
-    /* ===== Domain Chips ===== */
-    .domain-chips {
-        display: flex;
-        justify-content: center;
-        flex-wrap: wrap;
-        gap: 10px;
-        max-width: 720px;
+    /* Stagger animation */
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(16px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .hero, .search-section, .wordcloud-section {
+        animation: fadeInUp 0.5s ease-out both;
+    }
+    .hero { animation-delay: 0s; }
+    .search-section { animation-delay: 0.12s; }
+    .wordcloud-section { animation-delay: 0.24s; }
+
+    /* ===== Word Cloud Section ===== */
+    .wordcloud-section {
+        max-width: 1280px;
         margin: 0 auto;
-        padding: 0 24px 32px;
+        padding: 0 24px 40px;
     }
-    .domain-chip {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 10px 20px;
-        border-radius: 12px;
-        font-size: 14px;
-        font-weight: 600;
-        text-decoration: none;
-        color: var(--sf-text-2);
-        border: 1px solid var(--sf-border);
+    .wordcloud-card {
         background: var(--sf-card-bg);
-        transition: all 0.2s;
-        white-space: nowrap;
+        border: 1px solid var(--sf-border);
+        border-radius: 20px;
+        padding: 24px;
+        position: relative;
+        overflow: hidden;
     }
-    .domain-chip:hover {
-        transform: translateY(-2px);
-        box-shadow: var(--sf-shadow-md);
+    .wordcloud-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
     }
-
-    /* Domain chip color variants */
-    .dc-semi:hover { border-color: rgba(59,130,246,0.4); color: #2563eb; }
-    .dc-labor:hover { border-color: rgba(245,158,11,0.4); color: #d97706; }
-    .dc-field:hover { border-color: rgba(239,68,68,0.4); color: #dc2626; }
-    .dc-safe:hover { border-color: rgba(139,92,246,0.4); color: #7c3aed; }
-    .dc-msds:hover { border-color: rgba(16,185,129,0.4); color: #059669; }
-    .dc-comm:hover { border-color: rgba(6,182,212,0.4); color: #0891b2; }
+    .wordcloud-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--sf-text-1);
+    }
+    .wordcloud-subtitle {
+        font-size: 12px;
+        color: var(--sf-text-4);
+    }
+    #wordcloudCanvas {
+        width: 100%;
+        height: 260px;
+        cursor: pointer;
+    }
+    .wordcloud-empty {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 260px;
+        font-size: 14px;
+        color: var(--sf-text-4);
+    }
 
     /* ===== Bottom Row ===== */
     .bottom-row {
@@ -316,7 +403,7 @@
     .nc-regulation { background: rgba(234,179,8,0.08); color: #a16207; }
     .nc-policy { background: rgba(59,130,246,0.08); color: #2563eb; }
     .nc-technology { background: rgba(34,197,94,0.08); color: #15803d; }
-    .nc-general { background: rgba(124,58,237,0.08); color: #7c3aed; }
+    .nc-general { background: rgba(30,41,59,0.06); color: var(--sf-purple); }
     .news-text {
         flex: 1;
         font-size: 13px;
@@ -363,57 +450,176 @@
 
     /* ===== Responsive ===== */
     @media (max-width: 900px) {
-        .hero-title { font-size: 28px; }
         .bottom-row { grid-template-columns: 1fr; }
+        .carousel-slide { padding: 28px 28px; gap: 16px; }
+        .slide-visual { width: 110px; height: 110px; }
+        .slide-visual svg { width: 56px; height: 56px; }
+        .slide-title { font-size: 21px; }
     }
     @media (max-width: 600px) {
-        .hero { padding: 24px 16px 16px; }
-        .hero-title { font-size: 22px; }
-        .hero-subtitle { font-size: 13px; }
-        .domain-chip { padding: 8px 14px; font-size: 13px; }
-        .search-domain-select { display: none; }
+        .hero { padding: 16px 16px 16px; }
+        .carousel-slide {
+            flex-direction: column-reverse;
+            padding: 24px 20px;
+            text-align: center;
+            gap: 12px;
+        }
+        .slide-visual { width: 80px; height: 80px; }
+        .slide-visual svg { width: 44px; height: 44px; }
+        .slide-title { font-size: 19px; }
+        .slide-desc { font-size: 12px; max-width: none; margin-bottom: 12px; }
+        .slide-cta { font-size: 12px; }
+        .carousel-nav { padding: 0 24px 18px; }
+        .carousel-arrows { display: none; }
+        .search-section { padding: 0 16px 8px; }
+        .wordcloud-section { padding: 0 16px 32px; }
+        #wordcloudCanvas { height: 200px; }
     }
 {% endblock %}
 
 {% block content %}
-<!-- Hero Section -->
+<!-- Hero Carousel -->
 <section class="hero">
-    <div class="hero-badge"><span class="pulse"></span> AI 실시간 검색</div>
-    <h1 class="hero-title">AI 산업안전 지식검색</h1>
-    <p class="hero-subtitle">반도체·산업안전 전문 문서 AI 검색</p>
+    <div class="carousel" id="heroCarousel">
+        <div class="carousel-track" id="carouselTrack">
+            <!-- Slide 1: AI 학습 -->
+            <div class="carousel-slide slide-learn">
+                <div class="slide-content">
+                    <div class="slide-badge">{{ major_config.short_name }} 전공</div>
+                    <h2 class="slide-title">AI가 찾아주는<br>{{ major_config.short_name }} 학습자료</h2>
+                    <p class="slide-desc">질문을 입력하면 AI가 관련 자료를 검색하고, 맞춤형 답변을 생성합니다. {{ major_config.prompt_vars.core_topics[:2]|join(', ') }} 등을 학습하세요.</p>
+                    <a href="/learn" class="slide-cta">학습하기 →</a>
+                </div>
+                <div class="slide-visual">
+                    <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="12" y="16" width="36" height="48" rx="3" stroke="#3b82f6" stroke-width="2.5" fill="rgba(59,130,246,0.06)"/>
+                        <rect x="32" y="22" width="36" height="48" rx="3" stroke="#3b82f6" stroke-width="2.5" fill="rgba(59,130,246,0.10)"/>
+                        <line x1="38" y1="34" x2="58" y2="34" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>
+                        <line x1="38" y1="42" x2="54" y2="42" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+                        <line x1="38" y1="50" x2="56" y2="50" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+                        <circle cx="58" cy="58" r="12" fill="#3b82f6" opacity="0.12"/>
+                        <path d="M54 58l3 3 6-6" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+            </div>
+            <!-- Slide 2: MSDS -->
+            <div class="carousel-slide slide-msds">
+                <div class="slide-content">
+                    <div class="slide-badge">화학물질 안전</div>
+                    <h2 class="slide-title">MSDS 물질안전<br>보건자료 검색</h2>
+                    <p class="slide-desc">화학물질명으로 MSDS를 즉시 검색하세요. GHS 분류, 취급 주의사항, 응급조치 정보를 한눈에 확인할 수 있습니다.</p>
+                    <a href="/msds" class="slide-cta">MSDS 검색 →</a>
+                </div>
+                <div class="slide-visual">
+                    <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M32 14v16c0 4-6 8-6 16s4 20 14 20 14-12 14-20-6-12-6-16V14" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="rgba(16,185,129,0.06)"/>
+                        <line x1="28" y1="14" x2="52" y2="14" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"/>
+                        <circle cx="40" cy="50" r="6" fill="#10b981" opacity="0.15"/>
+                        <circle cx="40" cy="50" r="2.5" fill="#10b981" opacity="0.4"/>
+                        <path d="M36 30h8" stroke="#10b981" stroke-width="2" stroke-linecap="round" opacity="0.4"/>
+                        <path d="M34 36h12" stroke="#10b981" stroke-width="2" stroke-linecap="round" opacity="0.4"/>
+                    </svg>
+                </div>
+            </div>
+            <!-- Slide 3: 공유질문 -->
+            <div class="carousel-slide slide-questions">
+                <div class="slide-content">
+                    <div class="slide-badge">질문 공유</div>
+                    <h2 class="slide-title">다른 학생들의<br>AI 질문 모아보기</h2>
+                    <p class="slide-desc">다른 학생들이 AI에게 물어본 질문과 답변을 확인하세요. 좋아요를 누르고 인기 키워드 트렌드를 살펴볼 수 있습니다.</p>
+                    <a href="/questions" class="slide-cta">공유질문 보기 →</a>
+                </div>
+                <div class="slide-visual">
+                    <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="10" y="18" width="40" height="30" rx="6" stroke="#d97706" stroke-width="2.5" fill="rgba(245,158,11,0.06)"/>
+                        <path d="M20 48v8l8-8" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <rect x="30" y="32" width="40" height="26" rx="6" stroke="#d97706" stroke-width="2.5" fill="rgba(245,158,11,0.10)"/>
+                        <path d="M60 58v7l-7-7" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <circle cx="23" cy="32" r="2" fill="#d97706" opacity="0.5"/>
+                        <circle cx="30" cy="32" r="2" fill="#d97706" opacity="0.5"/>
+                        <circle cx="37" cy="32" r="2" fill="#d97706" opacity="0.5"/>
+                        <line x1="38" y1="42" x2="58" y2="42" stroke="#d97706" stroke-width="2" stroke-linecap="round" opacity="0.4"/>
+                        <line x1="38" y1="49" x2="52" y2="49" stroke="#d97706" stroke-width="2" stroke-linecap="round" opacity="0.4"/>
+                    </svg>
+                </div>
+            </div>
+            <!-- Slide 4: 커뮤니티 -->
+            <div class="carousel-slide slide-community">
+                <div class="slide-content">
+                    <div class="slide-badge">커뮤니티</div>
+                    <h2 class="slide-title">학생 커뮤니티에서<br>정보를 나누세요</h2>
+                    <p class="slide-desc">질문/답변, 정보 공유, 자유 게시판에서 동료 학생들과 소통하세요. 현장실습, 학습 팁 등을 함께 나눌 수 있습니다.</p>
+                    <a href="/community" class="slide-cta">커뮤니티 가기 →</a>
+                </div>
+                <div class="slide-visual">
+                    <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="30" cy="28" r="10" stroke="#0891b2" stroke-width="2.5" fill="rgba(6,182,212,0.08)"/>
+                        <circle cx="52" cy="32" r="8" stroke="#0891b2" stroke-width="2.5" fill="rgba(6,182,212,0.08)"/>
+                        <path d="M14 56c0-10 8-16 16-16s16 6 16 16" stroke="#0891b2" stroke-width="2.5" stroke-linecap="round" fill="rgba(6,182,212,0.06)"/>
+                        <path d="M40 52c0-7 5-11 12-11s12 4 12 11" stroke="#0891b2" stroke-width="2.5" stroke-linecap="round" fill="rgba(6,182,212,0.06)"/>
+                        <circle cx="30" cy="28" r="3.5" fill="#0891b2" opacity="0.2"/>
+                        <circle cx="52" cy="32" r="3" fill="#0891b2" opacity="0.2"/>
+                    </svg>
+                </div>
+            </div>
+            <!-- Slide 5: 뉴스 -->
+            <div class="carousel-slide slide-news">
+                <div class="slide-content">
+                    <div class="slide-badge">안전 뉴스</div>
+                    <h2 class="slide-title">노동안전 뉴스를<br>매일 확인하세요</h2>
+                    <p class="slide-desc">산업재해, 안전규정, 정책 변경 등 최신 노동안전 뉴스를 자동으로 수집하여 제공합니다.</p>
+                    <a href="/news" class="slide-cta">뉴스 보기 →</a>
+                </div>
+                <div class="slide-visual">
+                    <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="10" y="14" width="44" height="52" rx="4" stroke="#7c3aed" stroke-width="2.5" fill="rgba(139,92,246,0.06)"/>
+                        <rect x="16" y="22" width="20" height="14" rx="2" fill="#7c3aed" opacity="0.12"/>
+                        <line x1="16" y1="44" x2="46" y2="44" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" opacity="0.4"/>
+                        <line x1="16" y1="50" x2="40" y2="50" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" opacity="0.3"/>
+                        <line x1="16" y1="56" x2="44" y2="56" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" opacity="0.3"/>
+                        <rect x="40" y="22" width="10" height="6" rx="1" fill="#7c3aed" opacity="0.15"/>
+                        <path d="M54 26c6 0 12 2 12 8v26c0 4-4 6-8 6s-4-2-4-6V14" stroke="#7c3aed" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+        <!-- Arrows -->
+        <div class="carousel-arrows">
+            <button class="carousel-arrow" onclick="carouselPrev()" aria-label="이전">‹</button>
+            <button class="carousel-arrow" onclick="carouselNext()" aria-label="다음">›</button>
+        </div>
+        <!-- Dots -->
+        <div class="carousel-nav" id="carouselNav"></div>
+    </div>
+</section>
 
-    <!-- Unified Search -->
+<!-- Search Bar -->
+<section class="search-section">
     <div class="search-container">
         <form class="unified-search" id="searchForm" onsubmit="return handleSearch(event)">
             <span class="search-icon">🔍</span>
-            <input type="text" class="search-input" id="searchQuery" placeholder="AI에게 질문하세요... (예: CVD와 PVD 공정의 차이점은?)" autocomplete="off">
-            <div class="search-domain-select" id="domainSelectWrap">
-                <span id="domainSelectLabel">전체 분야</span> ▾
-                <select id="domainSelect" onchange="document.getElementById('domainSelectLabel').textContent=this.options[this.selectedIndex].text">
-                    <option value="">전체 분야</option>
-                    {% for key, cfg in domains.items() %}
-                    <option value="{{ key }}">{{ cfg.icon }} {{ cfg.title.split(' ')[0] if ' ' in cfg.title else cfg.title }}</option>
-                    {% endfor %}
-                </select>
-            </div>
+            <input type="text" class="search-input" id="searchQuery" placeholder="AI에게 질문하세요... (예: {{ major_config.sample_questions[0] }})" autocomplete="off">
             <button type="submit" class="search-submit" aria-label="검색">→</button>
         </form>
         <div class="search-hints">
-            <span class="search-hint" onclick="fillSearch('CVD와 PVD 공정의 차이점은?')">💡 CVD와 PVD 차이점</span>
-            <span class="search-hint" onclick="fillSearch('주휴수당 계산 방법')">💡 주휴수당 계산</span>
-            <span class="search-hint" onclick="fillSearch('아세톤 MSDS 정보')">💡 아세톤 MSDS</span>
+            {% for q in major_config.sample_questions[:3] %}
+            <span class="search-hint" onclick="fillSearch('{{ q }}')">{{ q[:24] }}{% if q|length > 24 %}...{% endif %}</span>
+            {% endfor %}
         </div>
     </div>
-
 </section>
 
-<!-- Domain Chips -->
-<section class="domain-chips">
-    <a href="/semiconductor" class="domain-chip dc-semi">🔬 반도체</a>
-    <a href="/field-training" class="domain-chip dc-field">🏭 현장실습</a>
-    <a href="/safeguide" class="domain-chip dc-safe">🛡️ 안전보건</a>
-    <a href="/msds" class="domain-chip dc-msds">🧪 MSDS</a>
-    <a href="/community" class="domain-chip dc-comm">💬 커뮤니티</a>
+<!-- Word Cloud -->
+<section class="wordcloud-section">
+    <div class="wordcloud-card">
+        <div class="wordcloud-header">
+            <div class="wordcloud-title">🔥 인기 질문 키워드</div>
+            <span class="wordcloud-subtitle" id="wordcloudMeta"></span>
+        </div>
+        <div id="wordcloudCanvas">
+            <div class="wordcloud-empty">키워드 불러오는 중...</div>
+        </div>
+    </div>
 </section>
 
 <!-- Bottom Row -->
@@ -456,15 +662,60 @@
 
 {% block scripts %}
 <script src="/static/js/common.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/wordcloud@1.2.3/src/wordcloud2.js"></script>
 <script>
-// Domain key → default route mapping
-const DOMAIN_ROUTES = {
-    '': '/search',
-    'semiconductor': '/semiconductor',
-    'field-training': '/field-training',
-    'safeguide': '/safeguide',
-    'msds': '/msds'
-};
+// ===== Carousel =====
+(function() {
+    var track = document.getElementById('carouselTrack');
+    var nav = document.getElementById('carouselNav');
+    var slides = track.children;
+    var total = slides.length;
+    var current = 0;
+    var timer = null;
+    var paused = false;
+
+    // Build dots
+    for (var i = 0; i < total; i++) {
+        var dot = document.createElement('button');
+        dot.className = 'carousel-dot' + (i === 0 ? ' active' : '');
+        dot.setAttribute('aria-label', 'Slide ' + (i + 1));
+        dot.dataset.index = i;
+        dot.addEventListener('click', function() { goTo(+this.dataset.index); });
+        nav.appendChild(dot);
+    }
+
+    function goTo(idx) {
+        current = ((idx % total) + total) % total;
+        track.style.transform = 'translateX(-' + (current * 100) + '%)';
+        var dots = nav.children;
+        for (var j = 0; j < dots.length; j++) {
+            dots[j].className = 'carousel-dot' + (j === current ? ' active' : '');
+        }
+        resetTimer();
+    }
+
+    function resetTimer() {
+        clearInterval(timer);
+        if (!paused) timer = setInterval(function() { goTo(current + 1); }, 5000);
+    }
+
+    window.carouselNext = function() { goTo(current + 1); };
+    window.carouselPrev = function() { goTo(current - 1); };
+
+    var carousel = document.getElementById('heroCarousel');
+    carousel.addEventListener('mouseenter', function() { paused = true; clearInterval(timer); });
+    carousel.addEventListener('mouseleave', function() { paused = false; resetTimer(); });
+
+    // Touch swipe
+    var touchX = 0;
+    carousel.addEventListener('touchstart', function(e) { touchX = e.touches[0].clientX; }, { passive: true });
+    carousel.addEventListener('touchend', function(e) {
+        var diff = touchX - e.changedTouches[0].clientX;
+        if (Math.abs(diff) > 50) { diff > 0 ? goTo(current + 1) : goTo(current - 1); }
+    }, { passive: true });
+
+    resetTimer();
+})();
 
 // Fill search input from hint chips
 function fillSearch(text) {
@@ -472,14 +723,12 @@ function fillSearch(text) {
     document.getElementById('searchQuery').focus();
 }
 
-// Handle search form submit
+// Handle search form submit — routes to /learn with query
 function handleSearch(e) {
     e.preventDefault();
     const query = document.getElementById('searchQuery').value.trim();
     if (!query) return false;
-    const domain = document.getElementById('domainSelect').value;
-    const route = DOMAIN_ROUTES[domain] || '/semiconductor';
-    window.location.href = route + '?q=' + encodeURIComponent(query);
+    window.location.href = '/learn?q=' + encodeURIComponent(query);
     return false;
 }
 
@@ -553,10 +802,63 @@ async function loadCommunityPreview() {
     }
 }
 
+// Load word cloud
+async function loadWordCloud() {
+    const container = document.getElementById('wordcloudCanvas');
+    const meta = document.getElementById('wordcloudMeta');
+    try {
+        const resp = await fetch('/api/v1/questions/wordcloud?limit=60');
+        const data = await resp.json();
+
+        if (!data.success || !data.data || !data.data.keywords || data.data.keywords.length === 0) {
+            container.innerHTML = '<div class="wordcloud-empty">아직 질문 데이터가 없습니다.</div>';
+            return;
+        }
+
+        const keywords = data.data.keywords;
+        meta.textContent = data.data.total_questions + '개 질문에서 추출';
+
+        // Clear container and render
+        container.innerHTML = '';
+        const maxWeight = Math.max(...keywords.map(function(k) { return k[1]; }));
+        const colors = ['#1e293b', '#3b82f6', '#8b5cf6', '#06b6d4', '#ef4444', '#f59e0b', '#10b981', '#ec4899'];
+
+        WordCloud(container, {
+            list: keywords,
+            gridSize: 10,
+            weightFactor: function(size) {
+                return Math.max(14, (size / maxWeight) * 56);
+            },
+            fontFamily: "'Noto Sans KR', sans-serif",
+            fontWeight: 700,
+            color: function() {
+                return colors[Math.floor(Math.random() * colors.length)];
+            },
+            rotateRatio: 0.2,
+            rotationSteps: 2,
+            backgroundColor: 'transparent',
+            click: function(item) {
+                if (item && item[0]) {
+                    window.location.href = '/learn?q=' + encodeURIComponent(item[0]);
+                }
+            },
+            hover: function(item, dimension, event) {
+                if (event && event.target) {
+                    event.target.style.cursor = item ? 'pointer' : 'default';
+                }
+            }
+        });
+    } catch (e) {
+        console.error('Wordcloud error:', e);
+        container.innerHTML = '<div class="wordcloud-empty">키워드를 불러올 수 없습니다.</div>';
+    }
+}
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     loadCommunityPreview();
     loadNewsPreview();
+    loadWordCloud();
 });
 </script>
 {% endblock %}

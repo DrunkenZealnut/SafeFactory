@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SafeFactory — Design Proposal: Industrial Precision</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;900&family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        /* ============================================
+           SafeFactory Design Proposal
+           Concept: "Industrial Precision"
+           - 산업 도면의 정밀함 + 현대적 클린 UI
+           - 신뢰감 있는 네이비/슬레이트 톤
+           - 안전 경고색(앰버)을 포인트로 활용
+           ============================================ */
+
+        :root {
+            /* ── 배경 계층 ── */
+            --sf-bg:            #f8f9fb;
+            --sf-card-bg:       #ffffff;
+            --sf-surface:       #f1f3f7;
+
+            /* ── 브랜드 컬러: 네이비 + 앰버 ── */
+            --sf-navy:          #1e293b;
+            --sf-navy-light:    #334155;
+            --sf-navy-lighter:  #475569;
+            --sf-slate:         #64748b;
+            --sf-amber:         #f59e0b;
+            --sf-amber-light:   #fbbf24;
+            --sf-amber-dark:    #d97706;
+            --sf-emerald:       #10b981;
+            --sf-red:           #ef4444;
+
+            /* ── 텍스트 ── */
+            --sf-text-1:        #0f172a;
+            --sf-text-2:        #475569;
+            --sf-text-3:        #94a3b8;
+            --sf-text-4:        #cbd5e1;
+
+            /* ── 보더 ── */
+            --sf-border:        #e2e8f0;
+            --sf-border-light:  #f1f5f9;
+
+            /* ── 그림자 ── */
+            --sf-shadow-sm:     0 1px 3px rgba(15, 23, 42, 0.04);
+            --sf-shadow-md:     0 4px 16px rgba(15, 23, 42, 0.06);
+            --sf-shadow-lg:     0 16px 48px rgba(15, 23, 42, 0.08);
+
+            /* ── 도메인 액센트 ── */
+            --domain-semi:      #3b82f6;
+            --domain-labor:     #f59e0b;
+            --domain-field:     #ef4444;
+            --domain-safe:      #8b5cf6;
+            --domain-msds:      #10b981;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Noto Sans KR', -apple-system, sans-serif;
+            background: var(--sf-bg);
+            color: var(--sf-text-1);
+            min-height: 100vh;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* ===== NAVIGATION ===== */
+        .nav {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            border-bottom: 1px solid var(--sf-border);
+        }
+
+        .nav-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 32px;
+            display: flex;
+            align-items: center;
+            height: 64px;
+            gap: 32px;
+        }
+
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            flex-shrink: 0;
+        }
+
+        .nav-logo-mark {
+            width: 32px;
+            height: 32px;
+            background: var(--sf-navy);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-logo-mark::before {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--sf-amber);
+        }
+
+        .nav-logo-mark span {
+            font-size: 16px;
+            filter: grayscale(1) brightness(10);
+        }
+
+        .nav-logo-text {
+            font-family: 'Outfit', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--sf-navy);
+            letter-spacing: -0.5px;
+        }
+
+        .nav-logo-text .accent {
+            color: var(--sf-amber-dark);
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 2px;
+            flex: 1;
+        }
+
+        .nav-tab {
+            font-size: 13.5px;
+            font-weight: 500;
+            color: var(--sf-text-3);
+            padding: 8px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .nav-tab:hover {
+            color: var(--sf-text-1);
+            background: var(--sf-surface);
+        }
+
+        .nav-tab.active {
+            color: var(--sf-navy);
+            font-weight: 600;
+        }
+
+        .nav-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -18px;
+            left: 16px;
+            right: 16px;
+            height: 2px;
+            background: var(--sf-amber);
+            border-radius: 1px;
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .nav-btn {
+            font-size: 13px;
+            font-weight: 600;
+            color: #fff;
+            background: var(--sf-navy);
+            padding: 8px 20px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .nav-btn:hover {
+            background: var(--sf-navy-light);
+            box-shadow: var(--sf-shadow-md);
+        }
+
+        /* ===== HERO ===== */
+        .hero {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 64px 32px 40px;
+            position: relative;
+        }
+
+        /* Industrial grid background pattern */
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 400px;
+            height: 400px;
+            background:
+                linear-gradient(90deg, var(--sf-border) 1px, transparent 1px),
+                linear-gradient(var(--sf-border) 1px, transparent 1px);
+            background-size: 40px 40px;
+            opacity: 0.4;
+            mask-image: radial-gradient(ellipse at 100% 0%, black 0%, transparent 70%);
+            -webkit-mask-image: radial-gradient(ellipse at 100% 0%, black 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--sf-navy);
+            color: #fff;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            font-family: 'Outfit', sans-serif;
+            letter-spacing: 0.3px;
+            margin-bottom: 24px;
+            animation: slideUp 0.6s ease-out;
+        }
+
+        .hero-badge .dot {
+            width: 6px;
+            height: 6px;
+            background: var(--sf-emerald);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+            50% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .hero-title {
+            font-family: 'Outfit', 'Noto Sans KR', sans-serif;
+            font-size: clamp(32px, 5vw, 48px);
+            font-weight: 800;
+            color: var(--sf-navy);
+            line-height: 1.2;
+            margin-bottom: 16px;
+            letter-spacing: -1px;
+            animation: slideUp 0.6s ease-out 0.1s both;
+        }
+
+        .hero-title .highlight {
+            position: relative;
+            display: inline-block;
+        }
+
+        .hero-title .highlight::after {
+            content: '';
+            position: absolute;
+            bottom: 4px;
+            left: -4px;
+            right: -4px;
+            height: 12px;
+            background: rgba(245, 158, 11, 0.2);
+            border-radius: 2px;
+            z-index: -1;
+        }
+
+        .hero-subtitle {
+            font-size: 16px;
+            color: var(--sf-text-2);
+            line-height: 1.7;
+            max-width: 560px;
+            margin-bottom: 40px;
+            animation: slideUp 0.6s ease-out 0.2s both;
+        }
+
+        /* ===== SEARCH BAR ===== */
+        .search-bar {
+            display: flex;
+            align-items: center;
+            background: var(--sf-card-bg);
+            border: 2px solid var(--sf-border);
+            border-radius: 16px;
+            padding: 6px 6px 6px 20px;
+            max-width: 680px;
+            transition: all 0.3s ease;
+            box-shadow: var(--sf-shadow-sm);
+            animation: slideUp 0.6s ease-out 0.3s both;
+        }
+
+        .search-bar:focus-within {
+            border-color: var(--sf-navy);
+            box-shadow: 0 0 0 4px rgba(30, 41, 59, 0.08), var(--sf-shadow-md);
+        }
+
+        .search-bar input {
+            flex: 1;
+            border: none;
+            outline: none;
+            font-size: 15px;
+            color: var(--sf-text-1);
+            background: transparent;
+            padding: 12px 0;
+            font-family: inherit;
+        }
+
+        .search-bar input::placeholder {
+            color: var(--sf-text-4);
+        }
+
+        .search-bar .search-submit {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: var(--sf-navy);
+            border: none;
+            color: #fff;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .search-bar .search-submit:hover {
+            background: var(--sf-navy-light);
+            transform: scale(1.04);
+        }
+
+        .search-hints {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 14px;
+            max-width: 680px;
+            animation: slideUp 0.6s ease-out 0.4s both;
+        }
+
+        .search-hint {
+            font-size: 12px;
+            color: var(--sf-text-2);
+            background: var(--sf-card-bg);
+            border: 1px solid var(--sf-border);
+            padding: 6px 14px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .search-hint:hover {
+            border-color: var(--sf-amber);
+            color: var(--sf-amber-dark);
+            background: rgba(245, 158, 11, 0.04);
+        }
+
+        /* ===== DOMAIN CARDS ===== */
+        .domains {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 32px 48px;
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 12px;
+        }
+
+        .domain-card {
+            background: var(--sf-card-bg);
+            border: 1px solid var(--sf-border);
+            border-radius: 14px;
+            padding: 20px 16px;
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            text-align: center;
+        }
+
+        .domain-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--card-accent);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.3s ease;
+        }
+
+        .domain-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--sf-shadow-md);
+            border-color: var(--card-accent);
+        }
+
+        .domain-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .domain-icon {
+            font-size: 28px;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .domain-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--sf-text-1);
+            margin-bottom: 4px;
+        }
+
+        .domain-desc {
+            font-size: 11px;
+            color: var(--sf-text-3);
+            line-height: 1.5;
+        }
+
+        /* ===== CONTENT GRID ===== */
+        .content-grid {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 32px 64px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .content-card {
+            background: var(--sf-card-bg);
+            border: 1px solid var(--sf-border);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .content-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 20px;
+            border-bottom: 1px solid var(--sf-border-light);
+        }
+
+        .content-card-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--sf-text-1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .content-card-title .count-badge {
+            font-size: 11px;
+            font-weight: 600;
+            background: var(--sf-surface);
+            color: var(--sf-text-3);
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        .view-all-link {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--sf-slate);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: color 0.2s;
+        }
+
+        .view-all-link:hover {
+            color: var(--sf-navy);
+        }
+
+        .list-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--sf-border-light);
+            text-decoration: none;
+            color: inherit;
+            transition: background 0.15s;
+        }
+
+        .list-item:last-child {
+            border-bottom: none;
+        }
+
+        .list-item:hover {
+            background: var(--sf-surface);
+        }
+
+        .list-badge {
+            font-size: 10px;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 4px;
+            flex-shrink: 0;
+            letter-spacing: 0.3px;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .badge-question {
+            background: rgba(16, 185, 129, 0.08);
+            color: #059669;
+        }
+
+        .badge-info {
+            background: rgba(59, 130, 246, 0.08);
+            color: #2563eb;
+        }
+
+        .badge-free {
+            background: rgba(100, 116, 139, 0.08);
+            color: var(--sf-slate);
+        }
+
+        .badge-accident {
+            background: rgba(239, 68, 68, 0.08);
+            color: #dc2626;
+        }
+
+        .badge-policy {
+            background: rgba(245, 158, 11, 0.08);
+            color: var(--sf-amber-dark);
+        }
+
+        .list-text {
+            flex: 1;
+            font-size: 13.5px;
+            color: var(--sf-text-1);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .list-meta {
+            font-size: 11px;
+            color: var(--sf-text-4);
+            font-family: 'Space Mono', monospace;
+            flex-shrink: 0;
+        }
+
+        /* ===== MAIN PANEL (Domain Page Preview) ===== */
+        .section-divider {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 32px 24px;
+        }
+
+        .section-divider-inner {
+            border-top: 1px solid var(--sf-border);
+            padding-top: 48px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .section-divider-text {
+            font-family: 'Outfit', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--sf-text-3);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .section-divider-line {
+            flex: 1;
+            height: 1px;
+            background: var(--sf-border);
+        }
+
+        .domain-panel {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 32px 64px;
+        }
+
+        .panel {
+            background: var(--sf-card-bg);
+            border: 1px solid var(--sf-border);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .panel-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--sf-border);
+        }
+
+        .panel-tab {
+            flex: 1;
+            padding: 16px 24px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--sf-text-3);
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-bottom: 2px solid transparent;
+            position: relative;
+        }
+
+        .panel-tab:hover {
+            color: var(--sf-text-2);
+            background: var(--sf-surface);
+        }
+
+        .panel-tab.active {
+            color: var(--sf-navy);
+            font-weight: 600;
+            border-bottom-color: var(--sf-amber);
+            background: rgba(245, 158, 11, 0.03);
+        }
+
+        .panel-body {
+            padding: 32px;
+        }
+
+        .panel-hint {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 14px 16px;
+            background: rgba(245, 158, 11, 0.04);
+            border: 1px solid rgba(245, 158, 11, 0.12);
+            border-radius: 10px;
+            margin-bottom: 24px;
+            font-size: 13px;
+            color: var(--sf-text-2);
+            line-height: 1.6;
+        }
+
+        .panel-hint .hint-icon {
+            font-size: 16px;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .panel-hint strong {
+            color: var(--sf-amber-dark);
+            font-weight: 600;
+        }
+
+        .ask-form {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .ask-textarea {
+            width: 100%;
+            padding: 16px 20px;
+            border: 2px solid var(--sf-border);
+            border-radius: 12px;
+            font-size: 15px;
+            color: var(--sf-text-1);
+            background: var(--sf-card-bg);
+            font-family: inherit;
+            resize: vertical;
+            min-height: 100px;
+            transition: border-color 0.3s, box-shadow 0.3s;
+            outline: none;
+        }
+
+        .ask-textarea:focus {
+            border-color: var(--sf-navy);
+            box-shadow: 0 0 0 4px rgba(30, 41, 59, 0.06);
+        }
+
+        .ask-textarea::placeholder {
+            color: var(--sf-text-4);
+        }
+
+        .ask-submit {
+            align-self: flex-start;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 28px;
+            background: var(--sf-navy);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        .ask-submit:hover {
+            background: var(--sf-navy-light);
+            box-shadow: var(--sf-shadow-md);
+            transform: translateY(-1px);
+        }
+
+        .ask-submit:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .sample-questions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .sample-q {
+            font-size: 12.5px;
+            color: var(--sf-text-2);
+            background: var(--sf-surface);
+            padding: 7px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .sample-q:hover {
+            border-color: var(--sf-amber);
+            color: var(--sf-amber-dark);
+            background: rgba(245, 158, 11, 0.04);
+        }
+
+        /* ===== AI ANSWER PREVIEW ===== */
+        .ai-answer-preview {
+            margin-top: 32px;
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.03), rgba(245, 158, 11, 0.03));
+            border: 1px solid rgba(30, 41, 59, 0.08);
+            border-radius: 14px;
+            padding: 24px;
+        }
+
+        .ai-answer-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--sf-navy);
+        }
+
+        .ai-answer-header .ai-badge {
+            font-family: 'Space Mono', monospace;
+            font-size: 10px;
+            background: var(--sf-navy);
+            color: var(--sf-amber-light);
+            padding: 3px 8px;
+            border-radius: 4px;
+            letter-spacing: 0.5px;
+        }
+
+        .ai-answer-text {
+            font-size: 14.5px;
+            line-height: 1.8;
+            color: var(--sf-text-1);
+        }
+
+        .ai-answer-text strong {
+            color: var(--sf-navy);
+        }
+
+        .source-pills {
+            display: flex;
+            gap: 6px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+
+        .source-pill {
+            font-size: 11px;
+            font-weight: 500;
+            padding: 4px 10px;
+            border-radius: 6px;
+            background: var(--sf-surface);
+            color: var(--sf-slate);
+            border: 1px solid var(--sf-border);
+            font-family: 'Space Mono', monospace;
+        }
+
+        /* ===== FOOTER ===== */
+        .footer {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 32px;
+        }
+
+        .footer-inner {
+            border-top: 1px solid var(--sf-border);
+            padding: 32px 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .footer-copy {
+            font-size: 12px;
+            color: var(--sf-text-3);
+            font-family: 'Space Mono', monospace;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 20px;
+        }
+
+        .footer-links a {
+            font-size: 12px;
+            color: var(--sf-text-3);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: var(--sf-text-1);
+        }
+
+        /* ===== COMPARISON LABEL ===== */
+        .comparison-banner {
+            background: var(--sf-navy);
+            color: #fff;
+            text-align: center;
+            padding: 12px;
+            font-size: 13px;
+            font-weight: 500;
+            font-family: 'Outfit', sans-serif;
+            letter-spacing: 0.3px;
+        }
+
+        .comparison-banner .label {
+            display: inline-block;
+            background: var(--sf-amber);
+            color: var(--sf-navy);
+            padding: 2px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 700;
+            margin-right: 8px;
+            letter-spacing: 0.5px;
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 900px) {
+            .domains { grid-template-columns: repeat(3, 1fr); }
+            .content-grid { grid-template-columns: 1fr; }
+            .nav-tabs { display: none; }
+            .hero-title { font-size: 28px; }
+        }
+
+        @media (max-width: 600px) {
+            .domains { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+            .hero { padding: 40px 20px 24px; }
+            .nav-inner { padding: 0 16px; }
+            .domain-panel { padding: 0 16px 48px; }
+            .content-grid { padding: 0 16px 48px; }
+            .footer-inner { flex-direction: column; gap: 12px; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Comparison Banner -->
+<div class="comparison-banner">
+    <span class="label">PROPOSAL</span>
+    SafeFactory 디자인 제안 — Industrial Precision 컨셉
+</div>
+
+<!-- Navigation -->
+<nav class="nav">
+    <div class="nav-inner">
+        <a href="#" class="nav-logo">
+            <div class="nav-logo-mark"><span>🏭</span></div>
+            <span class="nav-logo-text">Safe<span class="accent">Factory</span></span>
+        </a>
+        <div class="nav-tabs">
+            <a href="#" class="nav-tab active">홈</a>
+            <a href="#" class="nav-tab">학습하기</a>
+            <a href="#" class="nav-tab">MSDS</a>
+            <a href="#" class="nav-tab">공유질문</a>
+            <a href="#" class="nav-tab">커뮤니티</a>
+            <a href="#" class="nav-tab">뉴스</a>
+        </div>
+        <div class="nav-actions">
+            <a href="#" class="nav-btn">로그인</a>
+        </div>
+    </div>
+</nav>
+
+<!-- Hero Section -->
+<section class="hero">
+    <div class="hero-badge">
+        <span class="dot"></span>
+        반도체 디스플레이 전공
+    </div>
+    <h1 class="hero-title">
+        산업안전, <span class="highlight">AI로 빠르게</span><br>
+        찾고 배우세요
+    </h1>
+    <p class="hero-subtitle">
+        반도체·화학·노동법 등 5개 분야의 안전 지식을 AI가 분석하여<br>
+        필요한 답변과 관련 문서를 즉시 제공합니다.
+    </p>
+
+    <div class="search-bar">
+        <input type="text" placeholder="궁금한 내용을 질문하세요...">
+        <button class="search-submit" aria-label="검색">→</button>
+    </div>
+    <div class="search-hints">
+        <span class="search-hint">💡 CVD와 PVD의 차이점</span>
+        <span class="search-hint">💡 세정 공정 안전수칙</span>
+        <span class="search-hint">💡 연차휴가 계산법</span>
+    </div>
+</section>
+
+<!-- Domain Cards -->
+<section class="domains">
+    <a href="#" class="domain-card" style="--card-accent: var(--domain-semi);">
+        <span class="domain-icon">🔬</span>
+        <div class="domain-name">학습하기</div>
+        <div class="domain-desc">반도체 공정 지식</div>
+    </a>
+    <a href="#" class="domain-card" style="--card-accent: var(--domain-msds);">
+        <span class="domain-icon">🧪</span>
+        <div class="domain-name">MSDS</div>
+        <div class="domain-desc">화학물질 안전정보</div>
+    </a>
+    <a href="#" class="domain-card" style="--card-accent: var(--domain-field);">
+        <span class="domain-icon">❓</span>
+        <div class="domain-name">공유질문</div>
+        <div class="domain-desc">AI 답변 공유</div>
+    </a>
+    <a href="#" class="domain-card" style="--card-accent: var(--domain-labor);">
+        <span class="domain-icon">💬</span>
+        <div class="domain-name">커뮤니티</div>
+        <div class="domain-desc">자유 게시판</div>
+    </a>
+    <a href="#" class="domain-card" style="--card-accent: var(--domain-safe);">
+        <span class="domain-icon">👤</span>
+        <div class="domain-name">마이페이지</div>
+        <div class="domain-desc">나의 활동</div>
+    </a>
+</section>
+
+<!-- Content Grid -->
+<section class="content-grid">
+    <div class="content-card">
+        <div class="content-card-header">
+            <div class="content-card-title">
+                커뮤니티 최신글
+                <span class="count-badge">4</span>
+            </div>
+            <a href="#" class="view-all-link">전체보기 →</a>
+        </div>
+        <a href="#" class="list-item">
+            <span class="list-badge badge-question">질문</span>
+            <span class="list-text">CVD 장비 PM 주기 어떻게 관리하시나요?</span>
+            <span class="list-meta">💬 3</span>
+        </a>
+        <a href="#" class="list-item">
+            <span class="list-badge badge-info">정보</span>
+            <span class="list-text">2026년 산업안전보건법 개정사항 정리</span>
+            <span class="list-meta">💬 7</span>
+        </a>
+        <a href="#" class="list-item">
+            <span class="list-badge badge-free">자유</span>
+            <span class="list-text">안전관리자 자격증 준비 스터디 모집합니다</span>
+            <span class="list-meta">💬 12</span>
+        </a>
+        <a href="#" class="list-item">
+            <span class="list-badge badge-question">질문</span>
+            <span class="list-text">특수건강진단 대상 유해인자 목록 어디서 확인?</span>
+            <span class="list-meta">💬 2</span>
+        </a>
+    </div>
+
+    <div class="content-card">
+        <div class="content-card-header">
+            <div class="content-card-title">
+                노동안전 뉴스
+                <span class="count-badge">4</span>
+            </div>
+            <a href="#" class="view-all-link">전체보기 →</a>
+        </div>
+        <a href="#" class="list-item">
+            <span class="list-badge badge-accident">사고</span>
+            <span class="list-text">반도체 공장 가스 누출 사고 조사 결과 발표</span>
+            <span class="list-meta">03.14</span>
+        </a>
+        <a href="#" class="list-item">
+            <span class="list-badge badge-policy">정책</span>
+            <span class="list-text">고용부, 중대재해처벌법 시행 3년 성과 발표</span>
+            <span class="list-meta">03.13</span>
+        </a>
+        <a href="#" class="list-item">
+            <span class="list-badge badge-policy">법령</span>
+            <span class="list-text">2026년 최저임금 결정 — 시간급 11,470원</span>
+            <span class="list-meta">03.12</span>
+        </a>
+        <a href="#" class="list-item">
+            <span class="list-badge badge-info">기술</span>
+            <span class="list-text">AI 기반 유해가스 감지 시스템 도입 사례</span>
+            <span class="list-meta">03.11</span>
+        </a>
+    </div>
+</section>
+
+<!-- Domain Page Preview -->
+<div class="section-divider">
+    <div class="section-divider-inner">
+        <span class="section-divider-text">Domain Page Preview</span>
+        <span class="section-divider-line"></span>
+    </div>
+</div>
+
+<section class="domain-panel">
+    <div class="panel">
+        <div class="panel-tabs">
+            <div class="panel-tab active">🤖 AI 질문</div>
+            <div class="panel-tab">🔍 키워드 검색</div>
+        </div>
+        <div class="panel-body">
+            <div class="panel-hint">
+                <span class="hint-icon">💡</span>
+                <div>
+                    <strong>AI 질문이란?</strong> 궁금한 내용을 자유롭게 입력하면, AI가 관련 문서를 분석하여 종합적인 답변을 만들어줍니다.
+                </div>
+            </div>
+            <div class="ask-form">
+                <textarea class="ask-textarea" placeholder="질문을 입력하세요..." rows="3">CVD 공정에서 발생하는 유해가스 종류와 안전수칙은?</textarea>
+                <button class="ask-submit">🤖 질문하기</button>
+            </div>
+            <div class="sample-questions">
+                <span class="sample-q">CVD와 PVD의 차이점은?</span>
+                <span class="sample-q">세정 공정 안전수칙</span>
+                <span class="sample-q">포토레지스트 취급 주의사항</span>
+            </div>
+
+            <!-- AI Answer Preview -->
+            <div class="ai-answer-preview">
+                <div class="ai-answer-header">
+                    <span class="ai-badge">AI</span>
+                    AI 답변
+                </div>
+                <div class="ai-answer-text">
+                    CVD(Chemical Vapor Deposition) 공정에서 발생하는 주요 유해가스는 다음과 같습니다:
+                    <br><br>
+                    <strong>1. 실란(SiH₄)</strong> — 자연발화성 가스로, 공기 중 노출 시 즉시 발화합니다. TWA 5ppm 이하로 관리해야 합니다.
+                    <br><br>
+                    <strong>2. 암모니아(NH₃)</strong> — 질화막 증착 시 사용되며, 25ppm 이상 노출 시 호흡기 자극을 유발합니다...
+                </div>
+                <div class="source-pills">
+                    <span class="source-pill">📄 CVD_공정_안전_v3.md</span>
+                    <span class="source-pill">📄 유해가스_관리지침.md</span>
+                    <span class="source-pill">📄 KOSHA_가이드_H-12.md</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+    <div class="footer-inner">
+        <span class="footer-copy">© 2026 SafeFactory</span>
+        <div class="footer-links">
+            <a href="#">이용약관</a>
+            <a href="#">개인정보처리방침</a>
+            <a href="#">고객센터</a>
+        </div>
+    </div>
+</footer>
+
+</body>
+</html>

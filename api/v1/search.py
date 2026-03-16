@@ -19,6 +19,7 @@ from services.settings import get_setting
 from services.singletons import get_agent, get_anthropic_client, get_gemini_client, get_hybrid_searcher_instance, get_openai_client
 from services.rag_pipeline import run_rag_pipeline, build_llm_messages, find_related_images, post_process_answer, compute_answer_confidence
 from services.domain_config import DOCUMENTS_PATH
+from services.major_config import MAJOR_CONFIG, get_primary_namespace
 
 # ---------------------------------------------------------------------------
 # PDF index cache – avoids repeated rglob over large directories
@@ -63,7 +64,7 @@ def _get_pdf_index():
         # Double-check after acquiring lock (recapture time to avoid stale value)
         if _pdf_index and (time.monotonic() - _pdf_index_ts) < _PDF_INDEX_TTL:
             return _pdf_index
-        pdfs_dir = DOCUMENTS_PATH / 'ncs' / 'pdfs'
+        pdfs_dir = DOCUMENTS_PATH / 'semiconductor' / 'ncs' / 'pdfs'
         index = {}
         if pdfs_dir.exists():
             try:
@@ -162,6 +163,10 @@ def api_search():
         except (ValueError, TypeError):
             top_k = 5
         namespace = data.get('namespace', '')
+        # Resolve major → primary namespace (backward-compatible)
+        major = data.get('major')
+        if major and major in MAJOR_CONFIG and not namespace:
+            namespace = get_primary_namespace(major)
         if namespace == 'all':
             namespace = ''
         file_type = data.get('file_type', '')
@@ -311,10 +316,11 @@ def api_ask():
         labor_classification = pipeline.get('labor_classification')
         legal_analysis = pipeline.get('legal_analysis')
         safety_refs = pipeline.get('safety_references')
+        msds_refs = pipeline.get('msds_references')
         messages = build_llm_messages(query, sources, context, namespace,
                                       calc_result, law_refs_formatted,
                                       labor_classification, legal_analysis,
-                                      safety_refs)
+                                      safety_refs, msds_refs)
         provider, model = _resolve_llm(namespace)
         if not _VALID_MODEL_RE.match(model):
             logging.error('Invalid model name in settings: %s', model)
@@ -372,6 +378,7 @@ def api_ask():
             'confidence': confidence,
             'detected_namespace': pipeline.get('detected_namespace'),
             'detected_domain_label': pipeline.get('detected_domain_label'),
+            'msds_chemicals': pipeline.get('msds_chemicals'),
         }
         # Debug mode: expose pipeline diagnostics
         if data.get('debug'):
@@ -428,10 +435,11 @@ def api_ask_stream():
     labor_classification = pipeline.get('labor_classification')
     legal_analysis = pipeline.get('legal_analysis')
     safety_refs = pipeline.get('safety_references')
+    msds_refs = pipeline.get('msds_references')
     messages = build_llm_messages(query, sources, context, namespace,
                                   calc_result, law_refs_formatted,
                                   labor_classification, legal_analysis,
-                                  safety_refs)
+                                  safety_refs, msds_refs)
     provider, model = _resolve_llm(namespace)
     if not _VALID_MODEL_RE.match(model):
         logging.error('Invalid model name in settings: %s', model)
@@ -470,6 +478,7 @@ def api_ask_stream():
                     'law_references': law_refs_raw if law_refs_raw else None,
                     'detected_namespace': pipeline.get('detected_namespace'),
                     'detected_domain_label': pipeline.get('detected_domain_label'),
+                    'msds_chemicals': pipeline.get('msds_chemicals'),
             }
             # Debug mode: expose pipeline diagnostics
             if data.get('debug'):
@@ -592,7 +601,7 @@ def api_ask_stream():
 def api_pdf_resolve():
     """Resolve a source_file path to its corresponding PDF URL.
 
-    For NCS documents, extracts the LM code and searches ``documents/ncs/pdfs/``.
+    For NCS documents, extracts the LM code and searches ``documents/semiconductor/ncs/pdfs/``.
     For other domains (laborlaw, field-training, etc.), looks for a sibling PDF
     with the same stem as the source markdown file.
     """
@@ -620,7 +629,7 @@ def api_pdf_resolve():
                     category = parts[i + 1]
                     break
 
-            pdfs_dir = DOCUMENTS_PATH / 'ncs' / 'pdfs'
+            pdfs_dir = DOCUMENTS_PATH / 'semiconductor' / 'ncs' / 'pdfs'
 
             # Search category subdirectory first (both NFC and NFD normalizations)
             if category:
