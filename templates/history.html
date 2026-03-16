@@ -207,11 +207,204 @@
         color: #888;
     }
 
+    /* Answer Modal */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(4px);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+    }
+
+    .modal-overlay.active {
+        display: flex;
+    }
+
+    .modal-content {
+        background: #1e2a3a;
+        border: 1px solid rgba(0, 212, 255, 0.2);
+        border-radius: 18px;
+        width: 100%;
+        max-width: 700px;
+        max-height: 80vh;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        animation: modalIn 0.2s ease-out;
+    }
+
+    @keyframes modalIn {
+        from { opacity: 0; transform: translateY(20px) scale(0.97); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .modal-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        padding: 22px 24px 16px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        gap: 16px;
+    }
+
+    .modal-header-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .modal-query {
+        font-size: 1.05rem;
+        font-weight: 600;
+        color: #e0e0e0;
+        margin-bottom: 6px;
+        word-break: break-word;
+    }
+
+    .modal-meta {
+        font-size: 0.78rem;
+        color: #888;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .modal-meta span::after {
+        content: '\b7';
+        margin-left: 8px;
+        color: #555;
+    }
+
+    .modal-meta span:last-child::after {
+        content: '';
+    }
+
+    .modal-close {
+        width: 32px;
+        height: 32px;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.05);
+        color: #888;
+        font-size: 1.2rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        transition: all 0.2s;
+    }
+
+    .modal-close:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: #e0e0e0;
+    }
+
+    .modal-body {
+        padding: 20px 24px 24px;
+        overflow-y: auto;
+        flex: 1;
+        min-height: 0;
+    }
+
+    .modal-body .answer-content {
+        font-size: 0.92rem;
+        line-height: 1.75;
+        color: #d0d0d0;
+    }
+
+    .modal-body .answer-content p {
+        margin: 0 0 12px;
+    }
+
+    .modal-body .answer-content ul,
+    .modal-body .answer-content ol {
+        margin: 0 0 12px;
+        padding-left: 20px;
+    }
+
+    .modal-body .answer-content li {
+        margin-bottom: 4px;
+    }
+
+    .modal-body .answer-content strong {
+        color: #e8e8e8;
+    }
+
+    .modal-body .answer-content code {
+        background: rgba(0, 212, 255, 0.08);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.85em;
+    }
+
+    .modal-body .answer-content h1,
+    .modal-body .answer-content h2,
+    .modal-body .answer-content h3 {
+        color: #00d4ff;
+        margin: 16px 0 8px;
+    }
+
+    .modal-body .answer-content h1 { font-size: 1.2rem; }
+    .modal-body .answer-content h2 { font-size: 1.1rem; }
+    .modal-body .answer-content h3 { font-size: 1rem; }
+
+    .modal-body .no-answer {
+        color: #666;
+        font-style: italic;
+        text-align: center;
+        padding: 30px 0;
+    }
+
+    .modal-body .loading-answer {
+        text-align: center;
+        padding: 30px 0;
+        color: #888;
+    }
+
+    .modal-footer {
+        padding: 14px 24px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+
+    .modal-footer .btn-reask {
+        padding: 8px 18px;
+        background: rgba(0, 212, 255, 0.12);
+        color: #00d4ff;
+        border: 1px solid rgba(0, 212, 255, 0.3);
+        border-radius: 10px;
+        font-size: 0.85rem;
+        cursor: pointer;
+        font: inherit;
+        transition: all 0.2s;
+        text-decoration: none;
+    }
+
+    .modal-footer .btn-reask:hover {
+        background: rgba(0, 212, 255, 0.25);
+    }
+
     @media (max-width: 480px) {
         .page-header {
             flex-direction: column;
             align-items: flex-start;
             gap: 12px;
+        }
+
+        .modal-content {
+            max-height: 90vh;
+            border-radius: 14px;
+        }
+
+        .modal-header, .modal-body, .modal-footer {
+            padding-left: 18px;
+            padding-right: 18px;
         }
     }
 {% endblock %}
@@ -245,6 +438,27 @@
     <div class="pagination" id="pagination"></div>
 </div>
 
+<!-- Answer Modal -->
+<div class="modal-overlay" id="answerModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <div class="modal-header-info">
+                <div class="modal-query" id="modalQuery"></div>
+                <div class="modal-meta" id="modalMeta"></div>
+            </div>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="modalAnswer"></div>
+        </div>
+        <div class="modal-footer">
+            <a class="btn-reask" id="modalReask" href="#">다시 질문하기</a>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
 <script>
 const NAMESPACE_LABELS = {
     '': '전체',
@@ -319,8 +533,17 @@ function renderHistory(data) {
         const path = NAMESPACE_PATHS[item.namespace] || '/search';
         const encodedQ = encodeURIComponent(item.query);
 
-        html += `<div class="history-item" onclick="window.location.href='${path}?q=${encodedQ}'">`;
-        html += `<div class="history-query"><span class="icon">${icon}</span>${escapeHtml(item.query)}</div>`;
+        // AI 질문 + 답변 있으면 팝업, 아니면 해당 페이지로 이동
+        const clickAction = (item.query_type === 'ask' && item.has_answer)
+            ? `openAnswer(${item.id})`
+            : `window.location.href='${path}?q=${encodedQ}'`;
+
+        html += `<div class="history-item" onclick="${clickAction}">`;
+        html += `<div class="history-query"><span class="icon">${icon}</span>${escapeHtml(item.query)}`;
+        if (item.query_type === 'ask' && item.has_answer) {
+            html += ` <span style="font-size:0.75rem;color:#00d4ff;opacity:0.7;">&#x1F4CB;</span>`;
+        }
+        html += `</div>`;
         html += `<div class="history-meta">`;
         html += `<span>${typeLabel}</span>`;
         html += `<span>${nsLabel}</span>`;
@@ -355,6 +578,60 @@ function renderPagination(data) {
     html += `<button ${data.page >= data.pages ? 'disabled' : ''} onclick="loadHistory(${data.page + 1})">&#x203A;</button>`;
     el.innerHTML = html;
 }
+
+async function openAnswer(id) {
+    const modal = document.getElementById('answerModal');
+    const answerEl = document.getElementById('modalAnswer');
+    const queryEl = document.getElementById('modalQuery');
+    const metaEl = document.getElementById('modalMeta');
+    const reaskEl = document.getElementById('modalReask');
+
+    // Show modal with loading state
+    queryEl.textContent = '';
+    metaEl.innerHTML = '';
+    answerEl.innerHTML = '<div class="loading-answer">답변 불러오는 중...</div>';
+    reaskEl.href = '#';
+    modal.classList.add('active');
+
+    try {
+        const res = await fetch(`/api/v1/search/history/${id}`);
+        const json = await res.json();
+        if (!json.success) throw new Error(json.error);
+
+        const item = json.data;
+        const typeLabel = item.query_type === 'ask' ? 'AI 질문' : '검색';
+        const nsLabel = NAMESPACE_LABELS[item.namespace] || item.namespace || '전체';
+        const path = NAMESPACE_PATHS[item.namespace] || '/search';
+
+        queryEl.textContent = item.query;
+        metaEl.innerHTML = `<span>${typeLabel}</span><span>${nsLabel}</span><span>${item.result_count}건</span><span>${timeAgo(item.created_at)}</span>`;
+        reaskEl.href = `${path}?q=${encodeURIComponent(item.query)}`;
+
+        if (item.answer_text) {
+            const rendered = typeof marked !== 'undefined'
+                ? (marked.parse ? marked.parse(item.answer_text) : marked(item.answer_text))
+                : item.answer_text.replace(/\n/g, '<br>');
+            const safe = typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(rendered) : rendered;
+            answerEl.innerHTML = `<div class="answer-content">${safe}</div>`;
+        } else {
+            answerEl.innerHTML = '<div class="no-answer">저장된 답변이 없습니다.</div>';
+        }
+    } catch (e) {
+        answerEl.innerHTML = `<div class="no-answer">답변을 불러올 수 없습니다: ${escapeHtml(e.message)}</div>`;
+    }
+}
+
+function closeModal() {
+    document.getElementById('answerModal').classList.remove('active');
+}
+
+// Close modal on overlay click or Escape key
+document.getElementById('answerModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+});
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeModal();
+});
 
 async function deleteOne(id) {
     if (!confirm('이 검색 기록을 삭제하시겠습니까?')) return;

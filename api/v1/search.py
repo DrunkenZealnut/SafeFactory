@@ -113,7 +113,8 @@ def _prepare_gemini_params(messages, temperature, max_tokens):
 # ---------------------------------------------------------------------------
 
 def _save_search_history(user_id, query, query_type, namespace='',
-                         search_mode=None, result_count=0, answer_preview=None):
+                         search_mode=None, result_count=0, answer_preview=None,
+                         answer_text=None):
     """Save search history for logged-in user. Enforces MAX_PER_USER limit."""
     try:
         record = SearchHistory(
@@ -124,12 +125,13 @@ def _save_search_history(user_id, query, query_type, namespace='',
             search_mode=search_mode,
             result_count=result_count,
             answer_preview=answer_preview[:200] if answer_preview else None,
+            answer_text=answer_text,
         )
         db.session.add(record)
         db.session.commit()
 
         # Prune oldest records when over limit
-        count = SearchHistory.query.filter_by(user_id=user_id).count()
+        count = db.session.query(SearchHistory).filter_by(user_id=user_id).count()
         if count > SearchHistory.MAX_PER_USER:
             excess = count - SearchHistory.MAX_PER_USER
             old_ids = (
@@ -140,7 +142,7 @@ def _save_search_history(user_id, query, query_type, namespace='',
                 .all()
             )
             if old_ids:
-                SearchHistory.query.filter(
+                db.session.query(SearchHistory).filter(
                     SearchHistory.id.in_([r.id for r in old_ids])
                 ).delete(synchronize_session=False)
                 db.session.commit()
@@ -394,6 +396,7 @@ def api_ask():
                 namespace=namespace,
                 result_count=len(sources),
                 answer_preview=answer[:200] if answer else None,
+                answer_text=answer,
             )
 
         return success_response(data=resp_data)
@@ -572,6 +575,7 @@ def api_ask_stream():
                     namespace=namespace,
                     result_count=len(sources),
                     answer_preview=full_answer[:200] if full_answer else None,
+                    answer_text=full_answer,
                 )
 
             # Send done event
@@ -740,7 +744,7 @@ def api_search_history():
         page = max(1, request.args.get('page', 1, type=int))
         per_page = min(max(1, request.args.get('per_page', 20, type=int)), 50)
 
-        q = SearchHistory.query.filter_by(user_id=current_user.id)
+        q = db.session.query(SearchHistory).filter_by(user_id=current_user.id)
 
         query_type = request.args.get('query_type', '').strip()
         if query_type in ('search', 'ask'):
@@ -773,7 +777,7 @@ def api_search_history_recent():
         limit = min(max(1, request.args.get('limit', 10, type=int)), 20)
 
         rows = (
-            SearchHistory.query
+            db.session.query(SearchHistory)
             .filter_by(user_id=current_user.id)
             .order_by(SearchHistory.created_at.desc())
             .limit(limit * 3)
@@ -792,12 +796,28 @@ def api_search_history_recent():
         return error_response('최근 검색어 조회 중 오류가 발생했습니다.', 500)
 
 
+@v1_bp.route('/search/history/<int:history_id>', methods=['GET'])
+@login_required
+def api_search_history_detail(history_id):
+    """Return a single search history record with full answer text."""
+    try:
+        record = db.session.query(SearchHistory).filter_by(
+            id=history_id, user_id=current_user.id
+        ).first()
+        if not record:
+            return error_response('검색 기록을 찾을 수 없습니다.', 404)
+        return success_response(data=record.to_dict(include_answer=True))
+    except Exception:
+        logging.exception('[SearchHistory] Detail failed')
+        return error_response('검색 기록 조회 중 오류가 발생했습니다.', 500)
+
+
 @v1_bp.route('/search/history/<int:history_id>', methods=['DELETE'])
 @login_required
 def api_search_history_delete(history_id):
     """Delete a single search history record owned by the current user."""
     try:
-        record = SearchHistory.query.filter_by(
+        record = db.session.query(SearchHistory).filter_by(
             id=history_id, user_id=current_user.id
         ).first()
         if not record:
@@ -817,7 +837,7 @@ def api_search_history_delete(history_id):
 def api_search_history_delete_all():
     """Delete all search history records for the current user."""
     try:
-        deleted = SearchHistory.query.filter_by(
+        deleted = db.session.query(SearchHistory).filter_by(
             user_id=current_user.id
         ).delete()
         db.session.commit()
