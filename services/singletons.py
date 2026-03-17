@@ -272,6 +272,28 @@ def invalidate_reranker():
     _close_if_possible(old)
 
 
+_graph_searcher = None
+_graph_searcher_lock = threading.RLock()
+
+
+def get_graph_searcher():
+    """Return (or lazily create) the singleton GraphSearcher instance."""
+    global _graph_searcher
+    if _graph_searcher is None:
+        with _graph_searcher_lock:
+            if _graph_searcher is None:
+                from services.graph_searcher import GraphSearcher
+                _graph_searcher = GraphSearcher()
+    return _graph_searcher
+
+
+def invalidate_graph_searcher():
+    """Reset the GraphSearcher singleton (clears entity cache)."""
+    global _graph_searcher
+    with _graph_searcher_lock:
+        _graph_searcher = None
+
+
 def shutdown_all():
     """Close all singleton instances that hold resources.
 

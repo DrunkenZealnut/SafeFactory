@@ -7,13 +7,11 @@
 {% block head_extra %}
     /* ===== Hero Carousel ===== */
     .hero {
-        max-width: 1280px;
+        max-width: 960px;
         margin: 0 auto;
         padding: 28px 24px 24px;
     }
     .carousel {
-        background: var(--sf-card-bg);
-        border: 1px solid var(--sf-border);
         border-radius: 20px;
         overflow: hidden;
         position: relative;
@@ -28,106 +26,172 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 32px 40px;
-        gap: 20px;
+        padding: 0 40px;
+        min-height: 200px;
+        position: relative;
+        overflow: hidden;
     }
     .slide-content {
         flex: 1;
         min-width: 0;
+        position: relative;
+        z-index: 2;
+        padding: 32px 0;
     }
     .slide-badge {
         display: inline-flex;
         align-items: center;
         gap: 6px;
         font-size: 11px;
-        font-weight: 600;
-        padding: 4px 12px;
-        border-radius: 6px;
-        margin-bottom: 10px;
+        font-weight: 700;
+        padding: 5px 12px;
+        border-radius: 20px;
+        margin-bottom: 12px;
+        letter-spacing: 0.3px;
+        text-transform: uppercase;
     }
     .slide-title {
         font-family: 'Outfit', 'Noto Sans KR', sans-serif;
-        font-size: 24px;
+        font-size: 26px;
         font-weight: 800;
-        color: var(--sf-text-1);
         line-height: 1.3;
-        letter-spacing: -0.3px;
-        margin-bottom: 6px;
+        letter-spacing: -0.5px;
+        margin-bottom: 8px;
     }
     .slide-desc {
-        font-size: 13px;
-        color: var(--sf-text-2);
+        font-size: 13.5px;
         line-height: 1.7;
-        margin-bottom: 16px;
-        max-width: 420px;
+        margin-bottom: 18px;
+        max-width: 400px;
+        opacity: 0.85;
     }
     .slide-cta {
         display: inline-flex;
         align-items: center;
         gap: 6px;
         font-size: 13px;
-        font-weight: 600;
-        color: var(--sf-purple);
+        font-weight: 700;
         text-decoration: none;
-        padding: 8px 18px;
-        border: 1px solid var(--sf-border);
-        border-radius: 10px;
-        transition: all 0.2s;
+        padding: 10px 22px;
+        border-radius: 12px;
+        transition: all 0.25s;
+        letter-spacing: 0.2px;
     }
-    .slide-cta:hover {
-        background: var(--sf-purple);
-        color: #fff;
-        border-color: var(--sf-purple);
-    }
-    .slide-visual {
-        flex-shrink: 0;
-        width: 140px;
-        height: 140px;
-        border-radius: 18px;
+    .slide-cta:hover { transform: translateY(-1px); }
+    /* Decorative shapes */
+    .slide-deco {
+        position: absolute;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        width: 45%;
+        z-index: 1;
+        pointer-events: none;
         display: flex;
         align-items: center;
         justify-content: center;
-        position: relative;
     }
-    .slide-visual svg {
-        width: 72px;
-        height: 72px;
+    .slide-deco svg {
+        width: 100%;
+        height: 100%;
     }
 
-    /* Slide color variants */
-    .slide-learn .slide-badge { background: rgba(59,130,246,0.08); color: #2563eb; }
-    .slide-learn .slide-visual { background: linear-gradient(135deg, rgba(59,130,246,0.06), rgba(59,130,246,0.12)); }
-    .slide-msds .slide-badge { background: rgba(16,185,129,0.08); color: #059669; }
-    .slide-msds .slide-visual { background: linear-gradient(135deg, rgba(16,185,129,0.06), rgba(16,185,129,0.12)); }
-    .slide-questions .slide-badge { background: rgba(245,158,11,0.08); color: #d97706; }
-    .slide-questions .slide-visual { background: linear-gradient(135deg, rgba(245,158,11,0.06), rgba(245,158,11,0.12)); }
-    .slide-community .slide-badge { background: rgba(6,182,212,0.08); color: #0891b2; }
-    .slide-community .slide-visual { background: linear-gradient(135deg, rgba(6,182,212,0.06), rgba(6,182,212,0.12)); }
-    .slide-news .slide-badge { background: rgba(139,92,246,0.08); color: #7c3aed; }
-    .slide-news .slide-visual { background: linear-gradient(135deg, rgba(139,92,246,0.06), rgba(139,92,246,0.12)); }
+    /* ── Slide 1: AI 학습 (Deep Navy) ── */
+    .slide-learn {
+        background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 60%, #1e40af 100%);
+    }
+    .slide-learn .slide-badge { background: rgba(96,165,250,0.2); color: #93c5fd; }
+    .slide-learn .slide-title { color: #ffffff; }
+    .slide-learn .slide-desc { color: #cbd5e1; }
+    .slide-learn .slide-cta {
+        background: #3b82f6;
+        color: #fff;
+        border: none;
+    }
+    .slide-learn .slide-cta:hover { background: #60a5fa; box-shadow: 0 4px 20px rgba(59,130,246,0.4); }
+
+    /* ── Slide 2: MSDS (Emerald) ── */
+    .slide-msds {
+        background: linear-gradient(135deg, #022c22 0%, #065f46 50%, #059669 100%);
+    }
+    .slide-msds .slide-badge { background: rgba(52,211,153,0.2); color: #6ee7b7; }
+    .slide-msds .slide-title { color: #ffffff; }
+    .slide-msds .slide-desc { color: #a7f3d0; }
+    .slide-msds .slide-cta {
+        background: #10b981;
+        color: #fff;
+        border: none;
+    }
+    .slide-msds .slide-cta:hover { background: #34d399; box-shadow: 0 4px 20px rgba(16,185,129,0.4); }
+
+    /* ── Slide 3: 공유질문 (Warm Amber) ── */
+    .slide-questions {
+        background: linear-gradient(135deg, #451a03 0%, #78350f 50%, #b45309 100%);
+    }
+    .slide-questions .slide-badge { background: rgba(253,224,71,0.2); color: #fde047; }
+    .slide-questions .slide-title { color: #ffffff; }
+    .slide-questions .slide-desc { color: #fde68a; }
+    .slide-questions .slide-cta {
+        background: #f59e0b;
+        color: #451a03;
+        border: none;
+        font-weight: 800;
+    }
+    .slide-questions .slide-cta:hover { background: #fbbf24; box-shadow: 0 4px 20px rgba(245,158,11,0.4); }
+
+    /* ── Slide 4: 커뮤니티 (Cool Slate) ── */
+    .slide-community {
+        background: linear-gradient(135deg, #0c4a6e 0%, #075985 50%, #0891b2 100%);
+    }
+    .slide-community .slide-badge { background: rgba(103,232,249,0.2); color: #67e8f9; }
+    .slide-community .slide-title { color: #ffffff; }
+    .slide-community .slide-desc { color: #a5f3fc; }
+    .slide-community .slide-cta {
+        background: #06b6d4;
+        color: #fff;
+        border: none;
+    }
+    .slide-community .slide-cta:hover { background: #22d3ee; box-shadow: 0 4px 20px rgba(6,182,212,0.4); }
+
+    /* ── Slide 5: 뉴스 (Rich Violet) ── */
+    .slide-news {
+        background: linear-gradient(135deg, #2e1065 0%, #4c1d95 50%, #6d28d9 100%);
+    }
+    .slide-news .slide-badge { background: rgba(196,181,253,0.2); color: #c4b5fd; }
+    .slide-news .slide-title { color: #ffffff; }
+    .slide-news .slide-desc { color: #ddd6fe; }
+    .slide-news .slide-cta {
+        background: #8b5cf6;
+        color: #fff;
+        border: none;
+    }
+    .slide-news .slide-cta:hover { background: #a78bfa; box-shadow: 0 4px 20px rgba(139,92,246,0.4); }
 
     /* Carousel navigation */
     .carousel-nav {
+        position: absolute;
+        bottom: 16px;
+        left: 50%;
+        transform: translateX(-50%);
         display: flex;
         align-items: center;
-        justify-content: center;
         gap: 8px;
-        padding: 0 40px 20px;
+        z-index: 3;
     }
     .carousel-dot {
-        width: 7px;
-        height: 7px;
+        width: 8px;
+        height: 8px;
         border-radius: 50%;
         border: none;
-        background: var(--sf-border);
+        background: rgba(255,255,255,0.35);
         cursor: pointer;
         padding: 0;
         transition: all 0.3s;
     }
     .carousel-dot.active {
-        width: 24px;
+        width: 28px;
         border-radius: 4px;
-        background: var(--sf-purple);
+        background: #ffffff;
     }
     .carousel-arrows {
         position: absolute;
@@ -139,14 +203,15 @@
         justify-content: space-between;
         padding: 0 12px;
         pointer-events: none;
-        z-index: 2;
+        z-index: 3;
     }
     .carousel-arrow {
         width: 36px;
         height: 36px;
         border-radius: 50%;
-        background: var(--sf-card-bg);
-        border: 1px solid var(--sf-border);
+        background: rgba(255,255,255,0.15);
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(255,255,255,0.2);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -154,25 +219,22 @@
         cursor: pointer;
         pointer-events: auto;
         transition: all 0.2s;
-        color: var(--sf-text-2);
-        box-shadow: var(--sf-shadow-sm);
+        color: #fff;
         opacity: 0;
     }
     .carousel:hover .carousel-arrow { opacity: 1; }
     .carousel-arrow:hover {
-        background: var(--sf-purple);
-        color: #fff;
-        border-color: var(--sf-purple);
+        background: rgba(255,255,255,0.3);
     }
 
     /* ===== Search Bar ===== */
     .search-section {
-        max-width: 1280px;
+        max-width: 960px;
         margin: 0 auto;
         padding: 0 24px 8px;
     }
     .search-container {
-        max-width: 720px;
+        max-width: 640px;
         margin: 0 auto;
     }
     .unified-search {
@@ -256,7 +318,7 @@
 
     /* ===== Word Cloud Section ===== */
     .wordcloud-section {
-        max-width: 1280px;
+        max-width: 960px;
         margin: 0 auto;
         padding: 0 24px 40px;
     }
@@ -299,7 +361,7 @@
 
     /* ===== Bottom Row ===== */
     .bottom-row {
-        max-width: 1280px;
+        max-width: 960px;
         margin: 0 auto;
         padding: 0 24px 48px;
         display: grid;
@@ -311,6 +373,8 @@
         border: 1px solid var(--sf-border);
         border-radius: 20px;
         padding: 26px 22px;
+        min-width: 0;
+        overflow: hidden;
     }
     .bottom-card-header {
         display: flex;
@@ -342,6 +406,7 @@
         text-decoration: none;
         color: inherit;
         transition: background 0.2s;
+        min-width: 0;
     }
     .comm-item:last-child { border-bottom: none; }
     .comm-badge {
@@ -389,6 +454,7 @@
         text-decoration: none;
         color: inherit;
         transition: background 0.2s;
+        min-width: 0;
     }
     .news-item:last-child { border-bottom: none; }
     .news-cat {
@@ -423,7 +489,7 @@
 
     /* ===== Footer ===== */
     .sf-footer {
-        max-width: 1280px;
+        max-width: 960px;
         margin: 0 auto;
         padding: 0 24px;
     }
@@ -451,29 +517,29 @@
     /* ===== Responsive ===== */
     @media (max-width: 900px) {
         .bottom-row { grid-template-columns: 1fr; }
-        .carousel-slide { padding: 28px 28px; gap: 16px; }
-        .slide-visual { width: 110px; height: 110px; }
-        .slide-visual svg { width: 56px; height: 56px; }
-        .slide-title { font-size: 21px; }
+        .carousel-slide { padding: 0 28px; min-height: 180px; }
+        .slide-title { font-size: 22px; }
+        .slide-deco { width: 40%; }
     }
     @media (max-width: 600px) {
         .hero { padding: 16px 16px 16px; }
         .carousel-slide {
-            flex-direction: column-reverse;
-            padding: 24px 20px;
-            text-align: center;
-            gap: 12px;
+            padding: 0 22px;
+            min-height: 170px;
         }
-        .slide-visual { width: 80px; height: 80px; }
-        .slide-visual svg { width: 44px; height: 44px; }
-        .slide-title { font-size: 19px; }
+        .slide-content { padding: 26px 0; }
+        .slide-title { font-size: 20px; }
         .slide-desc { font-size: 12px; max-width: none; margin-bottom: 12px; }
-        .slide-cta { font-size: 12px; }
-        .carousel-nav { padding: 0 24px 18px; }
+        .slide-cta { font-size: 12px; padding: 8px 16px; }
+        .slide-deco { width: 35%; opacity: 0.6; }
+        .carousel-nav { bottom: 12px; }
         .carousel-arrows { display: none; }
         .search-section { padding: 0 16px 8px; }
         .wordcloud-section { padding: 0 16px 32px; }
         #wordcloudCanvas { height: 200px; }
+        .bottom-row { padding: 0 16px 40px; }
+        .bottom-card { padding: 20px 16px; }
+        .comm-meta, .news-meta { display: none; }
     }
 {% endblock %}
 
@@ -487,19 +553,11 @@
                 <div class="slide-content">
                     <div class="slide-badge">{{ major_config.short_name }} 전공</div>
                     <h2 class="slide-title">AI가 찾아주는<br>{{ major_config.short_name }} 학습자료</h2>
-                    <p class="slide-desc">질문을 입력하면 AI가 관련 자료를 검색하고, 맞춤형 답변을 생성합니다. {{ major_config.prompt_vars.core_topics[:2]|join(', ') }} 등을 학습하세요.</p>
+                    <p class="slide-desc">질문을 입력하면 AI가 관련 자료를 검색하고, 맞춤형 답변을 생성합니다.</p>
                     <a href="/learn" class="slide-cta">학습하기 →</a>
                 </div>
-                <div class="slide-visual">
-                    <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="12" y="16" width="36" height="48" rx="3" stroke="#3b82f6" stroke-width="2.5" fill="rgba(59,130,246,0.06)"/>
-                        <rect x="32" y="22" width="36" height="48" rx="3" stroke="#3b82f6" stroke-width="2.5" fill="rgba(59,130,246,0.10)"/>
-                        <line x1="38" y1="34" x2="58" y2="34" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>
-                        <line x1="38" y1="42" x2="54" y2="42" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
-                        <line x1="38" y1="50" x2="56" y2="50" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
-                        <circle cx="58" cy="58" r="12" fill="#3b82f6" opacity="0.12"/>
-                        <path d="M54 58l3 3 6-6" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
+                <div class="slide-deco">
+                    <svg viewBox="0 0 320 200" fill="none"><circle cx="240" cy="100" r="120" fill="rgba(59,130,246,0.08)"/><circle cx="280" cy="60" r="60" fill="rgba(96,165,250,0.1)"/><rect x="160" y="50" width="80" height="100" rx="8" fill="rgba(59,130,246,0.06)" stroke="rgba(147,197,253,0.2)" stroke-width="1.5"/><line x1="175" y1="75" x2="225" y2="75" stroke="rgba(147,197,253,0.3)" stroke-width="2" stroke-linecap="round"/><line x1="175" y1="90" x2="215" y2="90" stroke="rgba(147,197,253,0.2)" stroke-width="2" stroke-linecap="round"/><line x1="175" y1="105" x2="220" y2="105" stroke="rgba(147,197,253,0.2)" stroke-width="2" stroke-linecap="round"/><circle cx="200" cy="140" r="20" fill="rgba(59,130,246,0.1)"/><path d="M192 140l5 5 11-11" stroke="rgba(147,197,253,0.5)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </div>
             </div>
             <!-- Slide 2: MSDS -->
@@ -507,18 +565,11 @@
                 <div class="slide-content">
                     <div class="slide-badge">화학물질 안전</div>
                     <h2 class="slide-title">MSDS 물질안전<br>보건자료 검색</h2>
-                    <p class="slide-desc">화학물질명으로 MSDS를 즉시 검색하세요. GHS 분류, 취급 주의사항, 응급조치 정보를 한눈에 확인할 수 있습니다.</p>
+                    <p class="slide-desc">화학물질명으로 MSDS를 즉시 검색하세요. GHS 분류, 취급 주의사항을 확인합니다.</p>
                     <a href="/msds" class="slide-cta">MSDS 검색 →</a>
                 </div>
-                <div class="slide-visual">
-                    <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M32 14v16c0 4-6 8-6 16s4 20 14 20 14-12 14-20-6-12-6-16V14" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="rgba(16,185,129,0.06)"/>
-                        <line x1="28" y1="14" x2="52" y2="14" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"/>
-                        <circle cx="40" cy="50" r="6" fill="#10b981" opacity="0.15"/>
-                        <circle cx="40" cy="50" r="2.5" fill="#10b981" opacity="0.4"/>
-                        <path d="M36 30h8" stroke="#10b981" stroke-width="2" stroke-linecap="round" opacity="0.4"/>
-                        <path d="M34 36h12" stroke="#10b981" stroke-width="2" stroke-linecap="round" opacity="0.4"/>
-                    </svg>
+                <div class="slide-deco">
+                    <svg viewBox="0 0 320 200" fill="none"><circle cx="260" cy="100" r="100" fill="rgba(16,185,129,0.06)"/><circle cx="220" cy="50" r="40" fill="rgba(52,211,153,0.08)"/><path d="M200 30v40c0 8-14 16-14 32s8 40 28 40 28-24 28-40-14-24-14-32V30" stroke="rgba(110,231,183,0.25)" stroke-width="2" fill="rgba(16,185,129,0.04)"/><line x1="192" y1="30" x2="228" y2="30" stroke="rgba(110,231,183,0.3)" stroke-width="2.5" stroke-linecap="round"/><circle cx="210" cy="110" r="10" fill="rgba(52,211,153,0.12)"/><circle cx="210" cy="110" r="4" fill="rgba(52,211,153,0.25)"/><rect x="250" y="60" width="50" height="70" rx="6" fill="rgba(16,185,129,0.05)" stroke="rgba(110,231,183,0.15)" stroke-width="1"/><line x1="260" y1="78" x2="290" y2="78" stroke="rgba(110,231,183,0.2)" stroke-width="1.5" stroke-linecap="round"/><line x1="260" y1="90" x2="285" y2="90" stroke="rgba(110,231,183,0.15)" stroke-width="1.5" stroke-linecap="round"/><line x1="260" y1="102" x2="288" y2="102" stroke="rgba(110,231,183,0.15)" stroke-width="1.5" stroke-linecap="round"/></svg>
                 </div>
             </div>
             <!-- Slide 3: 공유질문 -->
@@ -526,21 +577,11 @@
                 <div class="slide-content">
                     <div class="slide-badge">질문 공유</div>
                     <h2 class="slide-title">다른 학생들의<br>AI 질문 모아보기</h2>
-                    <p class="slide-desc">다른 학생들이 AI에게 물어본 질문과 답변을 확인하세요. 좋아요를 누르고 인기 키워드 트렌드를 살펴볼 수 있습니다.</p>
+                    <p class="slide-desc">다른 학생들이 AI에게 물어본 질문과 답변을 확인하고 인기 트렌드를 살펴보세요.</p>
                     <a href="/questions" class="slide-cta">공유질문 보기 →</a>
                 </div>
-                <div class="slide-visual">
-                    <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="10" y="18" width="40" height="30" rx="6" stroke="#d97706" stroke-width="2.5" fill="rgba(245,158,11,0.06)"/>
-                        <path d="M20 48v8l8-8" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                        <rect x="30" y="32" width="40" height="26" rx="6" stroke="#d97706" stroke-width="2.5" fill="rgba(245,158,11,0.10)"/>
-                        <path d="M60 58v7l-7-7" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                        <circle cx="23" cy="32" r="2" fill="#d97706" opacity="0.5"/>
-                        <circle cx="30" cy="32" r="2" fill="#d97706" opacity="0.5"/>
-                        <circle cx="37" cy="32" r="2" fill="#d97706" opacity="0.5"/>
-                        <line x1="38" y1="42" x2="58" y2="42" stroke="#d97706" stroke-width="2" stroke-linecap="round" opacity="0.4"/>
-                        <line x1="38" y1="49" x2="52" y2="49" stroke="#d97706" stroke-width="2" stroke-linecap="round" opacity="0.4"/>
-                    </svg>
+                <div class="slide-deco">
+                    <svg viewBox="0 0 320 200" fill="none"><circle cx="250" cy="90" r="90" fill="rgba(245,158,11,0.06)"/><rect x="170" y="40" width="90" height="55" rx="12" fill="rgba(251,191,36,0.08)" stroke="rgba(253,224,71,0.2)" stroke-width="1.5"/><path d="M190 95v16l16-16" stroke="rgba(253,224,71,0.2)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><rect x="210" y="85" width="90" height="50" rx="12" fill="rgba(251,191,36,0.06)" stroke="rgba(253,224,71,0.15)" stroke-width="1.5"/><path d="M275 135v14l-14-14" stroke="rgba(253,224,71,0.15)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="195" cy="62" r="4" fill="rgba(253,224,71,0.25)"/><circle cx="210" cy="62" r="4" fill="rgba(253,224,71,0.2)"/><circle cx="225" cy="62" r="4" fill="rgba(253,224,71,0.15)"/><line x1="225" y1="105" x2="280" y2="105" stroke="rgba(253,224,71,0.2)" stroke-width="2" stroke-linecap="round"/><line x1="225" y1="118" x2="268" y2="118" stroke="rgba(253,224,71,0.15)" stroke-width="2" stroke-linecap="round"/></svg>
                 </div>
             </div>
             <!-- Slide 4: 커뮤니티 -->
@@ -548,18 +589,11 @@
                 <div class="slide-content">
                     <div class="slide-badge">커뮤니티</div>
                     <h2 class="slide-title">학생 커뮤니티에서<br>정보를 나누세요</h2>
-                    <p class="slide-desc">질문/답변, 정보 공유, 자유 게시판에서 동료 학생들과 소통하세요. 현장실습, 학습 팁 등을 함께 나눌 수 있습니다.</p>
+                    <p class="slide-desc">질문/답변, 정보 공유, 자유 게시판에서 동료 학생들과 함께 소통하세요.</p>
                     <a href="/community" class="slide-cta">커뮤니티 가기 →</a>
                 </div>
-                <div class="slide-visual">
-                    <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <circle cx="30" cy="28" r="10" stroke="#0891b2" stroke-width="2.5" fill="rgba(6,182,212,0.08)"/>
-                        <circle cx="52" cy="32" r="8" stroke="#0891b2" stroke-width="2.5" fill="rgba(6,182,212,0.08)"/>
-                        <path d="M14 56c0-10 8-16 16-16s16 6 16 16" stroke="#0891b2" stroke-width="2.5" stroke-linecap="round" fill="rgba(6,182,212,0.06)"/>
-                        <path d="M40 52c0-7 5-11 12-11s12 4 12 11" stroke="#0891b2" stroke-width="2.5" stroke-linecap="round" fill="rgba(6,182,212,0.06)"/>
-                        <circle cx="30" cy="28" r="3.5" fill="#0891b2" opacity="0.2"/>
-                        <circle cx="52" cy="32" r="3" fill="#0891b2" opacity="0.2"/>
-                    </svg>
+                <div class="slide-deco">
+                    <svg viewBox="0 0 320 200" fill="none"><circle cx="260" cy="100" r="100" fill="rgba(6,182,212,0.05)"/><circle cx="220" cy="70" r="24" stroke="rgba(103,232,249,0.25)" stroke-width="2" fill="rgba(6,182,212,0.06)"/><circle cx="260" cy="80" r="18" stroke="rgba(103,232,249,0.2)" stroke-width="2" fill="rgba(6,182,212,0.06)"/><circle cx="290" cy="110" r="14" stroke="rgba(103,232,249,0.15)" stroke-width="2" fill="rgba(6,182,212,0.04)"/><circle cx="220" cy="70" r="8" fill="rgba(103,232,249,0.1)"/><circle cx="260" cy="80" r="6" fill="rgba(103,232,249,0.1)"/><circle cx="290" cy="110" r="5" fill="rgba(103,232,249,0.08)"/><path d="M200 130c0-18 12-28 28-28" stroke="rgba(103,232,249,0.15)" stroke-width="1.5" stroke-linecap="round"/><path d="M240 126c0-14 10-22 22-22" stroke="rgba(103,232,249,0.12)" stroke-width="1.5" stroke-linecap="round"/><line x1="230" y1="70" x2="250" y2="80" stroke="rgba(103,232,249,0.12)" stroke-width="1" stroke-dasharray="4 3"/><line x1="268" y1="88" x2="284" y2="104" stroke="rgba(103,232,249,0.1)" stroke-width="1" stroke-dasharray="4 3"/></svg>
                 </div>
             </div>
             <!-- Slide 5: 뉴스 -->
@@ -567,26 +601,18 @@
                 <div class="slide-content">
                     <div class="slide-badge">안전 뉴스</div>
                     <h2 class="slide-title">노동안전 뉴스를<br>매일 확인하세요</h2>
-                    <p class="slide-desc">산업재해, 안전규정, 정책 변경 등 최신 노동안전 뉴스를 자동으로 수집하여 제공합니다.</p>
+                    <p class="slide-desc">산업재해, 안전규정, 정책 변경 등 최신 뉴스를 자동으로 수집합니다.</p>
                     <a href="/news" class="slide-cta">뉴스 보기 →</a>
                 </div>
-                <div class="slide-visual">
-                    <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="10" y="14" width="44" height="52" rx="4" stroke="#7c3aed" stroke-width="2.5" fill="rgba(139,92,246,0.06)"/>
-                        <rect x="16" y="22" width="20" height="14" rx="2" fill="#7c3aed" opacity="0.12"/>
-                        <line x1="16" y1="44" x2="46" y2="44" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" opacity="0.4"/>
-                        <line x1="16" y1="50" x2="40" y2="50" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" opacity="0.3"/>
-                        <line x1="16" y1="56" x2="44" y2="56" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" opacity="0.3"/>
-                        <rect x="40" y="22" width="10" height="6" rx="1" fill="#7c3aed" opacity="0.15"/>
-                        <path d="M54 26c6 0 12 2 12 8v26c0 4-4 6-8 6s-4-2-4-6V14" stroke="#7c3aed" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
+                <div class="slide-deco">
+                    <svg viewBox="0 0 320 200" fill="none"><circle cx="260" cy="100" r="110" fill="rgba(139,92,246,0.05)"/><rect x="170" y="30" width="100" height="130" rx="8" fill="rgba(139,92,246,0.05)" stroke="rgba(196,181,253,0.15)" stroke-width="1.5"/><rect x="182" y="48" width="44" height="28" rx="4" fill="rgba(167,139,250,0.1)"/><line x1="182" y1="90" x2="255" y2="90" stroke="rgba(196,181,253,0.2)" stroke-width="2" stroke-linecap="round"/><line x1="182" y1="104" x2="245" y2="104" stroke="rgba(196,181,253,0.15)" stroke-width="2" stroke-linecap="round"/><line x1="182" y1="118" x2="250" y2="118" stroke="rgba(196,181,253,0.12)" stroke-width="2" stroke-linecap="round"/><line x1="182" y1="132" x2="240" y2="132" stroke="rgba(196,181,253,0.1)" stroke-width="2" stroke-linecap="round"/><rect x="236" y="48" width="22" height="14" rx="3" fill="rgba(167,139,250,0.08)"/><circle cx="290" cy="50" r="25" fill="rgba(139,92,246,0.06)"/><path d="M282 50l5 5 11-11" stroke="rgba(196,181,253,0.3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </div>
             </div>
         </div>
         <!-- Arrows -->
         <div class="carousel-arrows">
-            <button class="carousel-arrow" onclick="carouselPrev()" aria-label="이전">‹</button>
-            <button class="carousel-arrow" onclick="carouselNext()" aria-label="다음">›</button>
+            <button class="carousel-arrow" onclick="carouselPrev()" aria-label="이전">&#x2039;</button>
+            <button class="carousel-arrow" onclick="carouselNext()" aria-label="다음">&#x203A;</button>
         </div>
         <!-- Dots -->
         <div class="carousel-nav" id="carouselNav"></div>

@@ -78,6 +78,17 @@ def main():
     delete_parser.add_argument("--source-file", type=str, help="특정 파일의 벡터만 삭제")
     delete_parser.add_argument("--all", action="store_true", help="모든 벡터 삭제 (위험!)")
 
+    # Build-graph command
+    bg_parser = subparsers.add_parser("build-graph", help="Knowledge Graph 구축")
+    bg_parser.add_argument("--namespace", "-n", type=str, required=True, help="대상 Pinecone 네임스페이스")
+    bg_parser.add_argument("--batch-size", type=int, default=20, help="LLM 배치 크기 (기본: 20)")
+    bg_parser.add_argument("--max-chunks", type=int, default=None, help="최대 처리 청크 수 (테스트용)")
+    bg_parser.add_argument("--reset", action="store_true", help="기존 그래프 삭제 후 재구축")
+
+    # Graph-stats command
+    gs_parser = subparsers.add_parser("graph-stats", help="Knowledge Graph 통계")
+    gs_parser.add_argument("--namespace", "-n", type=str, default=None, help="특정 네임스페이스 통계")
+
     args = parser.parse_args()
 
     if not args.command:
@@ -297,6 +308,111 @@ def main():
                 print("✓ 모든 벡터가 삭제되었습니다.")
             except Exception as e:
                 print(f"❌ 삭제 실패: {e}")
+
+
+    elif args.command == "build-graph":
+        # GraphRAG: build knowledge graph from Pinecone chunks
+        from web_app import app
+        from models import db, KGEntity, KGRelation, KGEntityChunk
+        from src.graph_builder import GraphBuilder
+        from pinecone import Pinecone
+
+        with app.app_context():
+            db.create_all()
+
+            namespace = args.namespace
+            print(f"🧠 Knowledge Graph 구축: namespace={namespace}")
+
+            builder = GraphBuilder(namespace=namespace)
+
+            if args.reset:
+                print("🗑️  기존 그래프 삭제 중...")
+                builder.reset()
+
+            # Fetch chunks from Pinecone
+            print("📥 Pinecone에서 청크 조회 중...")
+            pc = Pinecone(api_key=pinecone_key)
+            idx = pc.Index(index_name)
+
+            # List all vector IDs in the namespace
+            all_ids = []
+            for id_batch in idx.list(namespace=namespace):
+                all_ids.extend(id_batch)
+                if args.max_chunks and len(all_ids) >= args.max_chunks:
+                    all_ids = all_ids[:args.max_chunks]
+                    break
+
+            print(f"   벡터 {len(all_ids)}개 발견")
+
+            # Fetch metadata in batches
+            chunks = []
+            for i in range(0, len(all_ids), 100):
+                batch_ids = all_ids[i:i+100]
+                fetched = idx.fetch(ids=batch_ids, namespace=namespace)
+                for vid, vec in fetched.vectors.items():
+                    meta = vec.metadata or {}
+                    content = meta.get('content', '')
+                    if content:
+                        chunks.append({'id': vid, 'content': content, 'metadata': meta})
+
+            print(f"   컨텐츠 있는 청크 {len(chunks)}개")
+
+            if not chunks:
+                print("❌ 추출 가능한 청크가 없습니다.")
+                return
+
+            # Build graph
+            print(f"🔨 엔티티/관계 추출 중 (배치 크기: {args.batch_size})...")
+            stats = builder.build(chunks=chunks, batch_size=args.batch_size)
+
+            print(f"\n{'='*50}")
+            print(f"📊 Knowledge Graph 구축 완료")
+            print(f"{'='*50}")
+            print(f"  엔티티: {stats['entities']}개")
+            print(f"  관계: {stats['relations']}개")
+            print(f"  엔티티-청크 매핑: {stats['entity_chunks']}개")
+
+    elif args.command == "graph-stats":
+        from web_app import app
+        from models import db, KGEntity, KGRelation, KGEntityChunk
+        from sqlalchemy import func
+
+        with app.app_context():
+            if args.namespace:
+                namespaces = [args.namespace]
+            else:
+                namespaces = [
+                    r[0] for r in
+                    db.session.query(KGEntity.namespace).distinct().all()
+                ]
+
+            if not namespaces:
+                print("Knowledge Graph가 비어 있습니다.")
+                return
+
+            print(f"\n{'='*50}")
+            print(f"📊 Knowledge Graph 통계")
+            print(f"{'='*50}")
+            for ns in namespaces:
+                e_count = db.session.query(KGEntity).filter_by(namespace=ns).count()
+                r_count = db.session.query(KGRelation).filter_by(namespace=ns).count()
+                ec_count = db.session.query(KGEntityChunk).filter_by(namespace=ns).count()
+                print(f"\n  [{ns}]")
+                print(f"    엔티티: {e_count}개")
+                print(f"    관계: {r_count}개")
+                print(f"    엔티티-청크 매핑: {ec_count}개")
+
+                # Top entity types
+                type_counts = (
+                    db.session.query(KGEntity.entity_type, func.count(KGEntity.id))
+                    .filter_by(namespace=ns)
+                    .group_by(KGEntity.entity_type)
+                    .all()
+                )
+                if type_counts:
+                    print(f"    엔티티 타입:")
+                    for etype, cnt in type_counts:
+                        print(f"      {etype}: {cnt}개")
 
 
 if __name__ == "__main__":
