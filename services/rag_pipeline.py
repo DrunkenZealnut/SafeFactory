@@ -603,6 +603,7 @@ def _enhance_query(
     namespace: str,
     route_cfg: dict,
     use_enhancement: bool,
+    use_hyde: bool | None = None,
 ) -> EnhancementResult:
     """Phase 1: Query enhancement.
 
@@ -614,6 +615,7 @@ def _enhance_query(
         namespace: Pinecone namespace.
         route_cfg: Routing config from QUERY_TYPE_CONFIG.
         use_enhancement: Whether enhancement is enabled.
+        use_hyde: Override for HyDE activation (CI-1). None = use route_cfg default.
 
     Returns:
         EnhancementResult (original-only when enhancement is disabled).
@@ -624,6 +626,8 @@ def _enhance_query(
             variations=[search_query],
         )
 
+    _hyde = use_hyde if use_hyde is not None else route_cfg.get('use_hyde', False)
+
     try:
         query_enhancer = get_query_enhancer()
         domain = NAMESPACE_DOMAIN_MAP.get(namespace, 'semiconductor')
@@ -632,7 +636,7 @@ def _enhance_query(
             query=search_query,
             domain=domain,
             use_multi_query=route_cfg.get('use_multi_query', True),
-            use_hyde=route_cfg.get('use_hyde', False),
+            use_hyde=_hyde,
             use_keywords=True,
         )
     except Exception as e:
@@ -820,7 +824,7 @@ def run_rag_pipeline(data):
     # Phase 1: Query Enhancement
     # ========================================
     _t0 = time.perf_counter()
-    enhancement = _enhance_query(search_query, namespace, route_cfg, use_enhancement)
+    enhancement = _enhance_query(search_query, namespace, route_cfg, use_enhancement, use_hyde=_use_hyde)
     enhanced_queries = enhancement.all_queries
     keywords = enhancement.keywords
 
@@ -998,7 +1002,7 @@ def run_rag_pipeline(data):
     if len(results) < 3 and use_enhancement and domain_confidence and domain_confidence < 0.5:
         try:
             logging.info("[Re-Search] Triggering (results=%d, conf=%.2f)", len(results), domain_confidence)
-            _retry_enhancement = _enhance_query(search_query, namespace, route_cfg, True)
+            _retry_enhancement = _enhance_query(search_query, namespace, route_cfg, True, use_hyde=True)
             _retry_results = _run_multi_query_search(
                 search_query, _retry_enhancement, namespace, top_k * 2,
                 route_cfg, data, skip_bm25,
