@@ -330,6 +330,68 @@
             min-height: calc(100vh - 65px);
         }
 
+        /* ===== Footer ===== */
+        .sf-footer {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+        .sf-footer-inner {
+            border-top: 1px solid var(--sf-border);
+            padding: 28px 0;
+            text-align: center;
+        }
+        .sf-footer-org {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            margin-bottom: 16px;
+        }
+        .sf-footer-org-name {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--sf-text-1);
+        }
+        .sf-footer-org-detail {
+            font-size: 12px;
+            color: var(--sf-text-3);
+        }
+        .sf-footer-org-detail a {
+            color: var(--sf-text-3);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        .sf-footer-org-detail a:hover {
+            color: var(--sf-purple);
+        }
+        .sf-footer-links {
+            margin-bottom: 10px;
+        }
+        .sf-footer-links a {
+            font-size: 12px;
+            color: var(--sf-text-4);
+            text-decoration: none;
+            margin: 0 12px;
+            transition: color 0.2s;
+        }
+        .sf-footer-links a:hover {
+            color: var(--sf-purple-light);
+        }
+        .sf-footer-copy {
+            font-size: 12px;
+            color: var(--sf-text-3);
+        }
+
+        @media (max-width: 600px) {
+            .sf-footer { padding: 0 16px; }
+            .sf-footer-links a { margin: 0 8px; }
+        }
+        @media (max-width: 360px) {
+            .sf-footer-links { display: flex; flex-direction: column; gap: 6px; align-items: center; }
+            .sf-footer-links a { margin: 0; }
+        }
+
         {% block head_extra %}{% endblock %}
     </style>
     {% block head_scripts %}{% endblock %}
@@ -419,6 +481,25 @@
     <main class="sf-page-content">
         {% block content %}{% endblock %}
     </main>
+
+    <!-- Footer -->
+    <footer class="sf-footer">
+        <div class="sf-footer-inner">
+            <div class="sf-footer-org">
+                <span class="sf-footer-org-name">청년노동자인권센터</span>
+                <span class="sf-footer-org-detail">서울시 종로구 성균관로12 5층</span>
+                <span class="sf-footer-org-detail">
+                    <a href="mailto:admin@younglabor.kr">admin@younglabor.kr</a>
+                </span>
+            </div>
+            <div class="sf-footer-links">
+                <a href="#">이용약관</a>
+                <a href="#">개인정보처리방침</a>
+                <a href="#">고객센터</a>
+            </div>
+            <p class="sf-footer-copy">&copy; {{ now().year }} SafeFactory. AI 기반 산업안전 지식 플랫폼</p>
+        </div>
+    </footer>
 
     <script>
     (function() {

@@ -166,7 +166,10 @@
     }
     .detail-content pre code { background: none; padding: 0; }
     .detail-content a { color: var(--sf-amber-dark); }
-    .detail-content table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+    .detail-content .table-wrap {
+        overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 12px 0;
+    }
+    .detail-content table { width: 100%; border-collapse: collapse; min-width: 400px; }
     .detail-content th, .detail-content td {
         border: 1px solid var(--sf-border); padding: 8px 12px; text-align: left;
     }
@@ -268,6 +271,11 @@
         .toolbar input[type="text"] { min-width: unset; }
         .detail-card { padding: 20px; }
         .modal-content { max-width: 100%; }
+    }
+
+    @media (max-width: 480px) {
+        .container { padding: 10px; }
+        .detail-card { padding: 14px; }
     }
 {% endblock %}
 

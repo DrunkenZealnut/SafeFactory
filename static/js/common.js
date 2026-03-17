@@ -37,7 +37,10 @@ function renderMarkdown(text) {
     if (typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
         try {
             var html = marked.parse(text || '');
-            return DOMPurify.sanitize(html, { ADD_ATTR: ['target'] });
+            html = DOMPurify.sanitize(html, { ADD_ATTR: ['target'] });
+            html = html.replace(/<table/g, '<div class="table-wrap"><table')
+                       .replace(/<\/table>/g, '</table></div>');
+            return html;
         } catch (e) {
             console.error('Markdown parsing failed:', e);
             return escapeHtml(text || '').replace(/\n/g, '<br>');
