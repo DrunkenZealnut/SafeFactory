@@ -38,7 +38,7 @@ from services.singletons import (
 from src.query_enhancer import EnhancementResult
 
 MIN_RELEVANCE_SCORE = float(os.environ.get('MIN_RELEVANCE_SCORE', '0.2'))
-MIN_TOKEN_COUNT = int(os.environ.get('MIN_TOKEN_COUNT', '30'))
+MIN_TOKEN_COUNT = int(os.environ.get('MIN_TOKEN_COUNT', '80'))
 TOP_K_NO_BM25_MULT = int(os.environ.get('TOP_K_NO_BM25_MULT', '4'))
 TOP_K_DEFAULT_MULT = int(os.environ.get('TOP_K_DEFAULT_MULT', '3'))
 
@@ -603,6 +603,7 @@ def _enhance_query(
     namespace: str,
     route_cfg: dict,
     use_enhancement: bool,
+    use_hyde: bool | None = None,
 ) -> EnhancementResult:
     """Phase 1: Query enhancement.
 
@@ -614,6 +615,7 @@ def _enhance_query(
         namespace: Pinecone namespace.
         route_cfg: Routing config from QUERY_TYPE_CONFIG.
         use_enhancement: Whether enhancement is enabled.
+        use_hyde: Override for HyDE activation (CI-1). None = use route_cfg default.
 
     Returns:
         EnhancementResult (original-only when enhancement is disabled).
@@ -624,6 +626,8 @@ def _enhance_query(
             variations=[search_query],
         )
 
+    _hyde = use_hyde if use_hyde is not None else route_cfg.get('use_hyde', False)
+
     try:
         query_enhancer = get_query_enhancer()
         domain = NAMESPACE_DOMAIN_MAP.get(namespace, 'semiconductor')
@@ -632,7 +636,7 @@ def _enhance_query(
             query=search_query,
             domain=domain,
             use_multi_query=route_cfg.get('use_multi_query', True),
-            use_hyde=route_cfg.get('use_hyde', False),
+            use_hyde=_hyde,
             use_keywords=True,
         )
     except Exception as e:
@@ -786,8 +790,10 @@ def run_rag_pipeline(data):
     # ========================================
     detected_namespace = None
     detected_domain_label = None
+    secondary_ns = None
     if namespace != 'all':
-        detected_namespace, domain_confidence, detected_domain_label = classify_domain(query, namespace)
+        detected_namespace, domain_confidence, detected_domain_label, \
+            secondary_ns, _secondary_conf = classify_domain(query, namespace)
         if detected_namespace and detected_namespace != namespace and domain_confidence > 0:
             logging.info("[DomainRouter] Override namespace: %s → %s (label=%s)",
                          namespace, detected_namespace, detected_domain_label)
@@ -795,18 +801,38 @@ def run_rag_pipeline(data):
 
     domain_key = NAMESPACE_DOMAIN_MAP.get(namespace, 'semiconductor')
 
+    # QW-2: Adaptive top_k based on domain confidence
+    if domain_confidence and domain_confidence < 0.7:
+        _original_top_k = top_k
+        _adaptive_mult = 2.0 if domain_confidence < 0.4 else 1.5
+        top_k = min(int(top_k * _adaptive_mult), _original_top_k * 3)
+        logging.info("[Adaptive top_k] confidence=%.2f, top_k: %d → %d",
+                     domain_confidence, _original_top_k, top_k)
+
     # Query type classification for routing
     query_type = classify_query_type(search_query)
     route_cfg = QUERY_TYPE_CONFIG.get(query_type, QUERY_TYPE_CONFIG['factual'])
     logging.info("[Query Router] Type: %s", query_type)
 
+    # CI-1: HyDE override for low-confidence factual queries
+    _use_hyde = route_cfg.get('use_hyde', False)
+    if not _use_hyde and domain_confidence and domain_confidence < 0.6:
+        _use_hyde = True
+        logging.info("[HyDE Override] Enabled for low-confidence query (%.2f)", domain_confidence)
+
     # ========================================
     # Phase 1: Query Enhancement
     # ========================================
     _t0 = time.perf_counter()
-    enhancement = _enhance_query(search_query, namespace, route_cfg, use_enhancement)
+    enhancement = _enhance_query(search_query, namespace, route_cfg, use_enhancement, use_hyde=_use_hyde)
     enhanced_queries = enhancement.all_queries
     keywords = enhancement.keywords
+
+    # QW-1: Fallback keyword extraction when keywords are empty
+    if not keywords:
+        import re as _re
+        keywords = _re.findall(r'[가-힣a-zA-Z0-9]{2,}', search_query)[:10]
+
     _timings['phase1_enhancement_ms'] = round((time.perf_counter() - _t0) * 1000)
 
     # ========================================
@@ -933,6 +959,27 @@ def run_rag_pipeline(data):
     _timings['phase5_rerank_ms'] = round((time.perf_counter() - _t0) * 1000)
 
     # ========================================
+    # Phase 5.5: MMR Diversity (near-duplicate removal)
+    # ========================================
+    if use_enhancement and len(results) > 5:
+        try:
+            _seen_contents = set()
+            _diverse_results = []
+            for r in results:
+                _ck = (r.get('content', '') or r.get('metadata', {}).get('content', ''))[:200]
+                if _ck and _ck not in _seen_contents:
+                    _seen_contents.add(_ck)
+                    _diverse_results.append(r)
+                elif not _ck:
+                    _diverse_results.append(r)
+            _removed = len(results) - len(_diverse_results)
+            if _removed > 0:
+                results = _diverse_results
+                logging.info("[MMR Diversity] Removed %d near-duplicate results", _removed)
+        except Exception as _mmr_e:
+            logging.warning("[MMR Diversity] Failed: %s", _mmr_e)
+
+    # ========================================
     # Phase 6: Filtering, Context Optimization, and Reordering
     # ========================================
     _t0 = time.perf_counter()
@@ -950,6 +997,23 @@ def run_rag_pipeline(data):
 
     # Limit to top_k before reordering
     results = results[:top_k]
+
+    # RB-1: Re-search with enhanced query when results are insufficient
+    if len(results) < 3 and use_enhancement and domain_confidence and domain_confidence < 0.5:
+        try:
+            logging.info("[Re-Search] Triggering (results=%d, conf=%.2f)", len(results), domain_confidence)
+            _retry_enhancement = _enhance_query(search_query, namespace, route_cfg, True, use_hyde=True)
+            _retry_results = _run_multi_query_search(
+                search_query, _retry_enhancement, namespace, top_k * 2,
+                route_cfg, data, skip_bm25,
+            )
+            _existing_ids = {r.get('id') for r in results}
+            for rr in _retry_results:
+                if rr.get('id') not in _existing_ids:
+                    results.append(rr)
+            logging.info("[Re-Search] Total results after retry: %d", len(results))
+        except Exception as _rs_e:
+            logging.warning("[Re-Search] Failed: %s", _rs_e)
 
     # Early return if all results were filtered out by min_score (laborlaw bypasses this)
     if not results and namespace != 'laborlaw':

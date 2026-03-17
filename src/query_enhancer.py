@@ -45,8 +45,8 @@ def shutdown_enhancement_executor():
 # ---------------------------------------------------------------------------
 _cache_lock = threading.Lock()
 _multi_query_cache: dict = {}  # key -> (result, timestamp)
-_CACHE_TTL = 300   # 5 minutes
-_CACHE_MAX = 200   # max entries
+_CACHE_TTL = 3600  # 1 hour (covers one classroom session)
+_CACHE_MAX = 500   # max entries
 
 
 def _make_cache_key(query: str, num_variations: int) -> str:
