@@ -790,10 +790,11 @@ def run_rag_pipeline(data):
     # ========================================
     detected_namespace = None
     detected_domain_label = None
-    secondary_ns = None
+    domain_confidence = 0.0
+    _secondary_conf = 0.0
     if namespace != 'all':
         detected_namespace, domain_confidence, detected_domain_label, \
-            secondary_ns, _secondary_conf = classify_domain(query, namespace)
+            _secondary_ns, _secondary_conf = classify_domain(query, namespace)
         if detected_namespace and detected_namespace != namespace and domain_confidence > 0:
             logging.info("[DomainRouter] Override namespace: %s → %s (label=%s)",
                          namespace, detected_namespace, detected_domain_label)
@@ -893,9 +894,10 @@ def run_rag_pipeline(data):
                         _gr = _graph_score_map.get(_vid)
                         results.append({
                             'id': _vid,
-                            'score': _gr.graph_score if _gr else 0.0,
+                            'score': max(_gr.graph_score, MIN_RELEVANCE_SCORE + 0.1) if _gr else 0.3,
                             'content': _meta.get('content', ''),
                             'metadata': _meta,
+                            'source_type': 'graph',
                             'graph_path': ' > '.join(_gr.entity_path) if _gr else '',
                         })
                     logging.info("[Graph Enrichment] Added %d graph-discovered chunks", len(new_chunk_ids))
@@ -903,6 +905,35 @@ def run_rag_pipeline(data):
         logging.warning("[Graph Enrichment] Failed (fallback to vector-only): %s", _ge)
 
     _timings['phase3_graph_ms'] = round((time.perf_counter() - _t0) * 1000)
+
+    # ========================================
+    # Phase 3.5: Global Search (Community)
+    # ========================================
+    _t0 = time.perf_counter()
+    _global_context = ''
+    if route_cfg.get('use_global_search') and use_enhancement:
+        try:
+            from services.graph_config import get_graph_config
+            _comm_cfg = get_graph_config(namespace).get('community', {})
+            if _comm_cfg.get('enabled'):
+                from services.singletons import get_community_searcher
+                _cs = get_community_searcher()
+                _global_result = _cs.search(
+                    query=search_query,
+                    namespace=namespace,
+                    max_communities=10,
+                )
+                if _global_result['communities_used'] > 0:
+                    _global_context = _global_result['answer_context']
+                    logging.info(
+                        "[Global Search] Used %d communities: %s",
+                        _global_result['communities_used'],
+                        _global_result['community_titles'],
+                    )
+        except Exception as _ce:
+            logging.warning("[Global Search] Failed (fallback to local): %s", _ce)
+
+    _timings['phase3_5_global_ms'] = round((time.perf_counter() - _t0) * 1000)
 
     # ========================================
     # Phase 4: Hybrid Search (BM25 + Vector)
@@ -1003,9 +1034,9 @@ def run_rag_pipeline(data):
         try:
             logging.info("[Re-Search] Triggering (results=%d, conf=%.2f)", len(results), domain_confidence)
             _retry_enhancement = _enhance_query(search_query, namespace, route_cfg, True, use_hyde=True)
-            _retry_results = _run_multi_query_search(
-                search_query, _retry_enhancement, namespace, top_k * 2,
-                route_cfg, data, skip_bm25,
+            _retry_results = _search_with_variations(
+                agent, _retry_enhancement, namespace,
+                domain_filter, top_k * 2,
             )
             _existing_ids = {r.get('id') for r in results}
             for rr in _retry_results:
@@ -1090,6 +1121,10 @@ def run_rag_pipeline(data):
             sources.append(source_entry)
 
     context = "\n\n---\n\n".join(context_parts)
+
+    # Prepend global search context (community summaries) if available
+    if _global_context:
+        context = "## 도메인 개요 (커뮤니티 기반)\n\n" + _global_context + "\n\n---\n\n" + context
 
     _timings['phase7_context_ms'] = round((time.perf_counter() - _t0) * 1000)
     _timings['total_pipeline_ms'] = sum(_timings.values())

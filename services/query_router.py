@@ -34,6 +34,13 @@ QUERY_TYPE_CONFIG = {
         'use_multi_query': False,
         'rerank_weight': 0.85,
     },
+    'overview': {
+        'top_k_mult': 3,
+        'use_hyde': False,
+        'use_multi_query': False,
+        'rerank_weight': 0.80,
+        'use_global_search': True,
+    },
 }
 
 # Rule-based classification patterns (ordered by specificity).
@@ -50,13 +57,21 @@ _PROCEDURAL_PATTERNS = [
     re.compile(r'(?:방법|절차|순서|과정|단계|어떻게)'),
     re.compile(r'(?:하는\s*법|하려면|해야|신청|청구|신고)'),
 ]
+_OVERVIEW_PATTERNS = [
+    re.compile(r'(?:전반|개요|전체|총정리|요약|핵심|주요|개괄)'),
+    re.compile(r'(?:알려줘|설명해|정리해).*(?:전반|전체|종합)'),
+    re.compile(r'(?:가장|중요한|핵심).*(?:\d+가지|\d+개)'),
+]
 
 
 def classify_query_type(query: str) -> str:
-    """Classify a query into one of four types using regex patterns.
+    """Classify a query into one of five types using regex patterns.
 
     Returns 'factual' when no other pattern matches.
     """
+    for pattern in _OVERVIEW_PATTERNS:
+        if pattern.search(query):
+            return 'overview'
     for pattern in _CALCULATION_PATTERNS:
         if pattern.search(query):
             return 'calculation'

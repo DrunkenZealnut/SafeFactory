@@ -294,6 +294,29 @@ def invalidate_graph_searcher():
         _graph_searcher = None
 
 
+_community_searcher = None
+
+
+def get_community_searcher():
+    """Return (or lazily create) the singleton CommunitySearcher instance."""
+    global _community_searcher
+    if _community_searcher is None:
+        with _lock:
+            if _community_searcher is None:
+                from services.community_searcher import CommunitySearcher
+                _community_searcher = CommunitySearcher()
+    return _community_searcher
+
+
+def invalidate_community_searcher():
+    """Reset the CommunitySearcher singleton (clears summary cache)."""
+    global _community_searcher
+    with _lock:
+        if _community_searcher is not None:
+            _community_searcher.invalidate_cache()
+        _community_searcher = None
+
+
 def shutdown_all():
     """Close all singleton instances that hold resources.
 

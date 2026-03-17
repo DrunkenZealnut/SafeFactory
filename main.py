@@ -89,6 +89,17 @@ def main():
     gs_parser = subparsers.add_parser("graph-stats", help="Knowledge Graph 통계")
     gs_parser.add_argument("--namespace", "-n", type=str, default=None, help="특정 네임스페이스 통계")
 
+    # Build-community command
+    bc_parser = subparsers.add_parser("build-community", help="커뮤니티 감지 + 요약 생성")
+    bc_parser.add_argument("--namespace", "-n", type=str, required=True, help="대상 네임스페이스")
+    bc_parser.add_argument("--resolution", type=float, default=None, help="Leiden resolution 오버라이드")
+    bc_parser.add_argument("--reset", action="store_true", help="기존 커뮤니티 삭제 후 재구축")
+    bc_parser.add_argument("--skip-summary", action="store_true", help="LLM 요약 생성 스킵")
+
+    # Community-stats command
+    cs_parser = subparsers.add_parser("community-stats", help="커뮤니티 통계")
+    cs_parser.add_argument("--namespace", "-n", type=str, default=None, help="특정 네임스페이스 통계")
+
     args = parser.parse_args()
 
     if not args.command:
@@ -413,6 +424,79 @@ def main():
                     print(f"    엔티티 타입:")
                     for etype, cnt in type_counts:
                         print(f"      {etype}: {cnt}개")
+
+    elif args.command == "build-community":
+        from web_app import app
+        from models import db, KGCommunity
+        from src.community_builder import CommunityBuilder
+
+        with app.app_context():
+            db.create_all()
+
+            namespace = args.namespace
+            print(f"🏘️  커뮤니티 구축: namespace={namespace}")
+
+            builder = CommunityBuilder(namespace=namespace)
+
+            if args.reset:
+                print("🗑️  기존 커뮤니티 삭제 중...")
+                builder.reset()
+
+            if args.resolution is not None:
+                builder.config['resolution'] = args.resolution
+                print(f"   Resolution 오버라이드: {args.resolution}")
+
+            stats = builder.build(skip_summary=args.skip_summary)
+
+            print(f"\n{'='*50}")
+            print(f"📊 커뮤니티 구축 완료")
+            print(f"{'='*50}")
+            print(f"  총 노드: {stats['total_nodes']}개")
+            print(f"  커뮤니티: {stats['communities']}개")
+            print(f"  요약 생성: {stats.get('summarized', 0)}개")
+            if stats.get('skipped'):
+                print(f"  ⚠️  건너뜀: {stats['skipped']}")
+
+            # Show created communities
+            comms = KGCommunity.query.filter_by(namespace=namespace).all()
+            if comms:
+                print(f"\n  커뮤니티 목록:")
+                for c in comms:
+                    has_summary = "✅" if c.summary else "❌"
+                    print(f"    #{c.community_id}: {c.title or '(제목없음)'} "
+                          f"({c.member_count}명) 요약{has_summary}")
+
+    elif args.command == "community-stats":
+        from web_app import app
+        from models import db, KGEntity, KGCommunity, KGCommunityMember
+
+        with app.app_context():
+            if args.namespace:
+                namespaces = [args.namespace]
+            else:
+                namespaces = [
+                    r[0] for r in
+                    db.session.query(KGCommunity.namespace).distinct().all()
+                ]
+
+            if not namespaces:
+                print("커뮤니티가 비어 있습니다.")
+                return
+
+            print(f"\n{'='*50}")
+            print(f"🏘️  커뮤니티 통계")
+            print(f"{'='*50}")
+            for ns in namespaces:
+                comms = KGCommunity.query.filter_by(namespace=ns).all()
+                total_members = sum(c.member_count for c in comms)
+                with_summary = sum(1 for c in comms if c.summary)
+                print(f"\n  [{ns}]")
+                print(f"    커뮤니티: {len(comms)}개 (요약 {with_summary}/{len(comms)})")
+                print(f"    총 멤버: {total_members}개 엔티티")
+                for c in comms:
+                    has_summary = "✅" if c.summary else "❌"
+                    print(f"    #{c.community_id}: {c.title or '(제목없음)'} "
+                          f"({c.member_count}명) {has_summary}")
 
 
 if __name__ == "__main__":

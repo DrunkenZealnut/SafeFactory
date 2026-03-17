@@ -938,3 +938,51 @@ class KGEntityChunk(db.Model):
     chunk_vector_id = db.Column(db.String(200), nullable=False)
     relevance_score = db.Column(db.Float, default=1.0)
     namespace = db.Column(db.String(100), nullable=False)
+
+
+class KGCommunity(db.Model):
+    """Knowledge Graph community cluster detected by Leiden/Louvain algorithm."""
+
+    __tablename__ = 'kg_communities'
+    __table_args__ = (
+        db.Index('ix_kg_comm_ns', 'namespace'),
+        db.Index('ix_kg_comm_ns_level', 'namespace', 'level'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    namespace = db.Column(db.String(100), nullable=False)
+    community_id = db.Column(db.Integer, nullable=False)
+    level = db.Column(db.Integer, nullable=False, default=0)
+    title = db.Column(db.String(300))
+    summary = db.Column(db.Text)
+    member_count = db.Column(db.Integer, default=0)
+    created_at = db.Column(
+        db.DateTime, nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+    members = db.relationship(
+        'KGCommunityMember', backref='community',
+        lazy='dynamic', cascade='all, delete-orphan',
+    )
+
+
+class KGCommunityMember(db.Model):
+    """Community-to-entity membership mapping."""
+
+    __tablename__ = 'kg_community_members'
+    __table_args__ = (
+        db.Index('ix_kg_cm_community', 'community_id'),
+        db.Index('ix_kg_cm_entity', 'entity_id'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    community_id = db.Column(
+        db.Integer, db.ForeignKey('kg_communities.id', ondelete='CASCADE'),
+        nullable=False,
+    )
+    entity_id = db.Column(
+        db.Integer, db.ForeignKey('kg_entities.id', ondelete='CASCADE'),
+        nullable=False,
+    )
+    namespace = db.Column(db.String(100), nullable=False)
