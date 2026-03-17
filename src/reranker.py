@@ -30,6 +30,19 @@ except ImportError:
     logging.warning("sentence-transformers not installed. Cross-encoder reranking disabled.")
 
 
+def _robust_normalize(scores):
+    """CI-3: Percentile-based normalization (5th~95th) to reduce outlier impact."""
+    if not scores or len(scores) < 2:
+        return [0.5] * len(scores) if scores else []
+    sorted_s = sorted(scores)
+    p5 = sorted_s[max(0, len(sorted_s) // 20)]
+    p95 = sorted_s[min(len(sorted_s) - 1, len(sorted_s) * 19 // 20)]
+    rng = p95 - p5
+    if rng < 1e-9:
+        return [0.5] * len(scores)
+    return [max(0.0, min(1.0, (s - p5) / rng)) for s in scores]
+
+
 class Reranker:
     """
     Reranks retrieved documents using cross-encoder models.
@@ -240,16 +253,8 @@ class Reranker:
         original_scores = [d.get('original_score', d.get('score', 0)) for d in reranked]
 
         # Min-max normalization
-        def normalize(scores):
-            if not scores:
-                return []
-            min_s, max_s = min(scores), max(scores)
-            if max_s == min_s:
-                return [0.5] * len(scores)
-            return [(s - min_s) / (max_s - min_s) for s in scores]
-
-        norm_rerank = normalize(rerank_scores)
-        norm_original = normalize(original_scores)
+        norm_rerank = _robust_normalize(rerank_scores)
+        norm_original = _robust_normalize(original_scores)
 
         # Compute combined scores
         for i, doc in enumerate(reranked):
@@ -342,16 +347,8 @@ class PineconeReranker:
         rerank_scores = [d.get('rerank_score', 0) for d in reranked]
         original_scores = [d.get('original_score', d.get('score', 0)) for d in reranked]
 
-        def normalize(scores):
-            if not scores:
-                return []
-            min_s, max_s = min(scores), max(scores)
-            if max_s == min_s:
-                return [0.5] * len(scores)
-            return [(s - min_s) / (max_s - min_s) for s in scores]
-
-        norm_rerank = normalize(rerank_scores)
-        norm_original = normalize(original_scores)
+        norm_rerank = _robust_normalize(rerank_scores)
+        norm_original = _robust_normalize(original_scores)
 
         for i, doc in enumerate(reranked):
             doc['combined_score'] = (
@@ -435,16 +432,8 @@ class CohereReranker:
         rerank_scores = [d.get('rerank_score', 0) for d in reranked]
         original_scores = [d.get('original_score', d.get('score', 0)) for d in reranked]
 
-        def normalize(scores):
-            if not scores:
-                return []
-            min_s, max_s = min(scores), max(scores)
-            if max_s == min_s:
-                return [0.5] * len(scores)
-            return [(s - min_s) / (max_s - min_s) for s in scores]
-
-        norm_rerank = normalize(rerank_scores)
-        norm_original = normalize(original_scores)
+        norm_rerank = _robust_normalize(rerank_scores)
+        norm_original = _robust_normalize(original_scores)
 
         for i, doc in enumerate(reranked):
             doc['combined_score'] = (

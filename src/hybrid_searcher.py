@@ -84,6 +84,14 @@ class HybridSearcher:
         self.corpus = []
         self.doc_map = {}  # Maps corpus index to document
 
+    def _dynamic_rrf_k(self, result_count: int) -> int:
+        """QW-4: Adapt RRF K to result set size for better rank discrimination."""
+        if result_count <= 10:
+            return max(20, self.rrf_k // 3)
+        elif result_count <= 30:
+            return max(30, self.rrf_k // 2)
+        return self.rrf_k
+
     # Korean particles/postpositions to strip from tokens
     _KOREAN_PARTICLES = re.compile(
         r'(은|는|이|가|을|를|의|에|에서|으로|로|와|과|도|만|까지|부터|에게|한테|께)$'
@@ -216,6 +224,7 @@ class HybridSearcher:
             Merged and reranked results
         """
         rrf_scores = {}
+        _k = self._dynamic_rrf_k(len(vector_results))
 
         # Process vector search results
         for rank, doc in enumerate(vector_results, start=1):
@@ -231,7 +240,7 @@ class HybridSearcher:
                     'rrf_score': 0
                 }
             rrf_scores[doc_id]['vector_rank'] = rank
-            rrf_scores[doc_id]['rrf_score'] += self.vector_weight / (self.rrf_k + rank)
+            rrf_scores[doc_id]['rrf_score'] += self.vector_weight / (_k + rank)
 
         # Process BM25 results
         for rank, (idx, score) in enumerate(bm25_results, start=1):
@@ -252,7 +261,7 @@ class HybridSearcher:
             else:
                 rrf_scores[doc_id]['bm25_rank'] = rank
 
-            rrf_scores[doc_id]['rrf_score'] += self.bm25_weight / (self.rrf_k + rank)
+            rrf_scores[doc_id]['rrf_score'] += self.bm25_weight / (_k + rank)
 
         # Sort by RRF score
         sorted_results = sorted(
@@ -350,6 +359,7 @@ class HybridSearcher:
 
         # RRF with explicit weights (not self.vector_weight/bm25_weight)
         rrf_scores = {}
+        _k = self._dynamic_rrf_k(len(vector_results))
 
         for rank, doc in enumerate(vector_results, start=1):
             content = doc.get('metadata', {}).get('content', '')
@@ -359,7 +369,7 @@ class HybridSearcher:
                     'doc': doc, 'vector_rank': rank, 'bm25_rank': None, 'rrf_score': 0
                 }
             rrf_scores[doc_id]['vector_rank'] = rank
-            rrf_scores[doc_id]['rrf_score'] += vector_weight / (self.rrf_k + rank)
+            rrf_scores[doc_id]['rrf_score'] += vector_weight / (_k + rank)
 
         for rank, (idx, score) in enumerate(bm25_results, start=1):
             doc = self.doc_map.get(idx)
@@ -373,7 +383,7 @@ class HybridSearcher:
                 }
             else:
                 rrf_scores[doc_id]['bm25_rank'] = rank
-            rrf_scores[doc_id]['rrf_score'] += bm25_weight / (self.rrf_k + rank)
+            rrf_scores[doc_id]['rrf_score'] += bm25_weight / (_k + rank)
 
         sorted_results = sorted(rrf_scores.values(), key=lambda x: x['rrf_score'], reverse=True)
         result = []

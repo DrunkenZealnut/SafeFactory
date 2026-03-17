@@ -73,6 +73,17 @@ def classify_query_type(query: str) -> str:
 # Domain classification: keyword-based namespace routing
 # ---------------------------------------------------------------------------
 
+# QW-5: Domain synonym map — appended to query for keyword matching
+DOMAIN_SYNONYMS = {
+    '근로기준법': '노동법',
+    '산업안전보건법': '안전보건',
+    '산안법': '안전보건',
+    '물질안전보건자료': 'MSDS',
+    'SDS': 'MSDS',
+    '인턴': '현장실습',
+    '실습생': '현장실습',
+}
+
 # {namespace: {'high': [domain-specific keywords], 'low': [shared keywords]}}
 DOMAIN_KEYWORDS = {
     'semiconductor-v2': {
@@ -145,18 +156,22 @@ def classify_domain(query: str, default_namespace: str = '') -> tuple:
         default_namespace: Namespace of the current page (e.g. 'semiconductor-v2').
 
     Returns:
-        (namespace, confidence, domain_label) tuple.
+        (namespace, confidence, domain_label, secondary_ns, secondary_conf) tuple.
     """
-    query_lower = query.lower()
+    # QW-5: Expand query with domain synonyms
+    query_expanded = query.lower()
+    for synonym, canonical in DOMAIN_SYNONYMS.items():
+        if synonym.lower() in query_expanded:
+            query_expanded = query_expanded + ' ' + canonical.lower()
 
     scores = {}
     for ns, kw_dict in DOMAIN_KEYWORDS.items():
         score = 0.0
         for kw in kw_dict['high']:
-            if kw.lower() in query_lower:
+            if kw.lower() in query_expanded:
                 score += _HIGH_KEYWORD_WEIGHT
         for kw in kw_dict['low']:
-            if kw.lower() in query_lower:
+            if kw.lower() in query_expanded:
                 score += _LOW_KEYWORD_WEIGHT
         scores[ns] = score
 
@@ -164,20 +179,25 @@ def classify_domain(query: str, default_namespace: str = '') -> tuple:
     if default_namespace in scores:
         scores[default_namespace] += _DEFAULT_NS_BONUS
 
-    # Find best namespace
-    best_ns = max(scores, key=scores.get)
-    best_score = scores[best_ns]
+    # CI-4: Sort by score for multi-domain support
+    sorted_scores = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+    best_ns, best_score = sorted_scores[0] if sorted_scores else ('', 0)
+    second_ns, second_score = sorted_scores[1] if len(sorted_scores) > 1 else ('', 0)
 
     # Normalize confidence to 0-1 range (cap at 5.0 for normalization)
     confidence = min(best_score / 5.0, 1.0)
+    secondary_conf = min(second_score / 5.0, 1.0)
 
     # If no strong signal, fall back to default
     if best_score < _CONFIDENCE_THRESHOLD or best_score <= _DEFAULT_NS_BONUS:
         final_ns = default_namespace or ''
         label = _NAMESPACE_LABELS.get(final_ns, '전체')
         logging.info("[DomainRouter] Low confidence (%.2f) → default: %s", best_score, final_ns)
-        return final_ns, 0.0, label
+        return final_ns, 0.0, label, None, 0.0
 
     label = _NAMESPACE_LABELS.get(best_ns, '전체')
-    logging.info("[DomainRouter] %s → %s (score=%.2f, confidence=%.2f)", query[:30], best_ns, best_score, confidence)
-    return best_ns, confidence, label
+    # CI-4: secondary domain (only if confidence > 0.3 and different from primary)
+    _secondary = second_ns if secondary_conf > 0.3 and second_ns != best_ns else None
+    logging.info("[DomainRouter] %s → %s (score=%.2f, confidence=%.2f, secondary=%s)",
+                 query[:30], best_ns, best_score, confidence, _secondary)
+    return best_ns, confidence, label, _secondary, secondary_conf
