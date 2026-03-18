@@ -4,6 +4,7 @@
 {% block mobile_nav_wordcloud %}active{% endblock %}
 
 {% block head_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/wordcloud@1.2.3/src/wordcloud2.js"></script>
 <script defer src="/static/js/common.js"></script>
 {% endblock %}
@@ -66,7 +67,14 @@
         color: var(--sf-text-1);
     }
 
-    /* Cloud canvas */
+    /* View toggle */
+    .wc-view-toggle {
+        display: flex;
+        justify-content: center;
+        margin: 10px 0;
+    }
+
+    /* Canvas / SVG wrapper */
     .wc-canvas-wrap {
         background: var(--sf-card);
         border: 1px solid var(--sf-border);
@@ -77,11 +85,22 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        position: relative;
+        overflow: hidden;
     }
     #wordcloudCanvas {
         width: 100%;
         height: 420px;
         cursor: pointer;
+    }
+    #graphSvg {
+        width: 100%;
+        height: 500px;
+        cursor: grab;
+        display: block;
+    }
+    #graphSvg:active {
+        cursor: grabbing;
     }
     .wc-empty {
         text-align: center;
@@ -94,6 +113,37 @@
         color: var(--sf-text-4);
         font-size: 0.78rem;
         margin-top: 8px;
+    }
+
+    /* Graph node/edge styles */
+    .kg-node {
+        cursor: pointer;
+    }
+    .kg-node circle {
+        stroke: var(--sf-card-bg, #fff);
+        stroke-width: 1.5px;
+        transition: stroke-width 0.15s;
+    }
+    .kg-node text {
+        font-size: 11px;
+        fill: var(--sf-text-2);
+        pointer-events: none;
+        user-select: none;
+    }
+    .kg-edge {
+        stroke: var(--sf-border);
+        stroke-opacity: 0.5;
+    }
+
+    /* Hover highlight states */
+    .kg-faded { opacity: 0.08; }
+    .kg-highlighted circle {
+        stroke: var(--sf-text-1);
+        stroke-width: 2.5px;
+    }
+    .kg-highlighted-edge {
+        stroke: var(--sf-text-3) !important;
+        stroke-opacity: 1 !important;
     }
 
     /* Questions list on keyword click */
@@ -155,8 +205,10 @@
     @media (max-width: 768px) {
         .wc-header h1 { font-size: 1.4rem; }
         #wordcloudCanvas { height: 300px; }
+        #graphSvg { height: 350px; }
         .wc-filters { gap: 6px; }
         .wc-filter-btn { padding: 5px 10px; font-size: 0.78rem; }
+        .kg-node text { font-size: 9px; }
     }
 {% endblock %}
 
@@ -184,10 +236,24 @@
         </div>
     </div>
 
-    <!-- Word Cloud -->
-    <div class="wc-canvas-wrap" id="canvasWrap">
+    <!-- View toggle -->
+    <div class="wc-view-toggle">
+        <div class="wc-filter-group" id="viewToggle">
+            <button class="wc-filter-btn active" data-view="graph" onclick="setView(this)">🔗 그래프</button>
+            <button class="wc-filter-btn" data-view="cloud" onclick="setView(this)">☁️ 클라우드</button>
+        </div>
+    </div>
+
+    <!-- Graph View (default) -->
+    <div class="wc-canvas-wrap" id="graphWrap">
+        <svg id="graphSvg"></svg>
+    </div>
+
+    <!-- Word Cloud (hidden by default) -->
+    <div class="wc-canvas-wrap" id="cloudWrap" style="display:none">
         <canvas id="wordcloudCanvas"></canvas>
     </div>
+
     <div class="wc-stats" id="wcStats"></div>
 
     <!-- Questions panel (shown on keyword click) -->
@@ -203,7 +269,6 @@
 
 {% block scripts %}
 <script>
-    // Domain namespace map for navigation
     const DOMAIN_PAGES = {
         'semiconductor-v2': '/semiconductor',
         'field-training': '/field-training',
@@ -216,28 +281,215 @@
         'kosha': '안전보건',
         'msds': 'MSDS',
     };
+    const DOMAIN_COLORS = {
+        'semiconductor-v2': '#3b82f6',
+        'field-training':   '#f59e0b',
+        'kosha':            '#10b981',
+        'msds':             '#8b5cf6',
+    };
 
     let _currentNs = '';
     let _currentPeriod = 'all';
+    let _currentView = 'graph';
     let _allKeywords = [];
+    let _simulation = null;
+
+    /* ── View Toggle ── */
+    function setView(btn) {
+        document.querySelectorAll('#viewToggle .wc-filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        _currentView = btn.dataset.view;
+        if (_currentView === 'cloud') {
+            document.getElementById('cloudWrap').style.display = '';
+            document.getElementById('graphWrap').style.display = 'none';
+            loadWordCloud();
+        } else {
+            document.getElementById('cloudWrap').style.display = 'none';
+            document.getElementById('graphWrap').style.display = '';
+            loadGraphView();
+        }
+    }
 
     function setDomain(btn) {
         document.querySelectorAll('#domainFilters .wc-filter-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         _currentNs = btn.dataset.ns;
-        loadWordCloud();
+        reloadCurrentView();
     }
 
     function setPeriod(btn) {
         document.querySelectorAll('#periodFilters .wc-filter-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         _currentPeriod = btn.dataset.period;
-        loadWordCloud();
+        reloadCurrentView();
     }
 
+    function reloadCurrentView() {
+        closeQuestionsPanel();
+        if (_currentView === 'graph') loadGraphView();
+        else loadWordCloud();
+    }
+
+    /* ── Graph View (D3.js Force) ── */
+    async function loadGraphView() {
+        const wrap = document.getElementById('graphWrap');
+        const stats = document.getElementById('wcStats');
+        closeQuestionsPanel();
+
+        // Ensure SVG exists
+        if (!document.getElementById('graphSvg')) {
+            wrap.innerHTML = '<svg id="graphSvg" style="width:100%;height:500px;cursor:grab;display:block;"></svg>';
+        }
+
+        const svg = d3.select('#graphSvg');
+        svg.selectAll('*').remove();
+        if (_simulation) { _simulation.stop(); _simulation = null; }
+
+        try {
+            const params = new URLSearchParams({ period: _currentPeriod, node_limit: '80' });
+            if (_currentNs) params.set('namespace', _currentNs);
+
+            const res = await fetch(`/api/v1/questions/graph?${params}`);
+            const json = await res.json();
+
+            if (!json.success || !json.data.nodes.length) {
+                wrap.innerHTML = '<div class="wc-empty">공유된 질문이 부족하여 그래프를 표시할 수 없습니다.<br>AI 답변 후 질문을 공유해보세요!</div>';
+                stats.textContent = '';
+                return;
+            }
+
+            const { nodes, edges } = json.data;
+            const rect = wrap.getBoundingClientRect();
+            const width = rect.width - 40;
+            const height = parseInt(getComputedStyle(document.getElementById('graphSvg')).height) || 500;
+
+            svg.attr('viewBox', `0 0 ${width} ${height}`)
+               .attr('preserveAspectRatio', 'xMidYMid meet');
+
+            // Scales
+            const maxWeight = d3.max(nodes, d => d.weight) || 1;
+            const rScale = d3.scaleLinear().domain([1, maxWeight]).range([5, 24]);
+            const maxEdgeW = d3.max(edges, d => d.weight) || 1;
+            const ewScale = d3.scaleLinear().domain([1, maxEdgeW]).range([0.5, 3.5]);
+
+            function nodeColor(d) {
+                if (d.domains.length === 1) return DOMAIN_COLORS[d.domains[0]] || '#94a3b8';
+                if (d.domains.length > 1) return '#475569';
+                return '#94a3b8';
+            }
+
+            // Zoom container
+            const g = svg.append('g');
+            svg.call(d3.zoom()
+                .scaleExtent([0.3, 5])
+                .on('zoom', (event) => g.attr('transform', event.transform))
+            ).on('dblclick.zoom', null);
+
+            // Edges
+            const edgeEls = g.append('g').attr('class', 'kg-edges')
+                .selectAll('line')
+                .data(edges)
+                .join('line')
+                .attr('class', 'kg-edge')
+                .attr('stroke-width', d => ewScale(d.weight));
+
+            // Node groups
+            const nodeEls = g.append('g').attr('class', 'kg-nodes')
+                .selectAll('g')
+                .data(nodes)
+                .join('g')
+                .attr('class', 'kg-node');
+
+            nodeEls.append('circle')
+                .attr('r', d => rScale(d.weight))
+                .attr('fill', nodeColor);
+
+            // Labels for top keywords only
+            const labelThreshold = nodes.length > 30 ? nodes[29].weight : 0;
+            nodeEls.filter(d => d.weight >= labelThreshold)
+                .append('text')
+                .text(d => d.text)
+                .attr('dy', d => rScale(d.weight) + 13)
+                .attr('text-anchor', 'middle')
+                .style('font-size', d => Math.max(9, Math.min(14, 8 + rScale(d.weight) / 4)) + 'px');
+
+            // Tooltip
+            nodeEls.append('title').text(d => `${d.text} (${d.weight})`);
+
+            // Adjacency map for hover
+            const adj = new Map();
+            nodes.forEach(n => adj.set(n.id, new Set()));
+            edges.forEach(e => {
+                const s = typeof e.source === 'object' ? e.source.id : e.source;
+                const t = typeof e.target === 'object' ? e.target.id : e.target;
+                adj.get(s)?.add(t);
+                adj.get(t)?.add(s);
+            });
+
+            // Hover: Obsidian-style highlight
+            nodeEls.on('mouseenter', function(event, d) {
+                const connected = adj.get(d.id) || new Set();
+                nodeEls.classed('kg-faded', o => o.id !== d.id && !connected.has(o.id))
+                       .classed('kg-highlighted', o => o.id === d.id || connected.has(o.id));
+                edgeEls.each(function(e) {
+                    const s = typeof e.source === 'object' ? e.source.id : e.source;
+                    const t = typeof e.target === 'object' ? e.target.id : e.target;
+                    const isConnected = s === d.id || t === d.id;
+                    d3.select(this)
+                        .classed('kg-faded', !isConnected)
+                        .classed('kg-highlighted-edge', isConnected);
+                });
+            });
+
+            nodeEls.on('mouseleave', function() {
+                nodeEls.classed('kg-faded', false).classed('kg-highlighted', false);
+                edgeEls.classed('kg-faded', false).classed('kg-highlighted-edge', false);
+            });
+
+            // Click: show related questions
+            nodeEls.on('click', (event, d) => {
+                event.stopPropagation();
+                showQuestionsForKeyword(d.text);
+            });
+
+            // Drag
+            nodeEls.call(d3.drag()
+                .on('start', (event, d) => {
+                    if (!event.active) _simulation.alphaTarget(0.3).restart();
+                    d.fx = d.x; d.fy = d.y;
+                })
+                .on('drag', (event, d) => { d.fx = event.x; d.fy = event.y; })
+                .on('end', (event, d) => {
+                    if (!event.active) _simulation.alphaTarget(0);
+                    d.fx = null; d.fy = null;
+                })
+            );
+
+            // Force simulation
+            _simulation = d3.forceSimulation(nodes)
+                .force('link', d3.forceLink(edges).id(d => d.id)
+                    .distance(d => 100 / Math.sqrt(d.weight || 1)))
+                .force('charge', d3.forceManyBody().strength(-120))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('collide', d3.forceCollide().radius(d => rScale(d.weight) + 6))
+                .on('tick', () => {
+                    edgeEls
+                        .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+                        .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+                    nodeEls.attr('transform', d => `translate(${d.x},${d.y})`);
+                });
+
+            stats.textContent = `총 ${json.data.total_questions}개 질문에서 ${json.data.node_count}개 키워드, ${json.data.edge_count}개 연결 추출`;
+        } catch (e) {
+            console.warn('Graph load failed:', e);
+            wrap.innerHTML = '<div class="wc-empty">그래프를 불러올 수 없습니다.</div>';
+            stats.textContent = '';
+        }
+    }
+
+    /* ── Word Cloud (legacy) ── */
     async function loadWordCloud() {
-        const wrap = document.getElementById('canvasWrap');
-        const canvas = document.getElementById('wordcloudCanvas');
+        const wrap = document.getElementById('cloudWrap');
         const stats = document.getElementById('wcStats');
         closeQuestionsPanel();
 
@@ -254,7 +506,6 @@
                 return;
             }
 
-            // Restore canvas if replaced by empty message
             if (!document.getElementById('wordcloudCanvas')) {
                 wrap.innerHTML = '<canvas id="wordcloudCanvas" style="width:100%;height:420px;cursor:pointer;"></canvas>';
             }
@@ -264,8 +515,7 @@
 
             _allKeywords = json.data.keywords;
             const maxWeight = Math.max(..._allKeywords.map(k => k.weight));
-
-            const colors = ['#6366f1', '#ef4444', '#f59e0b', '#10b981', '#ec4899', '#14b8a6', '#8b5cf6', '#0891b2'];
+            const colors = ['#3b82f6', '#ef4444', '#f59e0b', '#10b981', '#ec4899', '#14b8a6', '#8b5cf6', '#0891b2'];
 
             const list = _allKeywords.map(k => {
                 const size = Math.max(14, Math.round((k.weight / maxWeight) * 64));
@@ -294,6 +544,7 @@
         }
     }
 
+    /* ── Questions Panel ── */
     async function showQuestionsForKeyword(keyword) {
         const panel = document.getElementById('questionsPanel');
         const title = document.getElementById('questionsPanelTitle');
@@ -357,7 +608,19 @@
         return d.innerHTML;
     }
 
-    // Initial load
-    document.addEventListener('DOMContentLoaded', loadWordCloud);
+    // Initial load — default to graph view
+    document.addEventListener('DOMContentLoaded', () => {
+        if (typeof d3 !== 'undefined') {
+            loadGraphView();
+        } else {
+            // D3 CDN failed — fallback to wordcloud
+            document.getElementById('cloudWrap').style.display = '';
+            document.getElementById('graphWrap').style.display = 'none';
+            document.querySelector('[data-view="cloud"]')?.classList.add('active');
+            document.querySelector('[data-view="graph"]')?.classList.remove('active');
+            _currentView = 'cloud';
+            loadWordCloud();
+        }
+    });
 </script>
 {% endblock %}

@@ -1,7 +1,8 @@
-"""Extract keywords from shared question texts for word cloud visualization."""
+"""Extract keywords from shared question texts for word cloud and graph visualization."""
 
 import re
 from collections import Counter
+from itertools import combinations
 
 # Korean stopwords: particles, conjunctions, common verbs/adjectives
 STOPWORDS_KO = frozenset({
@@ -72,3 +73,75 @@ def extract_keywords(questions, limit=80):
     ]
 
     return result
+
+
+def _extract_tokens(query):
+    """Extract keyword tokens from a single query string."""
+    tokens = set()
+    for match in _RE_KO.findall(query):
+        if match not in STOPWORDS_KO and len(match) >= 2:
+            tokens.add(match)
+    for match in _RE_EN.findall(query):
+        upper = match.upper()
+        if match.lower() not in STOPWORDS_EN and len(match) >= 3:
+            tokens.add(upper)
+    return tokens
+
+
+def extract_keyword_graph(questions, node_limit=80, min_edge_weight=2):
+    """Extract keyword co-occurrence graph from shared questions.
+
+    Args:
+        questions: list of (query: str, like_count: int, namespace: str) tuples
+        node_limit: max number of keyword nodes
+        min_edge_weight: minimum co-occurrence count to include an edge
+
+    Returns:
+        dict with 'nodes' and 'edges' lists
+    """
+    counter = Counter()
+    domain_map = {}
+    per_question_keywords = []
+
+    for query, like_count, namespace in questions:
+        weight = 1 + (like_count or 0)
+        tokens = _extract_tokens(query)
+
+        for token in tokens:
+            counter[token] += weight
+            if token not in domain_map:
+                domain_map[token] = set()
+            if namespace:
+                domain_map[token].add(namespace)
+
+        if len(tokens) >= 2:
+            per_question_keywords.append((tokens, weight))
+
+    # Top N nodes by weight
+    top_keywords = {kw for kw, _ in counter.most_common(node_limit) if counter[kw] >= 2}
+
+    nodes = [
+        {
+            "id": kw,
+            "text": kw,
+            "weight": counter[kw],
+            "domains": sorted(domain_map.get(kw, set())),
+        }
+        for kw in top_keywords
+    ]
+    nodes.sort(key=lambda n: n["weight"], reverse=True)
+
+    # Build edges from co-occurrence
+    edge_counter = Counter()
+    for tokens, weight in per_question_keywords:
+        relevant = tokens & top_keywords
+        for a, b in combinations(sorted(relevant), 2):
+            edge_counter[(a, b)] += weight
+
+    edges = [
+        {"source": a, "target": b, "weight": w}
+        for (a, b), w in edge_counter.most_common()
+        if w >= min_edge_weight
+    ]
+
+    return {"nodes": nodes, "edges": edges}
