@@ -332,6 +332,7 @@
 
     /* ── Graph View (D3.js Force) ── */
     async function loadGraphView() {
+        if (typeof d3 === 'undefined') return;
         const wrap = document.getElementById('graphWrap');
         const stats = document.getElementById('wcStats');
         closeQuestionsPanel();
@@ -400,6 +401,11 @@
                 .join('g')
                 .attr('class', 'kg-node');
 
+            nodeEls
+                .attr('tabindex', '0')
+                .attr('role', 'button')
+                .attr('aria-label', d => `${d.text} (빈도 ${d.weight})`);
+
             nodeEls.append('circle')
                 .attr('r', d => rScale(d.weight))
                 .attr('fill', nodeColor);
@@ -446,10 +452,16 @@
                 edgeEls.classed('kg-faded', false).classed('kg-highlighted-edge', false);
             });
 
-            // Click: show related questions
+            // Click + keyboard: show related questions
             nodeEls.on('click', (event, d) => {
                 event.stopPropagation();
                 showQuestionsForKeyword(d.text);
+            });
+            nodeEls.on('keydown', (event, d) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    showQuestionsForKeyword(d.text);
+                }
             });
 
             // Drag
@@ -554,7 +566,7 @@
         panel.style.display = '';
 
         try {
-            const params = new URLSearchParams({ limit: '20' });
+            const params = new URLSearchParams({ limit: '50', sort: 'likes' });
             if (_currentNs) params.set('namespace', _currentNs);
 
             const res = await fetch(`/api/v1/questions/popular?${params}`);
@@ -562,8 +574,9 @@
 
             if (!json.success) { list.innerHTML = '<div class="wc-empty">질문을 불러올 수 없습니다.</div>'; return; }
 
+            const kw = keyword.toLowerCase();
             const filtered = json.data.questions.filter(q =>
-                q.query.toLowerCase().includes(keyword.toLowerCase())
+                q.query.toLowerCase().includes(kw)
             );
 
             if (!filtered.length) {

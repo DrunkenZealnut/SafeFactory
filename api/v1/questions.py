@@ -151,7 +151,11 @@ def api_question_graph():
             since = datetime.now(timezone.utc) - timedelta(days=30)
             q = q.filter(SharedQuestion.created_at >= since)
 
-        rows = q.all()
+        # Cap scanned rows to prevent full-table scan as data grows
+        rows = q.order_by(
+            SharedQuestion.like_count.desc(),
+            SharedQuestion.created_at.desc(),
+        ).limit(2000).all()
         graph = extract_keyword_graph(
             [(row.query, row.like_count, row.namespace) for row in rows],
             node_limit=node_limit,
