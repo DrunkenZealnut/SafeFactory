@@ -21,11 +21,11 @@ logger = logging.getLogger(__name__)
 
 # Domain-specific contextual retrieval prompts
 DOMAIN_CONTEXT_PROMPTS = {
-    'laborlaw': (
-        "이 청크가 어떤 법률/시행령/판례의 어떤 조항이나 쟁점에 해당하며, "
-        "문서 전체에서 어떤 맥락인지 검색 품질 향상을 위해 간결하게 설명해주세요. "
-        "법률명과 조항 번호를 반드시 포함하세요."
-    ),
+    # [LABORLAW_DISABLED] 'laborlaw': (
+    #     "이 청크가 어떤 법률/시행령/판례의 어떤 조항이나 쟁점에 해당하며, "
+    #     "문서 전체에서 어떤 맥락인지 검색 품질 향상을 위해 간결하게 설명해주세요. "
+    #     "법률명과 조항 번호를 반드시 포함하세요."
+    # ),
     'semiconductor': (
         "이 청크가 어떤 반도체 공정/학습단위에 해당하며, "
         "문서 전체에서 어떤 맥락인지 검색 품질 향상을 위해 간결하게 설명해주세요. "

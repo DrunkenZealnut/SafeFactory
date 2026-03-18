@@ -148,6 +148,7 @@ def compute_answer_confidence(answer: str, sources: list, context: str) -> dict:
 
 
 
+# [LABORLAW_DISABLED] Legal analysis pass function disabled
 def _run_legal_analysis_pass(query, classification, law_refs_text, context):
     """First LLM pass: produce a structured legal analysis for complex labor law questions.
 
@@ -157,45 +158,34 @@ def _run_legal_analysis_pass(query, classification, law_refs_text, context):
     Returns:
         str: Structured analysis text, or empty string on failure.
     """
-    from services.singletons import get_gemini_client
-    from google.genai import types as genai_types
-
-    q_type = (classification or {}).get('type', 'legal')
-    calc_type = (classification or {}).get('calc_type', '')
-
-    # Build a concise context snippet (first 1500 chars to stay within budget)
-    context_snippet = ''
-    if law_refs_text:
-        context_snippet += f"[법령 참조]\n{law_refs_text[:800]}\n\n"
-    if context:
-        context_snippet += f"[검색된 문서 발췌]\n{context[:700]}"
-
-    analysis_prompt = f"""당신은 한국 노동법 분석가입니다. 다음 질문을 분석하고 구조화된 분석을 작성하세요.
-
-질문: {query}
-분류: {q_type}, 계산유형: {calc_type or '없음'}
-
-{context_snippet}
-
-아래 5개 항목을 각각 1-2문장으로 간결하게 분석하세요:
-
-1. **적용 법률**: 이 질문에 적용되는 핵심 법률과 조문
-2. **쟁점 분석**: 사용자 상황에서의 핵심 쟁점(논점)
-3. **예외/특례**: 고려해야 할 예외 조항이나 특례
-4. **위반 가능성**: 법 위반 가능성 여부와 근거
-5. **행동 지침**: 사용자에게 안내해야 할 실질적 행동 (구제방법, 신고, 기한)"""
-
-    client = get_gemini_client()
-    config = genai_types.GenerateContentConfig(
-        temperature=0.1,
-        max_output_tokens=1000,
-    )
-    resp = client.models.generate_content(
-        model='gemini-2.5-flash',
-        contents=analysis_prompt,
-        config=config,
-    )
-    return resp.text or ''
+    # [LABORLAW_DISABLED] Entire function body disabled
+    return ''
+    # from services.singletons import get_gemini_client
+    # from google.genai import types as genai_types
+    #
+    # q_type = (classification or {}).get('type', 'legal')
+    # calc_type = (classification or {}).get('calc_type', '')
+    #
+    # # Build a concise context snippet (first 1500 chars to stay within budget)
+    # context_snippet = ''
+    # if law_refs_text:
+    #     context_snippet += f"[법령 참조]\n{law_refs_text[:800]}\n\n"
+    # if context:
+    #     context_snippet += f"[검색된 문서 발췌]\n{context[:700]}"
+    #
+    # analysis_prompt = f"""..."""
+    #
+    # client = get_gemini_client()
+    # config = genai_types.GenerateContentConfig(
+    #     temperature=0.1,
+    #     max_output_tokens=1000,
+    # )
+    # resp = client.models.generate_content(
+    #     model='gemini-2.5-flash',
+    #     contents=analysis_prompt,
+    #     config=config,
+    # )
+    # return resp.text or ''
 
 
 # ---------------------------------------------------------------------------
@@ -676,7 +666,8 @@ def _search_single_query(
                     stats = uploader.get_stats()
                     ns_list = [ns for ns in stats.get('namespaces', {}).keys() if ns]
                 except Exception:
-                    ns_list = ['semiconductor', 'laborlaw', 'field-training']
+                    # [LABORLAW_DISABLED] ns_list = ['semiconductor', 'laborlaw', 'field-training']
+                    ns_list = ['semiconductor', 'field-training']
                 return agent.search_all_namespaces(
                     query=query,
                     namespaces=ns_list,
@@ -852,7 +843,8 @@ def run_rag_pipeline(data):
     )
     _timings['phase2_search_ms'] = round((time.perf_counter() - _t0) * 1000)
 
-    if not results and namespace != 'laborlaw':
+    # [LABORLAW_DISABLED] if not results and namespace != 'laborlaw':
+    if not results:
         return {
             'early_response': True,
             'data': {
@@ -1046,8 +1038,8 @@ def run_rag_pipeline(data):
         except Exception as _rs_e:
             logging.warning("[Re-Search] Failed: %s", _rs_e)
 
-    # Early return if all results were filtered out by min_score (laborlaw bypasses this)
-    if not results and namespace != 'laborlaw':
+    # [LABORLAW_DISABLED] Early return if all results were filtered out by min_score (laborlaw bypass removed)
+    if not results:
         return {
             'early_response': True,
             'data': {
@@ -1108,11 +1100,11 @@ def run_rag_pipeline(data):
                 'ncs_code': metadata.get('ncs_code', ''),
                 'page_id': metadata.get('page_id'),
             }
-            # Laborlaw domain metadata
-            for key in ('content_type', 'law_name', 'law_number', 'law_date',
-                        'law_category', 'article_number', 'case_collection'):
-                if metadata.get(key):
-                    source_entry[key] = metadata[key]
+            # [LABORLAW_DISABLED] Laborlaw metadata keys
+            # for key in ('content_type', 'law_name', 'law_number', 'law_date',
+            #             'law_category', 'article_number', 'case_collection'):
+            #     if metadata.get(key):
+            #         source_entry[key] = metadata[key]
             # Field-training domain metadata
             for key in ('training_type', 'cardbook_number', 'equipment_type',
                         'ft_section_type', 'hazard_category'):
@@ -1178,33 +1170,33 @@ def run_rag_pipeline(data):
         except Exception as e:
             logging.warning("[MSDSCross] Failed: %s", e)
 
-    # Laborlaw: search law API and run analysis pass
-    if namespace == 'laborlaw':
-        # Search for relevant law references via public API
-        try:
-            from services.law_api import search_labor_laws, format_law_references, has_multi_source
-            law_refs = search_labor_laws(query)
-            if law_refs:
-                result['law_references'] = law_refs
-                source_count = len(result.get('sources', []))
-                result['law_references_formatted'] = format_law_references(
-                    law_refs, start_index=source_count + 1)
-                result['law_multi_source'] = has_multi_source(law_refs)
-        except Exception as e:
-            logging.warning("[LaborLaw] Law API search failed: %s", e)
-
-        # Multi-step reasoning: run analysis pass for substantive questions
-        if len(query) > 20:
-            try:
-                analysis = _run_legal_analysis_pass(
-                    query, None,
-                    result.get('law_references_formatted', ''),
-                    result.get('context', ''))
-                if analysis:
-                    result['legal_analysis'] = analysis
-                    logging.info("[LaborLaw] Analysis pass completed (%d chars)", len(analysis))
-            except Exception as e:
-                logging.warning("[LaborLaw] Analysis pass failed: %s", e)
+    # [LABORLAW_DISABLED] Laborlaw: search law API and run analysis pass
+    # if namespace == 'laborlaw':
+    #     # Search for relevant law references via public API
+    #     try:
+    #         from services.law_api import search_labor_laws, format_law_references, has_multi_source
+    #         law_refs = search_labor_laws(query)
+    #         if law_refs:
+    #             result['law_references'] = law_refs
+    #             source_count = len(result.get('sources', []))
+    #             result['law_references_formatted'] = format_law_references(
+    #                 law_refs, start_index=source_count + 1)
+    #             result['law_multi_source'] = has_multi_source(law_refs)
+    #     except Exception as e:
+    #         logging.warning("[LaborLaw] Law API search failed: %s", e)
+    #
+    #     # Multi-step reasoning: run analysis pass for substantive questions
+    #     if len(query) > 20:
+    #         try:
+    #             analysis = _run_legal_analysis_pass(
+    #                 query, None,
+    #                 result.get('law_references_formatted', ''),
+    #                 result.get('context', ''))
+    #             if analysis:
+    #                 result['legal_analysis'] = analysis
+    #                 logging.info("[LaborLaw] Analysis pass completed (%d chars)", len(analysis))
+    #         except Exception as e:
+    #             logging.warning("[LaborLaw] Analysis pass failed: %s", e)
 
     return result
 
@@ -1298,17 +1290,17 @@ def build_llm_prompts(query, sources, context, namespace, calc_result=None,
 유해성·위험성, 응급조치, 보호구 정보를 간결하게 안내하세요.
 관련성이 낮으면 이 섹션을 생략하세요."""
 
-    # Inject legal analysis mode instructions for laborlaw
-    if namespace == 'laborlaw':
-        user_prompt += """
-
-## 분석 모드: 법률 해석
-이 질문은 법률 해석이 필요한 질문입니다. 다음을 수행하세요:
-1. 관련 법조항이 이 상황에 어떻게 적용되는지 분석하세요
-2. 예외 조항이나 특례가 적용될 수 있는지 검토하세요
-3. 실제로 어떻게 행동해야 하는지 구체적 조언을 포함하세요 (신고처, 기한, 서류 등)
-4. 위반 사항이 감지되면 적극적으로 경고하세요
-5. 관련될 수 있는 다른 법률도 언급하세요"""
+    # [LABORLAW_DISABLED] Inject legal analysis mode instructions for laborlaw
+    # if namespace == 'laborlaw':
+    #     user_prompt += """
+    #
+    # ## 분석 모드: 법률 해석
+    # 이 질문은 법률 해석이 필요한 질문입니다. 다음을 수행하세요:
+    # 1. 관련 법조항이 이 상황에 어떻게 적용되는지 분석하세요
+    # 2. 예외 조항이나 특례가 적용될 수 있는지 검토하세요
+    # 3. 실제로 어떻게 행동해야 하는지 구체적 조언을 포함하세요 (신고처, 기한, 서류 등)
+    # 4. 위반 사항이 감지되면 적극적으로 경고하세요
+    # 5. 관련될 수 있는 다른 법률도 언급하세요"""
 
     user_prompt += """
 

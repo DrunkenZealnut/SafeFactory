@@ -165,7 +165,7 @@ class ContextOptimizer(HttpClientMixin):
     # Domain-specific deduplication thresholds.
     # Lower threshold = more documents kept (more diversity).
     DOMAIN_DEDUP_THRESHOLD = {
-        'laborlaw': 0.80,
+        # [LABORLAW_DISABLED] 'laborlaw': 0.80,
         'semiconductor': 0.90,
         'field-training': 0.85,
         'safeguide': 0.85,

@@ -90,12 +90,12 @@ MAJOR_CONFIG = {
 # 전공 공통 자료 (모든 전공에서 접근 가능)
 # ──────────────────────────────────────────────
 COMMON_RESOURCES = {
-    "laborlaw": {
-        "name": "노동법/근로기준",
-        "namespace": "laborlaw",
-        "description": "근로기준법, 4대보험, 최저임금, 현장실습 근로조건",
-        "auto_crosssearch": True,
-    },
+    # [LABORLAW_DISABLED] "laborlaw": {
+    #     "name": "노동법/근로기준",
+    #     "namespace": "laborlaw",
+    #     "description": "근로기준법, 4대보험, 최저임금, 현장실습 근로조건",
+    #     "auto_crosssearch": True,
+    # },
     "msds": {
         "name": "화학물질 안전(MSDS)",
         "namespace": "msds",
