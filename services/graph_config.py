@@ -14,19 +14,19 @@ GRAPH_CONFIG = {
             'max_summary_tokens': 500,
         },
     },
-    'laborlaw': {
-        'enabled': True,
-        'hop_depth': 1,
-        'graph_weight': 0.2,
-        'max_graph_results': 8,
-        'entity_types': ['법률조항', '권리의무', '절차'],
-        'community': {
-            'enabled': True,
-            'resolution': 0.8,
-            'min_community_size': 2,
-            'max_summary_tokens': 400,
-        },
-    },
+    # [LABORLAW_DISABLED] 'laborlaw': {
+    #     'enabled': True,
+    #     'hop_depth': 1,
+    #     'graph_weight': 0.2,
+    #     'max_graph_results': 8,
+    #     'entity_types': ['법률조항', '권리의무', '절차'],
+    #     'community': {
+    #         'enabled': True,
+    #         'resolution': 0.8,
+    #         'min_community_size': 2,
+    #         'max_summary_tokens': 400,
+    #     },
+    # },
     'kosha': {
         'enabled': True,
         'hop_depth': 2,

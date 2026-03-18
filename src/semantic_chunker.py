@@ -435,40 +435,42 @@ class SemanticChunker(HttpClientMixin):
 
         return all_segments
 
-    # Laborlaw section boundary patterns for hard splitting
+    # [LABORLAW_DISABLED] Laborlaw section boundary patterns for hard splitting
     LABORLAW_SECTION_PATTERNS = [
-        r'^#{1,4}\s*제\d+장',               # 장(Chapter) headers: 제1장 총칙
-        r'^-?\s*제\d+조(?:의\d+)?\s*\(',    # 조(Article): 제23조(해고 등의 제한)
-        r'^#{1,4}\s*제\d+조',               # Markdown-headed articles
-        r'^#{1,4}\s*부\s*칙',               # 부칙(Supplementary Provisions)
+        # r'^#{1,4}\s*제\d+장',               # 장(Chapter) headers: 제1장 총칙
+        # r'^-?\s*제\d+조(?:의\d+)?\s*\(',    # 조(Article): 제23조(해고 등의 제한)
+        # r'^#{1,4}\s*제\d+조',               # Markdown-headed articles
+        # r'^#{1,4}\s*부\s*칙',               # 부칙(Supplementary Provisions)
     ]
 
     def _split_by_laborlaw_structure(self, text: str) -> List[str]:
+        # [LABORLAW_DISABLED] Entire function body disabled
         """Split laborlaw text by chapter/article boundaries then by structure within each."""
-        boundary_pattern = '|'.join(self.LABORLAW_SECTION_PATTERNS)
-        compiled = re.compile(boundary_pattern, re.MULTILINE)
-
-        boundaries = [m.start() for m in compiled.finditer(text)]
-
-        if not boundaries:
-            return self._split_by_structure(text)
-
-        if boundaries[0] != 0:
-            boundaries.insert(0, 0)
-        boundaries.append(len(text))
-
-        sections = []
-        for i in range(len(boundaries) - 1):
-            section_text = text[boundaries[i]:boundaries[i + 1]].strip()
-            if section_text:
-                sections.append(section_text)
-
-        all_segments = []
-        for section in sections:
-            sub_segments = self._split_by_structure(section)
-            all_segments.extend(sub_segments)
-
-        return all_segments
+        return self._split_by_structure(text)
+        # boundary_pattern = '|'.join(self.LABORLAW_SECTION_PATTERNS)
+        # compiled = re.compile(boundary_pattern, re.MULTILINE)
+        #
+        # boundaries = [m.start() for m in compiled.finditer(text)]
+        #
+        # if not boundaries:
+        #     return self._split_by_structure(text)
+        #
+        # if boundaries[0] != 0:
+        #     boundaries.insert(0, 0)
+        # boundaries.append(len(text))
+        #
+        # sections = []
+        # for i in range(len(boundaries) - 1):
+        #     section_text = text[boundaries[i]:boundaries[i + 1]].strip()
+        #     if section_text:
+        #         sections.append(section_text)
+        #
+        # all_segments = []
+        # for section in sections:
+        #     sub_segments = self._split_by_structure(section)
+        #     all_segments.extend(sub_segments)
+        #
+        # return all_segments
 
     # Field-training section boundary patterns for hard splitting
     FIELD_TRAINING_SECTION_PATTERNS = [
@@ -660,76 +662,75 @@ class SemanticChunker(HttpClientMixin):
     # ========================================
 
     def _extract_laborlaw_metadata(self, source_file: str, text: str) -> Dict:
+        # [LABORLAW_DISABLED] Entire function body disabled
         """Extract laborlaw-specific metadata from file path and content."""
-
-        meta = {}
-        normalized_path = unicodedata.normalize('NFC', source_file)
-
-        # Determine content_type from path structure
-        if '/laws/' in normalized_path:
-            meta['content_type'] = 'law'
-
-            # Extract law name, number, date from path pattern:
-            # YYYYMMdd_HHMMSS_<법률명>_법률_제<번호>호_<공포일>_
-            law_match = re.search(
-                r'\d{8}_\d{6}_(.+?)_법률_제(\d+)호_(\d{8})_',
-                normalized_path
-            )
-            if law_match:
-                meta['law_name'] = law_match.group(1).replace('_', ' ')
-                meta['law_number'] = int(law_match.group(2))
-                meta['law_date'] = law_match.group(3)
-            else:
-                # Fallback: extract law name between timestamp and trailing slash
-                name_match = re.search(r'\d{8}_\d{6}_(.+?)(?:/|$)', normalized_path)
-                if name_match:
-                    meta['law_name'] = name_match.group(1).replace('_', ' ')
-
-        elif '/cases/korean/' in normalized_path:
-            meta['content_type'] = 'case'
-            case_match = re.search(r'/cases/korean/([^/]+)', normalized_path)
-            if case_match:
-                meta['case_collection'] = case_match.group(1).replace('_', ' ')
-
-        elif '/cases/' in normalized_path:
-            meta['content_type'] = 'qa'
-            case_match = re.search(r'/cases/(?:English/)?([^/]+)', normalized_path)
-            if case_match:
-                meta['case_collection'] = case_match.group(1).replace('_', ' ')
-
-        return meta
+        return {}
+        # meta = {}
+        # normalized_path = unicodedata.normalize('NFC', source_file)
+        #
+        # # Determine content_type from path structure
+        # if '/laws/' in normalized_path:
+        #     meta['content_type'] = 'law'
+        #     law_match = re.search(
+        #         r'\d{8}_\d{6}_(.+?)_법률_제(\d+)호_(\d{8})_',
+        #         normalized_path
+        #     )
+        #     if law_match:
+        #         meta['law_name'] = law_match.group(1).replace('_', ' ')
+        #         meta['law_number'] = int(law_match.group(2))
+        #         meta['law_date'] = law_match.group(3)
+        #     else:
+        #         name_match = re.search(r'\d{8}_\d{6}_(.+?)(?:/|$)', normalized_path)
+        #         if name_match:
+        #             meta['law_name'] = name_match.group(1).replace('_', ' ')
+        #
+        # elif '/cases/korean/' in normalized_path:
+        #     meta['content_type'] = 'case'
+        #     case_match = re.search(r'/cases/korean/([^/]+)', normalized_path)
+        #     if case_match:
+        #         meta['case_collection'] = case_match.group(1).replace('_', ' ')
+        #
+        # elif '/cases/' in normalized_path:
+        #     meta['content_type'] = 'qa'
+        #     case_match = re.search(r'/cases/(?:English/)?([^/]+)', normalized_path)
+        #     if case_match:
+        #         meta['case_collection'] = case_match.group(1).replace('_', ' ')
+        #
+        # return meta
 
     def _classify_laborlaw_category(self, section_title: str, text: str) -> str:
+        # [LABORLAW_DISABLED] Entire function body disabled
         """Classify laborlaw content into category based on heading and content."""
-        if not section_title and not text:
-            return 'general'
-
-        combined = f"{section_title or ''} {text[:500]}"
-
-        patterns = [
-            (r'총칙|목적|정의|적용\s*범위', 'general_provisions'),
-            (r'근로계약|해고|계약기간|퇴직', 'employment_contract'),
-            (r'임금|급여|최저임금|금품\s*청산|체불|퇴직급여', 'wages'),
-            (r'근로시간|휴식|휴일|휴가|연차|연장\s*근로|야간\s*근로|탄력적', 'working_hours'),
-            (r'여성|소년|임산부|생리|육아|모성', 'women_minors'),
-            (r'안전|보건|산업재해|산재', 'safety_health'),
-            (r'괴롭힘', 'workplace_harassment'),
-            (r'재해\s*보상|요양|휴업\s*보상|장해|유족', 'accident_compensation'),
-            (r'취업규칙', 'work_rules'),
-            (r'기숙사', 'dormitory'),
-            (r'근로감독|벌칙|과태료|양벌', 'enforcement_penalties'),
-            (r'고용보험|실업', 'employment_insurance'),
-            (r'파견|기간제|단시간|비정규', 'non_regular_workers'),
-            (r'노동조합|단체교섭|쟁의|파업', 'labor_unions'),
-            (r'차별|균등|평등|성희롱', 'discrimination'),
-            (r'4대\s*보험|국민연금|건강보험|장기요양', 'social_insurance'),
-        ]
-
-        for pattern, category in patterns:
-            if re.search(pattern, combined):
-                return category
-
         return 'general'
+        # if not section_title and not text:
+        #     return 'general'
+        #
+        # combined = f"{section_title or ''} {text[:500]}"
+        #
+        # patterns = [
+        #     (r'총칙|목적|정의|적용\s*범위', 'general_provisions'),
+        #     (r'근로계약|해고|계약기간|퇴직', 'employment_contract'),
+        #     (r'임금|급여|최저임금|금품\s*청산|체불|퇴직급여', 'wages'),
+        #     (r'근로시간|휴식|휴일|휴가|연차|연장\s*근로|야간\s*근로|탄력적', 'working_hours'),
+        #     (r'여성|소년|임산부|생리|육아|모성', 'women_minors'),
+        #     (r'안전|보건|산업재해|산재', 'safety_health'),
+        #     (r'괴롭힘', 'workplace_harassment'),
+        #     (r'재해\s*보상|요양|휴업\s*보상|장해|유족', 'accident_compensation'),
+        #     (r'취업규칙', 'work_rules'),
+        #     (r'기숙사', 'dormitory'),
+        #     (r'근로감독|벌칙|과태료|양벌', 'enforcement_penalties'),
+        #     (r'고용보험|실업', 'employment_insurance'),
+        #     (r'파견|기간제|단시간|비정규', 'non_regular_workers'),
+        #     (r'노동조합|단체교섭|쟁의|파업', 'labor_unions'),
+        #     (r'차별|균등|평등|성희롱', 'discrimination'),
+        #     (r'4대\s*보험|국민연금|건강보험|장기요양', 'social_insurance'),
+        # ]
+        #
+        # for pattern, category in patterns:
+        #     if re.search(pattern, combined):
+        #         return category
+        #
+        # return 'general'
 
     def _extract_article_number(self, text: str) -> Optional[str]:
         """Extract article number (조) from law text."""
@@ -812,8 +813,8 @@ class SemanticChunker(HttpClientMixin):
     def _detect_domain(self, source_file: str) -> str:
         """Detect domain from source file path."""
         normalized = unicodedata.normalize('NFC', source_file)
-        if '/laborlaw/' in normalized:
-            return 'laborlaw'
+        # [LABORLAW_DISABLED] if '/laborlaw/' in normalized:
+        #     return 'laborlaw'
         if '카드북' in normalized or '/현장실습/' in normalized:
             return 'field-training'
         if '/안전보건공단/' in normalized:
@@ -896,7 +897,8 @@ class SemanticChunker(HttpClientMixin):
         normalized_source = unicodedata.normalize('NFC', source_file)
 
         is_ncs = bool(re.search(r'LM\d{10}', source_file))
-        is_laborlaw = '/laborlaw/' in normalized_source
+        # [LABORLAW_DISABLED] is_laborlaw = '/laborlaw/' in normalized_source
+        is_laborlaw = False
         is_field_training = '/현장실습/' in normalized_source or '카드북' in normalized_source
         is_safety_guide = '/안전보건공단/' in normalized_source
 
@@ -907,20 +909,20 @@ class SemanticChunker(HttpClientMixin):
             source_collection = 'field_training'
         elif is_safety_guide:
             source_collection = 'safety_guide'
-        elif is_laborlaw:
-            source_collection = 'laborlaw'
+        # [LABORLAW_DISABLED] elif is_laborlaw:
+        #     source_collection = 'laborlaw'
         else:
             source_collection = 'general'
 
         ncs_metadata = self._extract_ncs_metadata(source_file, text) if is_ncs else {}
-        laborlaw_metadata = self._extract_laborlaw_metadata(source_file, text) if is_laborlaw else {}
+        # [LABORLAW_DISABLED] laborlaw_metadata removed (was: self._extract_laborlaw_metadata(...))
         ft_metadata = self._extract_field_training_metadata(source_file, text) if is_field_training else {}
 
         # Step 1: Split by structure (domain-aware)
         if is_ncs:
             segments = self._split_by_ncs_structure(text)
-        elif is_laborlaw:
-            segments = self._split_by_laborlaw_structure(text)
+        # [LABORLAW_DISABLED] elif is_laborlaw:
+        #     segments = self._split_by_laborlaw_structure(text)
         elif is_field_training:
             segments = self._split_by_field_training_structure(text)
         else:
@@ -1052,14 +1054,14 @@ class SemanticChunker(HttpClientMixin):
                 if learning_unit is not None:
                     chunk_metadata['learning_unit'] = learning_unit
 
-            # Add laborlaw-specific metadata
-            if laborlaw_metadata:
-                chunk_metadata.update(laborlaw_metadata)
-                law_category = self._classify_laborlaw_category(section_title, segment)
-                chunk_metadata['law_category'] = law_category
-                article = self._extract_article_number(segment)
-                if article:
-                    chunk_metadata['article_number'] = article
+            # [LABORLAW_DISABLED] Add laborlaw-specific metadata
+            # if laborlaw_metadata:
+            #     chunk_metadata.update(laborlaw_metadata)
+            #     law_category = self._classify_laborlaw_category(section_title, segment)
+            #     chunk_metadata['law_category'] = law_category
+            #     article = self._extract_article_number(segment)
+            #     if article:
+            #         chunk_metadata['article_number'] = article
 
             # Add field-training-specific metadata
             if ft_metadata:

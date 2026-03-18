@@ -33,16 +33,17 @@ _HEARTBEAT_INTERVAL = 15  # SSE heartbeat interval (seconds)
 
 def _get_answer_max_tokens(namespace: str, source_count: int) -> int:
     """Return LLM max_tokens budget based on domain and source count."""
-    if namespace == 'laborlaw':
-        return min(8000, 2000 + source_count * 250)
+    # [LABORLAW_DISABLED] if namespace == 'laborlaw':
+    #     return min(8000, 2000 + source_count * 250)
     return min(4000, 1500 + source_count * 200)
 
 
 # Namespace-specific model overrides (provider, model).
 # Takes precedence over global llm_answer_provider / llm_answer_model settings.
-_NAMESPACE_MODEL_OVERRIDE = {
-    'laborlaw': ('anthropic', 'claude-opus-4-6'),
-}
+# [LABORLAW_DISABLED] _NAMESPACE_MODEL_OVERRIDE = {
+#     'laborlaw': ('anthropic', 'claude-opus-4-6'),
+# }
+_NAMESPACE_MODEL_OVERRIDE = {}
 
 
 def _resolve_llm(namespace: str):

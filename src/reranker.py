@@ -14,7 +14,7 @@ ORIGINAL_WEIGHT = float(os.environ.get("ORIGINAL_WEIGHT", "0.25"))
 
 # Domain-specific rerank weight profiles
 DOMAIN_RERANK_CONFIG = {
-    'laborlaw':   {'rerank_weight': 0.80, 'original_weight': 0.20},  # 크로스인코더 더 신뢰
+    # [LABORLAW_DISABLED] 'laborlaw':   {'rerank_weight': 0.80, 'original_weight': 0.20},  # 크로스인코더 더 신뢰
     'semiconductor': {'rerank_weight': 0.70, 'original_weight': 0.30},  # 벡터 점수도 참고
     'msds':       {'rerank_weight': 0.80, 'original_weight': 0.20},  # 정확 매칭 중시
     'field-training': {'rerank_weight': 0.75, 'original_weight': 0.25},

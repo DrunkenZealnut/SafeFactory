@@ -34,6 +34,11 @@ python main.py search "query" [--top-k 5] [--namespace NAME]
 python main.py stats
 python main.py delete --source-file "/path/to/file"
 
+# GraphRAG: Community detection and global search
+python main.py build-community --namespace semiconductor-v2 [--resolution 1.0] [--reset] [--skip-summary]
+python main.py community-stats [--namespace NAME]
+python main.py graph-stats [--namespace NAME]
+
 # Module standalone tests (each src/ module has if __name__ == "__main__" blocks)
 python -m src.file_loader
 python -m src.semantic_chunker
@@ -68,16 +73,18 @@ FileLoader → ImageDescriber(Vision API) / SemanticChunker → EmbeddingGenerat
                                                                               MetadataManager (SQLite tracking)
 ```
 
-**RAG Pipeline** (`services/rag_pipeline.py` → Web):
+**RAG Pipeline** (`services/rag_pipeline.py` → Web, 11-phase):
 ```
-Query → DomainClassifier(auto-routing) → QueryEnhancer(multi-query) → Vector+BM25 search
-      → RRF fusion → Reranker(cross-encoder) → ContextOptimizer → SafetyCrossSearch(semiconductor)
-      → Gemini LLM → Response with citations
+Query → P0:DomainClassifier → QueryTypeClassifier(5 types) → P1:QueryEnhancer(multi-query+HyDE)
+      → P2:VectorSearch(Pinecone) → P3:GraphRAG(entity enrichment) → P3.5:CommunitySearch(global)
+      → P4:HybridSearch(BM25+Vector RRF) → P5:Reranker(cross-encoder 70%+original 30%)
+      → P5.5:MMR(dedup) → P6:ContextOptimizer(Lost-in-Middle) → P7:BuildContext+CrossSearch
+      → P8:LLM(Gemini/OpenAI/Anthropic) → Response with citations
 ```
 
 ### Service Layer Pattern
 
-`services/singletons.py` provides thread-safe, lazy-initialized global instances (OpenAI client, Gemini client, PineconeAgent, QueryEnhancer, ContextOptimizer, Reranker, HybridSearcher). Uses double-checked locking with `threading.RLock()`. Settings changes trigger cache invalidation by nullifying the relevant singleton.
+`services/singletons.py` provides thread-safe, lazy-initialized global instances (OpenAI client, Gemini client, Anthropic client, PineconeAgent, QueryEnhancer, ContextOptimizer, Reranker, HybridSearcher, GraphSearcher, CommunitySearcher). Uses double-checked locking with `threading.RLock()`. Settings changes trigger cache invalidation by nullifying the relevant singleton.
 
 ### Multi-Domain System
 
@@ -118,6 +125,8 @@ SQLite (`instance/app.db`) via Flask-SQLAlchemy. `models.py` defines:
 - User Data: `SearchHistory`, `UserBookmark`, `Document`
 - Config: `SystemSetting`, `AdminLog`
 - Content: `NewsArticle`
+- Knowledge Graph: `KGEntity`, `KGRelation`, `KGEntityChunk` (GraphRAG entity-relation store)
+- Community: `KGCommunity`, `KGCommunityMember` (Leiden algorithm community clusters with LLM summaries)
 - Metadata: `safe_factory` table for document processing tracking (file hash, chunk count, vector IDs)
 
 ### Authentication
@@ -131,12 +140,14 @@ Key service modules beyond `singletons.py` and `rag_pipeline.py`:
 - `law_api.py` / `law_drf_client.py` — external legal information API integration
 - `legal_source_router.py` — routes legal queries to appropriate data sources
 - `labor_calculator.py` / `labor_classifier.py` — wage/insurance calculation logic
-- `query_router.py` — query type classification and automatic domain routing (`classify_domain`, `classify_query_type`)
+- `query_router.py` — query type classification (factual/procedural/comparison/calculation/overview) and automatic domain routing (`classify_domain`, `classify_query_type`)
+- `graph_config.py` — per-namespace GraphRAG and community detection configuration
+- `community_searcher.py` — Leiden community-based global search for overview queries
 - `settings.py` — admin settings management with singleton cache invalidation
 
 ### Frontend
 
-Jinja2 templates in `templates/` with inline `<script>` blocks. `templates/domain.html` is the main search/Q&A interface shared across all 5 domains (configured via `domain_config.py`). CDN libraries: marked.js (markdown), DOMPurify (XSS), Chart.js, wordcloud2.js.
+Jinja2 templates in `templates/` with inline `<script>` blocks. All pages extend `base.html` (common nav, footer with 청년노동자인권센터 info). `templates/domain.html` is the main search/Q&A interface shared across all 5 domains. `templates/admin.html` uses `admin-` prefixed CSS classes to avoid collision with base.html. CDN libraries: marked.js (markdown), DOMPurify (XSS), Chart.js, wordcloud2.js. Design system: `static/css/theme.css` defines CSS variables (`--sf-*`) used across all templates.
 
 ## Key Implementation Details
 
@@ -148,6 +159,11 @@ Jinja2 templates in `templates/` with inline `<script>` blocks. `templates/domai
 - **Reranking**: Optional — either Pinecone Inference API or local cross-encoder (`sentence-transformers`)
 - **Streaming**: `/ask/stream` uses Server-Sent Events (SSE) for real-time LLM responses
 - **Safety cross-search**: Semiconductor domain answers automatically search `kosha` namespace for safety/health context and append it as supplementary references
+- **MSDS cross-search**: Automatically detects chemical names in queries/context and fetches MSDS data
+- **GraphRAG**: Entity-relation graph enriches vector search with knowledge graph traversal (hop_depth=2)
+- **Community search**: Leiden algorithm detects entity communities; LLM generates summaries for overview queries
+- **LLM namespace override**: `_NAMESPACE_MODEL_OVERRIDE` in `api/v1/search.py` maps namespaces to specific LLM models (currently empty — add entries to override per-domain)
+- **CSS convention**: All templates use `--sf-*` CSS variables from `theme.css`. Max-width 960px. Admin page uses `admin-` class prefix
 
 ## Extension Points
 
@@ -156,3 +172,8 @@ Jinja2 templates in `templates/` with inline `<script>` blocks. `templates/domai
 - **Add file type**: Extend `FileLoader.SUPPORTED_EXTENSIONS`, add `_process_*` method in `src/agent.py`
 - **Modify RAG phases**: Edit `run_rag_pipeline()` in `services/rag_pipeline.py`
 - **Change chunking**: Edit `SemanticChunker._split_by_structure()` in `src/semantic_chunker.py`
+- **Add GraphRAG config**: Add `community` block to namespace in `services/graph_config.py`
+- **Add LLM provider**: Add provider branch in `api/v1/search.py` `api_ask()` Phase 8 section
+
+# currentDate
+Today's date is 2026-03-18.
