@@ -123,6 +123,57 @@ def api_question_wordcloud():
         return error_response('워드 클라우드 데이터 조회 중 오류가 발생했습니다.', 500)
 
 
+@v1_bp.route('/questions/graph', methods=['GET'])
+@rate_limit("30 per minute")
+def api_question_graph():
+    """Get keyword co-occurrence graph data for interactive graph view."""
+    try:
+        from services.keyword_extractor import extract_keyword_graph
+
+        namespace = request.args.get('namespace', '').strip()
+        period = request.args.get('period', 'all').strip()
+        node_limit = min(max(1, request.args.get('node_limit', 80, type=int)), 100)
+        min_edge_weight = max(1, request.args.get('min_edge_weight', 2, type=int))
+
+        q = db.session.query(
+            SharedQuestion.query,
+            SharedQuestion.like_count,
+            SharedQuestion.namespace,
+        ).filter_by(is_hidden=False)
+
+        if namespace:
+            q = q.filter(SharedQuestion.namespace == namespace)
+
+        if period == '7d':
+            since = datetime.now(timezone.utc) - timedelta(days=7)
+            q = q.filter(SharedQuestion.created_at >= since)
+        elif period == '30d':
+            since = datetime.now(timezone.utc) - timedelta(days=30)
+            q = q.filter(SharedQuestion.created_at >= since)
+
+        # Cap scanned rows to prevent full-table scan as data grows
+        rows = q.order_by(
+            SharedQuestion.like_count.desc(),
+            SharedQuestion.created_at.desc(),
+        ).limit(2000).all()
+        graph = extract_keyword_graph(
+            [(row.query, row.like_count, row.namespace) for row in rows],
+            node_limit=node_limit,
+            min_edge_weight=min_edge_weight,
+        )
+
+        return success_response(data={
+            'nodes': graph['nodes'],
+            'edges': graph['edges'],
+            'total_questions': len(rows),
+            'node_count': len(graph['nodes']),
+            'edge_count': len(graph['edges']),
+        })
+    except Exception:
+        logging.exception('[Question] Graph data failed')
+        return error_response('그래프 데이터 조회 중 오류가 발생했습니다.', 500)
+
+
 @v1_bp.route('/questions/popular', methods=['GET'])
 @rate_limit("60 per minute")
 def api_question_popular():
