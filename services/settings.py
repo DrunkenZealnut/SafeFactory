@@ -19,7 +19,7 @@ DEFAULTS = {
     'llm_query_provider': 'openai',
     'llm_context_model': 'gpt-4o-mini',
     'llm_context_provider': 'openai',
-    'embedding_model': 'text-embedding-3-small',
+    'embedding_model': 'gemini-embedding-2-preview',
     'reranker_type': 'pinecone',
     # Calculator rates (2026 기준)
     'calc.np_rate': '0.0475',

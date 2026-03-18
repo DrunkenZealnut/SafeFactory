@@ -17,6 +17,7 @@ from services.domain_config import (
     DOMAIN_COT_INSTRUCTIONS,
     VISUAL_GUIDELINES,
     NAMESPACE_DOMAIN_MAP,
+    resolve_namespace,
 )
 from services.filters import build_domain_filter
 from services.query_router import classify_query_type, classify_domain, QUERY_TYPE_CONFIG
@@ -213,7 +214,7 @@ def _search_safety_context(query: str) -> str:
         results = agent.search(
             query=query,
             top_k=SAFETY_CROSS_SEARCH_TOP_K,
-            namespace=SAFETY_CROSS_SEARCH_NAMESPACE,
+            namespace=resolve_namespace(SAFETY_CROSS_SEARCH_NAMESPACE),
         )
 
         # Filter by minimum relevance score
@@ -650,7 +651,7 @@ def _search_single_query(
     Args:
         agent: PineconeAgent instance.
         query: Search query text.
-        namespace: Pinecone namespace.
+        namespace: Base Pinecone namespace (resolve_namespace applied here).
         top_k: Max results to return.
         domain_filter: Metadata filter.
         is_all_namespace: Whether to search all namespaces.
@@ -658,6 +659,7 @@ def _search_single_query(
     Returns:
         Search results list (empty list on failure).
     """
+    resolved_ns = resolve_namespace(namespace)
     for attempt in range(2):
         try:
             if is_all_namespace:
@@ -678,7 +680,7 @@ def _search_single_query(
                 return agent.search(
                     query=query,
                     top_k=top_k,
-                    namespace=namespace,
+                    namespace=resolved_ns,
                     filter=domain_filter,
                 )
         except Exception as e:
@@ -879,7 +881,7 @@ def run_rag_pipeline(data):
                 if new_chunk_ids:
                     _agent = get_agent()
                     _idx = _agent.index
-                    _fetched = _idx.fetch(ids=new_chunk_ids, namespace=namespace)
+                    _fetched = _idx.fetch(ids=new_chunk_ids, namespace=resolve_namespace(namespace))
                     _graph_score_map = {gr.chunk_vector_id: gr for gr in _graph_results}
                     for _vid, _vec in _fetched.vectors.items():
                         _meta = _vec.metadata or {}

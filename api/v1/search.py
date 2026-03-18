@@ -18,7 +18,7 @@ from models import db, SearchHistory
 from services.settings import get_setting
 from services.singletons import get_agent, get_anthropic_client, get_gemini_client, get_hybrid_searcher_instance, get_openai_client
 from services.rag_pipeline import run_rag_pipeline, build_llm_messages, find_related_images, post_process_answer, compute_answer_confidence
-from services.domain_config import DOCUMENTS_PATH
+from services.domain_config import DOCUMENTS_PATH, resolve_namespace
 from services.major_config import MAJOR_CONFIG, get_primary_namespace
 
 # ---------------------------------------------------------------------------
@@ -205,7 +205,7 @@ def api_search():
         vector_results = agent.search(
             query=query,
             top_k=max(top_k, 20) if search_mode != 'vector' else top_k,
-            namespace=namespace,
+            namespace=resolve_namespace(namespace),
             filter=filter_dict
         )
 

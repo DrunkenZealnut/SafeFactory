@@ -6,11 +6,23 @@
     {"id": "semi-04", "domain": "semiconductor-v2", "query": "포토리소그래피 공정의 보호구 착용 기준", "expected_keywords": ["포토", "보호구", "착용"]},
     {"id": "semi-05", "domain": "semiconductor-v2", "query": "에칭 공정 안전수칙", "expected_keywords": ["에칭", "안전", "수칙"]},
 
-    {"id": "labor-01", "domain": "laborlaw", "query": "연장근로 수당 계산 방법", "expected_keywords": ["연장근로", "수당", "계산"]},
-    {"id": "labor-02", "domain": "laborlaw", "query": "부당해고 구제 신청 절차", "expected_keywords": ["부당해고", "구제", "신청"]},
-    {"id": "labor-03", "domain": "laborlaw", "query": "최저임금 미달 시 처벌 규정", "expected_keywords": ["최저임금", "처벌"]},
-    {"id": "labor-04", "domain": "laborlaw", "query": "근로계약서 필수 기재 사항", "expected_keywords": ["근로계약서", "기재"]},
-    {"id": "labor-05", "domain": "laborlaw", "query": "퇴직금 산정 기준", "expected_keywords": ["퇴직금", "산정"]},
+    {"id": "labor-01", "domain": "laborlaw-v2", "query": "연장근로 수당 계산 방법", "expected_keywords": ["연장근로", "수당", "계산"]},
+    {"id": "labor-02", "domain": "laborlaw-v2", "query": "부당해고 구제 신청 절차", "expected_keywords": ["부당해고", "구제", "신청"]},
+    {"id": "labor-03", "domain": "laborlaw-v2", "query": "최저임금 미달 시 처벌 규정", "expected_keywords": ["최저임금", "처벌"]},
+    {"id": "labor-04", "domain": "laborlaw-v2", "query": "근로계약서 필수 기재 사항", "expected_keywords": ["근로계약서", "기재"]},
+    {"id": "labor-05", "domain": "laborlaw-v2", "query": "퇴직금 산정 기준", "expected_keywords": ["퇴직금", "산정"]},
+
+    {"id": "counsel-01", "domain": "counsel", "query": "직장 내 괴롭힘 신고 방법", "expected_keywords": ["괴롭힘", "신고"]},
+    {"id": "counsel-02", "domain": "counsel", "query": "임금 체불 시 대처 방법", "expected_keywords": ["임금", "체불"]},
+    {"id": "counsel-03", "domain": "counsel", "query": "산업재해 보상 신청 절차", "expected_keywords": ["산업재해", "보상", "신청"]},
+    {"id": "counsel-04", "domain": "counsel", "query": "비정규직 차별 구제 방법", "expected_keywords": ["비정규직", "차별", "구제"]},
+    {"id": "counsel-05", "domain": "counsel", "query": "해고 예고 수당 청구", "expected_keywords": ["해고", "예고", "수당"]},
+
+    {"id": "prec-01", "domain": "precedent", "query": "부당해고 판례", "expected_keywords": ["부당해고", "판례"]},
+    {"id": "prec-02", "domain": "precedent", "query": "직장 내 성희롱 판결 사례", "expected_keywords": ["성희롱", "판결"]},
+    {"id": "prec-03", "domain": "precedent", "query": "근로자 지위 인정 판례", "expected_keywords": ["근로자", "지위"]},
+    {"id": "prec-04", "domain": "precedent", "query": "통상임금 범위 대법원 판결", "expected_keywords": ["통상임금", "대법원"]},
+    {"id": "prec-05", "domain": "precedent", "query": "산재 인정 기준 판례", "expected_keywords": ["산재", "인정"]},
 
     {"id": "field-01", "domain": "field-training", "query": "밀폐공간 작업 안전 수칙", "expected_keywords": ["밀폐공간", "안전"]},
     {"id": "field-02", "domain": "field-training", "query": "고소작업 안전장비 착용 기준", "expected_keywords": ["고소작업", "안전장비"]},

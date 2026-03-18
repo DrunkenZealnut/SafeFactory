@@ -1733,6 +1733,7 @@ def admin_settings_update():
     """Bulk-update system settings with validation."""
     from services.settings import invalidate_cache as invalidate_settings_cache
     from services.singletons import (
+        invalidate_agent,
         invalidate_context_optimizer,
         invalidate_query_enhancer,
         invalidate_reranker,
@@ -1807,6 +1808,8 @@ def admin_settings_update():
             invalidate_context_optimizer()
         if 'reranker_type' in changed_keys:
             invalidate_reranker()
+        if 'embedding_model' in changed_keys:
+            invalidate_agent()
 
     return success_response(
         data={'updated': len(updated)},
