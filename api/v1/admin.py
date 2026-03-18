@@ -1706,6 +1706,7 @@ _VALID_SETTING_VALUES = {
     'embedding_model': [
         'text-embedding-3-small', 'text-embedding-3-large',
         'text-embedding-ada-002',
+        'gemini-embedding-2-preview', 'gemini-embedding-001',
     ],
     'reranker_type': [
         'pinecone', 'local', 'lightweight',
@@ -1829,9 +1830,11 @@ def admin_settings_available_models():
     return success_response(data={
         'providers': available_providers,
         'embedding_models': [
-            {'value': 'text-embedding-3-small', 'label': 'Small (1536D, 저렴)'},
-            {'value': 'text-embedding-3-large', 'label': 'Large (3072D, 고품질)'},
-            {'value': 'text-embedding-ada-002', 'label': 'Ada-002 (1536D, 레거시)'},
+            {'value': 'text-embedding-3-small', 'label': 'OpenAI Small (1536D, $0.02/1M)'},
+            {'value': 'text-embedding-3-large', 'label': 'OpenAI Large (3072D, $0.13/1M)'},
+            {'value': 'text-embedding-ada-002', 'label': 'OpenAI Ada-002 (1536D, 레거시)'},
+            {'value': 'gemini-embedding-2-preview', 'label': 'Gemini 2 Preview (MRL 3072D, $0.20/1M)'},
+            {'value': 'gemini-embedding-001', 'label': 'Gemini 1 (MRL 3072D, $0.15/1M)'},
         ],
         'reranker_types': [
             {'value': 'pinecone', 'label': 'Pinecone API (bge-reranker-v2-m3)'},
