@@ -26,8 +26,12 @@ load_dotenv()
 from pinecone import Pinecone
 from src.embedding_generator import EmbeddingGenerator
 
-OPENAI_NAMESPACE = "semiconductor-v2"
-GEMINI_NAMESPACE = "semiconductor-v2-gemini"
+DOMAIN_NAMESPACE_MAP = {
+    "semiconductor-v2": ("semiconductor-v2", "semiconductor-v2-gemini"),
+    "laborlaw-v2": ("laborlaw-v2", "laborlaw-v2-gemini"),
+    "counsel": ("counsel", "counsel-gemini"),
+    "precedent": ("precedent", "precedent-gemini"),
+}
 
 
 def search_with_model(index, gen: EmbeddingGenerator, query: str,
@@ -45,10 +49,13 @@ def search_with_model(index, gen: EmbeddingGenerator, query: str,
 
     matches = []
     for m in result.matches:
+        meta = m.metadata or {}
+        preview = (meta.get("content_preview") or meta.get("chunk_text")
+                   or meta.get("text") or meta.get("content") or "")[:80]
         matches.append({
             "id": m.id,
             "score": round(m.score, 4),
-            "preview": (m.metadata or {}).get("content_preview", "")[:80],
+            "preview": preview,
         })
 
     return {
@@ -155,6 +162,14 @@ def main():
     with open(args.queries, encoding="utf-8") as f:
         all_queries = json.load(f)["queries"]
 
+    # Resolve namespaces from domain
+    if args.domain not in DOMAIN_NAMESPACE_MAP:
+        print(f"ERROR: 지원하지 않는 도메인 '{args.domain}'")
+        print(f"지원 도메인: {', '.join(DOMAIN_NAMESPACE_MAP.keys())}")
+        sys.exit(1)
+
+    openai_ns, gemini_ns = DOMAIN_NAMESPACE_MAP[args.domain]
+
     # Filter to target domain
     queries = [q for q in all_queries if q["domain"] == args.domain]
     if not queries:
@@ -165,14 +180,14 @@ def main():
 
     # Check target namespace exists
     stats = index.describe_index_stats()
-    if GEMINI_NAMESPACE not in stats.namespaces:
-        print(f"ERROR: '{GEMINI_NAMESPACE}' 네임스페이스가 없습니다.")
+    if gemini_ns not in stats.namespaces:
+        print(f"ERROR: '{gemini_ns}' 네임스페이스가 없습니다.")
         print(f"먼저 인제스트를 실행하세요: python scripts/ingest_gemini_test.py")
         sys.exit(1)
 
-    gem_count = stats.namespaces[GEMINI_NAMESPACE].vector_count
-    oai_count = stats.namespaces.get(OPENAI_NAMESPACE, type("", (), {"vector_count": 0})).vector_count
-    print(f"벡터 수 — OpenAI ({OPENAI_NAMESPACE}): {oai_count} | Gemini ({GEMINI_NAMESPACE}): {gem_count}\n")
+    gem_count = stats.namespaces[gemini_ns].vector_count
+    oai_count = stats.namespaces.get(openai_ns, type("", (), {"vector_count": 0})).vector_count
+    print(f"벡터 수 — OpenAI ({openai_ns}): {oai_count} | Gemini ({gemini_ns}): {gem_count}\n")
 
     # Run benchmark
     results = []
@@ -180,10 +195,10 @@ def main():
         print(f"[{i+1}/{len(queries)}] {q['query']}")
 
         oai_result = search_with_model(
-            index, openai_gen, q["query"], OPENAI_NAMESPACE, args.top_k
+            index, openai_gen, q["query"], openai_ns, args.top_k
         )
         gem_result = search_with_model(
-            index, gemini_gen, q["query"], GEMINI_NAMESPACE, args.top_k,
+            index, gemini_gen, q["query"], gemini_ns, args.top_k,
             task_type="RETRIEVAL_QUERY"
         )
 

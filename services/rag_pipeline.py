@@ -17,6 +17,7 @@ from services.domain_config import (
     DOMAIN_COT_INSTRUCTIONS,
     VISUAL_GUIDELINES,
     NAMESPACE_DOMAIN_MAP,
+    resolve_namespace,
 )
 from services.filters import build_domain_filter
 from services.query_router import classify_query_type, classify_domain, QUERY_TYPE_CONFIG
@@ -213,7 +214,7 @@ def _search_safety_context(query: str) -> str:
         results = agent.search(
             query=query,
             top_k=SAFETY_CROSS_SEARCH_TOP_K,
-            namespace=SAFETY_CROSS_SEARCH_NAMESPACE,
+            namespace=resolve_namespace(SAFETY_CROSS_SEARCH_NAMESPACE),
         )
 
         # Filter by minimum relevance score
@@ -764,6 +765,7 @@ def run_rag_pipeline(data):
     from flask_login import current_user
     _user = current_user if hasattr(current_user, 'major') and current_user.is_authenticated else None
     major_key, namespace = resolve_search_context(data, _user)
+    namespace = resolve_namespace(namespace)
     logging.info("[API/ask] Query: %.50s..., Major: %s, Namespace: %s, TopK: %d, Enhanced: %s",
                  query, major_key, namespace, top_k, use_enhancement)
 
@@ -789,7 +791,7 @@ def run_rag_pipeline(data):
         if detected_namespace and detected_namespace != namespace and domain_confidence > 0:
             logging.info("[DomainRouter] Override namespace: %s → %s (label=%s)",
                          namespace, detected_namespace, detected_domain_label)
-            namespace = detected_namespace
+            namespace = resolve_namespace(detected_namespace)
 
     domain_key = NAMESPACE_DOMAIN_MAP.get(namespace, 'semiconductor')
 

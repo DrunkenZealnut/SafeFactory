@@ -96,16 +96,26 @@ def get_agent():
     if instance is None:
         # Import outside lock to avoid deadlock with Python's import lock
         from src.agent import PineconeAgent
+        from services.settings import get_setting
         with _lock:
             if _agent is None:
+                embedding_model = get_setting('embedding_model', 'text-embedding-3-small')
                 _agent = PineconeAgent(
                     openai_api_key=_require_env("OPENAI_API_KEY"),
                     pinecone_api_key=_require_env("PINECONE_API_KEY"),
                     pinecone_index_name=os.getenv("PINECONE_INDEX_NAME", "document-index"),
+                    embedding_model=embedding_model,
                     create_index_if_not_exists=False
                 )
             instance = _agent
     return instance
+
+
+def invalidate_agent():
+    """Reset PineconeAgent so it is re-created with the latest embedding model."""
+    global _agent
+    with _lock:
+        _agent = None
 
 
 _PROVIDER_ENV_KEYS = {

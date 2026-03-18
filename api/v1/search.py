@@ -18,7 +18,7 @@ from models import db, SearchHistory
 from services.settings import get_setting
 from services.singletons import get_agent, get_anthropic_client, get_gemini_client, get_hybrid_searcher_instance, get_openai_client
 from services.rag_pipeline import run_rag_pipeline, build_llm_messages, find_related_images, post_process_answer, compute_answer_confidence
-from services.domain_config import DOCUMENTS_PATH
+from services.domain_config import DOCUMENTS_PATH, resolve_namespace
 from services.major_config import MAJOR_CONFIG, get_primary_namespace
 
 # ---------------------------------------------------------------------------
@@ -172,6 +172,7 @@ def api_search():
             namespace = get_primary_namespace(major)
         if namespace == 'all':
             namespace = ''
+        namespace = resolve_namespace(namespace)
         file_type = data.get('file_type', '')
         search_mode = data.get('search_mode', 'vector')  # vector | hybrid | keyword
         if search_mode not in ('vector', 'hybrid', 'keyword'):

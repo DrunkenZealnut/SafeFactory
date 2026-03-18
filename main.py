@@ -42,7 +42,8 @@ def main():
     process_parser.add_argument("--batch-size", type=int, default=50, help="배치 크기 (기본: 50)")
     process_parser.add_argument("--max-chunk-tokens", type=int, default=800, help="청크당 최대 토큰 (기본: 800)")
     process_parser.add_argument("--embedding-model", type=str, default="text-embedding-3-small",
-                               choices=["text-embedding-3-small", "text-embedding-3-large"],
+                               choices=["text-embedding-3-small", "text-embedding-3-large",
+                                        "gemini-embedding-2-preview"],
                                help="임베딩 모델")
     process_parser.add_argument("--domain", type=str, default=None,
                                help="도메인 분류 (예: safety, labor)")

@@ -16,6 +16,28 @@ DIRECTORY_NAMESPACE_MAP = {
 }
 DEFAULT_NAMESPACE = ''
 
+# ---------------------------------------------------------------------------
+# Embedding-model-aware namespace resolution
+# ---------------------------------------------------------------------------
+_GEMINI_NAMESPACE_SUFFIX = "-gemini"
+
+
+def resolve_namespace(base_namespace: str) -> str:
+    """Resolve actual Pinecone namespace based on current embedding model.
+
+    When embedding model is Gemini, appends '-gemini' suffix.
+    Special cases: 'all' and '' (empty) are returned as-is.
+    """
+    if not base_namespace or base_namespace == 'all':
+        return base_namespace
+
+    from services.settings import get_setting
+    model = get_setting('embedding_model', 'text-embedding-3-small')
+
+    if model.startswith("gemini-embedding"):
+        return f"{base_namespace}{_GEMINI_NAMESPACE_SUFFIX}"
+    return base_namespace
+
 
 def get_namespace_for_path(relative_path: str) -> str:
     """Determine Pinecone namespace from a path relative to DOCUMENTS_PATH."""
