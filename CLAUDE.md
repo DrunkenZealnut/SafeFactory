@@ -162,7 +162,7 @@ Jinja2 templates in `templates/` with inline `<script>` blocks. All pages extend
 - **MSDS cross-search**: Automatically detects chemical names in queries/context and fetches MSDS data
 - **GraphRAG**: Entity-relation graph enriches vector search with knowledge graph traversal (hop_depth=2)
 - **Community search**: Leiden algorithm detects entity communities; LLM generates summaries for overview queries
-- **LLM namespace override**: `_NAMESPACE_MODEL_OVERRIDE` in `api/v1/search.py` maps namespaces to specific models (e.g., laborlaw → Claude)
+- **LLM namespace override**: `_NAMESPACE_MODEL_OVERRIDE` in `api/v1/search.py` maps namespaces to specific LLM models (currently empty — add entries to override per-domain)
 - **CSS convention**: All templates use `--sf-*` CSS variables from `theme.css`. Max-width 960px. Admin page uses `admin-` class prefix
 
 ## Extension Points
