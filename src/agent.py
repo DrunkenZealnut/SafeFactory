@@ -50,6 +50,7 @@ class PineconeAgent:
         create_index_if_not_exists: bool = True,
         track_metadata: bool = True,
         context_generator=None,
+        gemini_api_key: Optional[str] = None,
     ):
         """
         Initialize the PineconeAgent.
@@ -58,12 +59,22 @@ class PineconeAgent:
             openai_api_key: OpenAI API key
             pinecone_api_key: Pinecone API key
             pinecone_index_name: Name of the Pinecone index
-            embedding_model: OpenAI embedding model
+            embedding_model: Embedding model (OpenAI or Gemini)
             vision_model: OpenAI vision model for image descriptions
             max_chunk_tokens: Maximum tokens per chunk
             create_index_if_not_exists: Create index if it doesn't exist
             track_metadata: Whether to track metadata in database
+            gemini_api_key: Gemini API key (auto-detected from env if None and Gemini model used)
         """
+        # Determine embedding API key based on model provider
+        is_gemini_embedding = embedding_model.startswith("gemini-embedding")
+        if is_gemini_embedding:
+            embedding_api_key = gemini_api_key or os.getenv("GEMINI_API_KEY")
+            if not embedding_api_key:
+                raise RuntimeError("GEMINI_API_KEY is required for Gemini embedding models")
+        else:
+            embedding_api_key = openai_api_key
+
         # Initialize components
         self.image_describer = ImageDescriber(
             api_key=openai_api_key,
@@ -72,14 +83,15 @@ class PineconeAgent:
 
         self.chunker = SemanticChunker(
             openai_api_key=openai_api_key,
-            model=embedding_model,
+            model=embedding_model if not is_gemini_embedding else "text-embedding-3-small",
             max_chunk_tokens=max_chunk_tokens,
             context_generator=context_generator,
         )
 
         self.embedding_generator = EmbeddingGenerator(
-            api_key=openai_api_key,
-            model=embedding_model
+            api_key=embedding_api_key,
+            model=embedding_model,
+            dimensions=1536 if is_gemini_embedding else None,
         )
 
         # Get dimension from embedding model
@@ -449,8 +461,9 @@ class PineconeAgent:
         Returns:
             List of search results
         """
-        # Generate query embedding
-        query_embedding = self.embedding_generator.generate(query)
+        # Generate query embedding (Gemini models benefit from RETRIEVAL_QUERY task type)
+        task_type = "RETRIEVAL_QUERY" if self.embedding_generator._provider == "gemini" else None
+        query_embedding = self.embedding_generator.generate(query, task_type=task_type)
 
         # Search in Pinecone
         results = self.pinecone_uploader.query(
@@ -482,7 +495,8 @@ class PineconeAgent:
         Returns:
             Combined list of search results from all namespaces
         """
-        query_embedding = self.embedding_generator.generate(query)
+        task_type = "RETRIEVAL_QUERY" if self.embedding_generator._provider == "gemini" else None
+        query_embedding = self.embedding_generator.generate(query, task_type=task_type)
         return self.pinecone_uploader.query_namespaces(
             vector=query_embedding.embedding,
             namespaces=namespaces,

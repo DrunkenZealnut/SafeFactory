@@ -1,0 +1,33 @@
+{
+  "queries": [
+    {"id": "semi-01", "domain": "semiconductor-v2", "query": "웨이퍼 세정 공정의 화학물질 안전 관리", "expected_keywords": ["세정", "화학물질", "안전"]},
+    {"id": "semi-02", "domain": "semiconductor-v2", "query": "반도체 클린룸 정전기 방지 조치", "expected_keywords": ["클린룸", "정전기", "방지"]},
+    {"id": "semi-03", "domain": "semiconductor-v2", "query": "CVD 공정 유해가스 종류와 취급 방법", "expected_keywords": ["CVD", "유해가스", "취급"]},
+    {"id": "semi-04", "domain": "semiconductor-v2", "query": "포토리소그래피 공정의 보호구 착용 기준", "expected_keywords": ["포토", "보호구", "착용"]},
+    {"id": "semi-05", "domain": "semiconductor-v2", "query": "에칭 공정 안전수칙", "expected_keywords": ["에칭", "안전", "수칙"]},
+
+    {"id": "labor-01", "domain": "laborlaw", "query": "연장근로 수당 계산 방법", "expected_keywords": ["연장근로", "수당", "계산"]},
+    {"id": "labor-02", "domain": "laborlaw", "query": "부당해고 구제 신청 절차", "expected_keywords": ["부당해고", "구제", "신청"]},
+    {"id": "labor-03", "domain": "laborlaw", "query": "최저임금 미달 시 처벌 규정", "expected_keywords": ["최저임금", "처벌"]},
+    {"id": "labor-04", "domain": "laborlaw", "query": "근로계약서 필수 기재 사항", "expected_keywords": ["근로계약서", "기재"]},
+    {"id": "labor-05", "domain": "laborlaw", "query": "퇴직금 산정 기준", "expected_keywords": ["퇴직금", "산정"]},
+
+    {"id": "field-01", "domain": "field-training", "query": "밀폐공간 작업 안전 수칙", "expected_keywords": ["밀폐공간", "안전"]},
+    {"id": "field-02", "domain": "field-training", "query": "고소작업 안전장비 착용 기준", "expected_keywords": ["고소작업", "안전장비"]},
+    {"id": "field-03", "domain": "field-training", "query": "전기 작업 시 감전 예방 조치", "expected_keywords": ["전기", "감전", "예방"]},
+    {"id": "field-04", "domain": "field-training", "query": "크레인 작업 안전 절차", "expected_keywords": ["크레인", "안전"]},
+    {"id": "field-05", "domain": "field-training", "query": "용접 작업 시 화재 예방", "expected_keywords": ["용접", "화재", "예방"]},
+
+    {"id": "kosha-01", "domain": "kosha", "query": "화학물질 취급 시 개인보호구 종류", "expected_keywords": ["화학물질", "보호구"]},
+    {"id": "kosha-02", "domain": "kosha", "query": "산업재해 예방 계획서 작성 방법", "expected_keywords": ["산업재해", "예방", "계획서"]},
+    {"id": "kosha-03", "domain": "kosha", "query": "안전보건관리책임자의 직무와 역할", "expected_keywords": ["안전보건", "책임자"]},
+    {"id": "kosha-04", "domain": "kosha", "query": "작업환경 측정 대상 및 주기", "expected_keywords": ["작업환경", "측정"]},
+    {"id": "kosha-05", "domain": "kosha", "query": "위험성 평가 절차", "expected_keywords": ["위험성", "평가"]},
+
+    {"id": "msds-01", "domain": "msds", "query": "톨루엔 노출 기준 및 응급조치", "expected_keywords": ["톨루엔", "노출", "응급"]},
+    {"id": "msds-02", "domain": "msds", "query": "황산 취급 시 주의사항", "expected_keywords": ["황산", "취급"]},
+    {"id": "msds-03", "domain": "msds", "query": "이소프로필알코올 화재 시 대응 방법", "expected_keywords": ["이소프로필", "화재"]},
+    {"id": "msds-04", "domain": "msds", "query": "불화수소 누출 시 응급 조치", "expected_keywords": ["불화수소", "누출"]},
+    {"id": "msds-05", "domain": "msds", "query": "아세톤 보관 및 폐기 방법", "expected_keywords": ["아세톤", "보관", "폐기"]}
+  ]
+}
