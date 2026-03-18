@@ -651,7 +651,7 @@ def _search_single_query(
     Args:
         agent: PineconeAgent instance.
         query: Search query text.
-        namespace: Pinecone namespace.
+        namespace: Base Pinecone namespace (resolve_namespace applied here).
         top_k: Max results to return.
         domain_filter: Metadata filter.
         is_all_namespace: Whether to search all namespaces.
@@ -659,6 +659,7 @@ def _search_single_query(
     Returns:
         Search results list (empty list on failure).
     """
+    resolved_ns = resolve_namespace(namespace)
     for attempt in range(2):
         try:
             if is_all_namespace:
@@ -679,7 +680,7 @@ def _search_single_query(
                 return agent.search(
                     query=query,
                     top_k=top_k,
-                    namespace=namespace,
+                    namespace=resolved_ns,
                     filter=domain_filter,
                 )
         except Exception as e:
@@ -765,7 +766,6 @@ def run_rag_pipeline(data):
     from flask_login import current_user
     _user = current_user if hasattr(current_user, 'major') and current_user.is_authenticated else None
     major_key, namespace = resolve_search_context(data, _user)
-    namespace = resolve_namespace(namespace)
     logging.info("[API/ask] Query: %.50s..., Major: %s, Namespace: %s, TopK: %d, Enhanced: %s",
                  query, major_key, namespace, top_k, use_enhancement)
 
@@ -791,7 +791,7 @@ def run_rag_pipeline(data):
         if detected_namespace and detected_namespace != namespace and domain_confidence > 0:
             logging.info("[DomainRouter] Override namespace: %s → %s (label=%s)",
                          namespace, detected_namespace, detected_domain_label)
-            namespace = resolve_namespace(detected_namespace)
+            namespace = detected_namespace
 
     domain_key = NAMESPACE_DOMAIN_MAP.get(namespace, 'semiconductor')
 
@@ -881,7 +881,7 @@ def run_rag_pipeline(data):
                 if new_chunk_ids:
                     _agent = get_agent()
                     _idx = _agent.index
-                    _fetched = _idx.fetch(ids=new_chunk_ids, namespace=namespace)
+                    _fetched = _idx.fetch(ids=new_chunk_ids, namespace=resolve_namespace(namespace))
                     _graph_score_map = {gr.chunk_vector_id: gr for gr in _graph_results}
                     for _vid, _vec in _fetched.vectors.items():
                         _meta = _vec.metadata or {}

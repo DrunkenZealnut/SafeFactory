@@ -172,7 +172,6 @@ def api_search():
             namespace = get_primary_namespace(major)
         if namespace == 'all':
             namespace = ''
-        namespace = resolve_namespace(namespace)
         file_type = data.get('file_type', '')
         search_mode = data.get('search_mode', 'vector')  # vector | hybrid | keyword
         if search_mode not in ('vector', 'hybrid', 'keyword'):
@@ -206,7 +205,7 @@ def api_search():
         vector_results = agent.search(
             query=query,
             top_k=max(top_k, 20) if search_mode != 'vector' else top_k,
-            namespace=namespace,
+            namespace=resolve_namespace(namespace),
             filter=filter_dict
         )
 
