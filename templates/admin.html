@@ -933,6 +933,11 @@ async function apiFetch(path, opts = {}) {
         headers: { 'Content-Type': 'application/json', ...csrfHeaders, ...opts.headers },
         ...opts,
     });
+    if (res.status === 401) {
+        showToast('세션이 만료되었습니다. 다시 로그인해주세요.', true);
+        setTimeout(() => { window.location.href = '/login'; }, 1500);
+        throw new Error('인증 만료');
+    }
     const contentType = res.headers.get('content-type');
     if (!contentType || !contentType.includes('application/json')) {
         throw new Error(`서버 응답 오류 (${res.status})`);
@@ -1022,7 +1027,12 @@ async function loadDashboard() {
         document.getElementById('ov-comments').textContent = fmtNumber(data.total_comments);
         document.getElementById('ov-news').textContent = fmtNumber(data.total_news);
         document.getElementById('ov-namespaces').textContent = fmtNumber(data.namespaces);
-    } catch (e) { console.error(e); }
+    } catch (e) {
+        console.error('Dashboard stats load failed:', e);
+        document.querySelectorAll('#overview-cards .stat-value').forEach(el => {
+            if (el.textContent === '-') el.textContent = '⚠️';
+        });
+    }
 
     try {
         const { data } = await apiFetch('/logs?per_page=10');
@@ -1704,6 +1714,8 @@ document.getElementById('mask-email').addEventListener('change', () => loadUsers
 // Stats
 // ---------------------------------------------------------------------------
 async function loadStats() {
+    const errRow = (cols, msg) => `<tr><td colspan="${cols}" style="text-align:center;color:#ef4444;">⚠️ ${msg}</td></tr>`;
+
     try {
         const { data: vectors } = await apiFetch('/stats/vectors');
         const totalVec = vectors.reduce((s, v) => s + v.vectors, 0);
@@ -1712,8 +1724,11 @@ async function loadStats() {
             <td>${fmtNumber(v.documents)}</td>
             <td>${fmtNumber(v.vectors)}</td>
             <td>${totalVec ? Math.round(v.vectors / totalVec * 100) : 0}%</td>
-        </tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--sf-text-3);">데이터 없음</td></tr>';
-    } catch (e) { /* ignore */ }
+        </tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--sf-text-3);">데이터 없음 — Pinecone 동기화를 실행해주세요</td></tr>';
+    } catch (e) {
+        console.error('Vector stats failed:', e);
+        document.getElementById('vector-table').innerHTML = errRow(4, '데이터 로드 실패');
+    }
 
     try {
         const { data: comm } = await apiFetch('/stats/community');
@@ -1723,7 +1738,10 @@ async function loadStats() {
             <td>${fmtNumber(c.count)}</td>
             <td>${totalPosts ? Math.round(c.count / totalPosts * 100) : 0}%</td>
         </tr>`).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--sf-text-3);">데이터 없음</td></tr>';
-    } catch (e) { /* ignore */ }
+    } catch (e) {
+        console.error('Community stats failed:', e);
+        document.getElementById('cat-stats-table').innerHTML = errRow(3, '데이터 로드 실패');
+    }
 
     try {
         const { data: users } = await apiFetch('/stats/users');
@@ -1731,7 +1749,10 @@ async function loadStats() {
             <td>${escHtml(p.provider)}</td>
             <td>${fmtNumber(p.count)}</td>
         </tr>`).join('') || '<tr><td colspan="2" style="text-align:center;color:var(--sf-text-3);">데이터 없음</td></tr>';
-    } catch (e) { /* ignore */ }
+    } catch (e) {
+        console.error('User stats failed:', e);
+        document.getElementById('provider-table').innerHTML = errRow(2, '데이터 로드 실패');
+    }
 }
 
 async function syncVectors() {

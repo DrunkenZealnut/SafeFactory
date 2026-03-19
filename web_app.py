@@ -75,6 +75,16 @@ def load_user(user_id):
     return db.session.get(User, int(user_id))
 
 
+@login_manager.unauthorized_handler
+def unauthorized_api():
+    """Return JSON 401 for API requests instead of redirecting to login page."""
+    if request.path.startswith('/api/'):
+        from api.response import error_response
+        return error_response('로그인이 필요합니다.', 401)
+    flash(login_manager.login_message)
+    return redirect(url_for(login_manager.login_view, next=request.url))
+
+
 # ========================================
 # OAuth (Google + Kakao)
 # ========================================
