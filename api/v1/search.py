@@ -16,8 +16,9 @@ from api.response import success_response, error_response
 from api import rate_limit
 from models import db, SearchHistory
 from services.settings import get_setting
-from services.singletons import get_agent, get_anthropic_client, get_gemini_client, get_hybrid_searcher_instance, get_openai_client
+from services.singletons import get_agent, get_anthropic_client, get_gemini_client, get_hybrid_searcher_instance, get_openai_client, get_semantic_cache
 from services.rag_pipeline import run_rag_pipeline, build_llm_messages, find_related_images, post_process_answer, compute_answer_confidence
+from services.emergency_responder import classify_emergency, get_emergency_response
 from services.domain_config import DOCUMENTS_PATH, resolve_namespace
 from services.major_config import MAJOR_CONFIG, get_primary_namespace
 
@@ -298,6 +299,43 @@ def api_ask():
         data = request.get_json(silent=True)
         if not data:
             return error_response('요청 데이터가 없습니다.', 400)
+
+        # === Pre-Phase: Emergency Fast-Track ===
+        query_raw = (data.get('query') or '').strip()
+        emergency = classify_emergency(query_raw)
+        if emergency:
+            category, confidence = emergency
+            answer = get_emergency_response(category)
+            logging.info("[Emergency] Fast-track response: %s (conf=%.2f)", category, confidence)
+            return success_response(data={
+                'query': query_raw,
+                'answer': answer,
+                'sources': [],
+                'source_count': 0,
+                'images': [],
+                'emergency': True,
+                'emergency_category': category,
+                'emergency_confidence': confidence,
+            })
+
+        # === Pre-Phase: Semantic Cache Lookup ===
+        _cache_embedding = None
+        try:
+            cache = get_semantic_cache()
+            namespace_hint = data.get('namespace', '')
+            agent = get_agent()
+            _cache_embedding = agent.generate_embedding(query_raw)
+            if _cache_embedding is not None:
+                import numpy as np
+                _cache_emb_np = np.array(_cache_embedding, dtype=np.float32)
+                cached = cache.lookup(_cache_emb_np, namespace_hint)
+                if cached:
+                    cached['cache_hit'] = True
+                    logging.info("[SemanticCache] Returning cached response for: %.40s", query_raw)
+                    return success_response(data=cached)
+        except Exception as e:
+            logging.warning("[SemanticCache] Lookup failed (continuing without cache): %s", e)
+
         pipeline = run_rag_pipeline(data)
 
         if pipeline.get('early_response'):
@@ -320,10 +358,12 @@ def api_ask():
         legal_analysis = pipeline.get('legal_analysis')
         safety_refs = pipeline.get('safety_references')
         msds_refs = pipeline.get('msds_references')
+        related_images = _collect_related_images(sources)
         messages = build_llm_messages(query, sources, context, namespace,
                                       calc_result, law_refs_formatted,
                                       labor_classification, legal_analysis,
-                                      safety_refs, msds_refs)
+                                      safety_refs, msds_refs,
+                                      related_images=related_images)
         provider, model = _resolve_llm(namespace)
         if not _VALID_MODEL_RE.match(model):
             logging.error('Invalid model name in settings: %s', model)
@@ -365,7 +405,7 @@ def api_ask():
 
         answer = post_process_answer(answer, len(sources))
         confidence = compute_answer_confidence(answer, sources, context)
-        related_images = _collect_related_images(sources)
+        # related_images already collected above for LLM context
         law_refs_raw = pipeline.get('law_references')
 
         resp_data = {
@@ -400,6 +440,19 @@ def api_ask():
                 answer_text=answer,
             )
 
+        # === Post-Phase: Semantic Cache Store ===
+        if _cache_embedding is not None and resp_data.get('answer') and len(sources) > 0:
+            try:
+                import numpy as np
+                cache.store(
+                    query_text=query,
+                    query_embedding=np.array(_cache_embedding, dtype=np.float32),
+                    namespace=namespace,
+                    response=resp_data,
+                )
+            except Exception as e:
+                logging.warning("[SemanticCache] Store failed: %s", e)
+
         return success_response(data=resp_data)
 
     except Exception:
@@ -415,6 +468,40 @@ def api_ask_stream():
         data = request.get_json(silent=True)
         if not data:
             return error_response('요청 데이터가 없습니다.', 400)
+
+        # === Pre-Phase: Emergency Fast-Track (SSE) ===
+        query_raw = (data.get('query') or '').strip()
+        emergency = classify_emergency(query_raw)
+        if emergency:
+            category, confidence = emergency
+            answer = get_emergency_response(category)
+            logging.info("[Emergency/Stream] Fast-track: %s (conf=%.2f)", category, confidence)
+
+            def _emergency_sse():
+                meta = json.dumps({
+                    'type': 'metadata',
+                    'data': {
+                        'query': query_raw, 'sources': [], 'source_count': 0,
+                        'images': [], 'emergency': True,
+                        'emergency_category': category,
+                    },
+                }, ensure_ascii=False)
+                yield f"data: {meta}\n\n"
+                chunk = json.dumps({
+                    'type': 'content', 'data': answer,
+                }, ensure_ascii=False)
+                yield f"data: {chunk}\n\n"
+                done = json.dumps({
+                    'type': 'done', 'data': {'confidence': confidence},
+                }, ensure_ascii=False)
+                yield f"data: {done}\n\n"
+
+            return Response(
+                stream_with_context(_emergency_sse()),
+                mimetype='text/event-stream',
+                headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'},
+            )
+
         pipeline = run_rag_pipeline(data)
     except ValueError as e:
         return error_response(str(e), 400)
@@ -440,10 +527,12 @@ def api_ask_stream():
     legal_analysis = pipeline.get('legal_analysis')
     safety_refs = pipeline.get('safety_references')
     msds_refs = pipeline.get('msds_references')
+    _stream_images = _collect_related_images(sources)
     messages = build_llm_messages(query, sources, context, namespace,
                                   calc_result, law_refs_formatted,
                                   labor_classification, legal_analysis,
-                                  safety_refs, msds_refs)
+                                  safety_refs, msds_refs,
+                                  related_images=_stream_images)
     provider, model = _resolve_llm(namespace)
     if not _VALID_MODEL_RE.match(model):
         logging.error('Invalid model name in settings: %s', model)

@@ -17,6 +17,7 @@ _uploader = None
 _pinecone_client = None
 _gemini_client = None
 _anthropic_client = None
+_semantic_cache = None
 
 
 def _parse_float_env(name, default):
@@ -325,6 +326,27 @@ def invalidate_community_searcher():
         if _community_searcher is not None:
             _community_searcher.invalidate_cache()
         _community_searcher = None
+
+
+def get_semantic_cache():
+    """Get or create the SemanticCache singleton."""
+    global _semantic_cache
+    if _semantic_cache is None:
+        with _lock:
+            if _semantic_cache is None:
+                from services.semantic_cache import SemanticCache
+                _semantic_cache = SemanticCache()
+    return _semantic_cache
+
+
+def invalidate_semantic_cache(namespace: str = None):
+    """Invalidate semantic cache entries, optionally scoped to a namespace."""
+    global _semantic_cache
+    if _semantic_cache is not None:
+        if namespace:
+            _semantic_cache.invalidate_namespace(namespace)
+        else:
+            _semantic_cache.cleanup_expired()
 
 
 def shutdown_all():

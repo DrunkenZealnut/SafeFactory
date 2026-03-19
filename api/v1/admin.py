@@ -1916,3 +1916,32 @@ def admin_test_connection():
 
     else:
         return error_response(f"알 수 없는 제공자: {provider}", 400)
+
+
+# ---------------------------------------------------------------------------
+# Semantic Cache management
+# ---------------------------------------------------------------------------
+
+@v1_bp.route('/admin/cache/stats', methods=['GET'])
+@admin_required
+def admin_cache_stats():
+    """Return semantic cache statistics."""
+    from services.singletons import get_semantic_cache
+    try:
+        cache = get_semantic_cache()
+        return success_response(data=cache.get_stats())
+    except Exception:
+        logging.exception('Cache stats failed')
+        return error_response('캐시 통계 조회 실패', 500)
+
+
+@v1_bp.route('/admin/cache/invalidate', methods=['POST'])
+@admin_required
+def admin_cache_invalidate():
+    """Invalidate semantic cache entries for a namespace."""
+    from services.singletons import invalidate_semantic_cache
+    ns = (request.get_json(silent=True) or {}).get('namespace')
+    if not ns:
+        return error_response('namespace 파라미터가 필요합니다.', 400)
+    invalidate_semantic_cache(ns)
+    return success_response(data={'invalidated': ns}, message=f'{ns} 캐시가 삭제되었습니다.')

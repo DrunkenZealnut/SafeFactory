@@ -1600,6 +1600,21 @@
         activeCharts.forEach(chart => chart.destroy());
         activeCharts = [];
 
+        // === Emergency Fast-Track Response ===
+        if (metadata && metadata.emergency) {
+            const emergencyHtml = `
+                <div class="emergency-banner">🚨 응급조치 가이드 — 즉시 119에 신고하세요!</div>
+                <div class="ai-answer-container emergency-response">
+                    <div class="ai-answer-content">
+                        ${renderMarkdown(answerText)}
+                    </div>
+                </div>
+            `;
+            resultsContainer.innerHTML = emergencyHtml;
+            resultsContainer.style.display = 'block';
+            return;
+        }
+
         // Extract chart data from answer
         const { cleanAnswer, charts } = extractChartData(answerText);
 
@@ -1850,6 +1865,14 @@
                         if (event.type === 'metadata') {
                             metadata = event.data;
                             loading.classList.remove('active');
+                            // Emergency: render immediately on metadata
+                            if (metadata.emergency) {
+                                // content event follows with full answer
+                            }
+                        } else if (event.type === 'content' && metadata && metadata.emergency) {
+                            // Emergency fast-track: full answer in one event
+                            answerText = event.data;
+                            renderAskResults(resultsContainer, metadata, answerText, null);
                         } else if (event.type === 'calculation' || event.type === 'calculations') {
                             calculations = event.data;
                         } else if (event.type === 'token') {

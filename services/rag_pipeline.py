@@ -17,6 +17,7 @@ from services.domain_config import (
     DOMAIN_COT_INSTRUCTIONS,
     VISUAL_GUIDELINES,
     NAMESPACE_DOMAIN_MAP,
+    STUDENT_FRIENDLY_INSTRUCTIONS,
     resolve_namespace,
 )
 from services.filters import build_domain_filter
@@ -1206,7 +1207,7 @@ def run_rag_pipeline(data):
 def build_llm_prompts(query, sources, context, namespace, calc_result=None,
                       law_references=None, labor_classification=None,
                       legal_analysis=None, safety_references=None,
-                      msds_references=None):
+                      msds_references=None, related_images=None):
     """Build separate system and user prompts for LLM call.
 
     Args:
@@ -1216,6 +1217,7 @@ def build_llm_prompts(query, sources, context, namespace, calc_result=None,
         legal_analysis: Optional string from _run_legal_analysis_pass() with structured analysis.
         safety_references: Optional formatted string of related safety/health content from kosha namespace.
         msds_references: Optional formatted string of MSDS data for hazardous substances detected in context.
+        related_images: Optional list of image dicts ({'path', 'name'}) found for the sources.
 
     Returns:
         tuple: (system_prompt, user_prompt)
@@ -1223,7 +1225,7 @@ def build_llm_prompts(query, sources, context, namespace, calc_result=None,
     base_prompt = DOMAIN_PROMPTS.get(namespace, DEFAULT_SYSTEM_PROMPT)
     domain_key = NAMESPACE_DOMAIN_MAP.get(namespace, 'semiconductor')
     domain_cot = DOMAIN_COT_INSTRUCTIONS.get(domain_key, '')
-    system_prompt = base_prompt + COT_INSTRUCTIONS + domain_cot + VISUAL_GUIDELINES
+    system_prompt = base_prompt + STUDENT_FRIENDLY_INSTRUCTIONS + COT_INSTRUCTIONS + domain_cot + VISUAL_GUIDELINES
 
     user_prompt = f"""## 질문
 {query}"""
@@ -1304,6 +1306,18 @@ def build_llm_prompts(query, sources, context, namespace, calc_result=None,
     # 4. 위반 사항이 감지되면 적극적으로 경고하세요
     # 5. 관련될 수 있는 다른 법률도 언급하세요"""
 
+    # Inject image context so LLM can reference images naturally
+    if related_images:
+        image_names = [img.get('name', '') for img in related_images[:5] if img.get('name')]
+        if image_names:
+            image_list = '\n'.join(f"- [이미지 {i}] {name}" for i, name in enumerate(image_names, 1))
+            user_prompt += f"""
+
+## 관련 이미지 (사용자 화면에 자동 표시)
+{image_list}
+
+위 이미지가 사용자 화면에 함께 표시됩니다. 답변에서 관련 이미지를 자연스럽게 언급해주세요 (예: '아래 이미지를 참고하세요')."""
+
     user_prompt += """
 
 위 정보를 참고하여 질문에 대해 종합적으로 답변해주세요.
@@ -1322,12 +1336,12 @@ def build_llm_prompts(query, sources, context, namespace, calc_result=None,
 def build_llm_messages(query, sources, context, namespace, calc_result=None,
                        law_references=None, labor_classification=None,
                        legal_analysis=None, safety_references=None,
-                       msds_references=None):
+                       msds_references=None, related_images=None):
     """Build OpenAI-format messages for LLM call (kept for compatibility)."""
     system_prompt, user_prompt = build_llm_prompts(
         query, sources, context, namespace, calc_result, law_references,
         labor_classification, legal_analysis, safety_references,
-        msds_references,
+        msds_references, related_images,
     )
     return [
         {"role": "system", "content": system_prompt},

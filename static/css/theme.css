@@ -48,4 +48,32 @@
     --sf-input-bg:   #ffffff;
     --sf-input-border: #e2e8f0;
     --sf-heading-color: #1e293b;
+
+    /* ── 응급 Fast-Track ── */
+    --sf-emergency:       #ef4444;
+    --sf-emergency-bg:    #fef2f2;
+    --sf-emergency-border:#fca5a5;
+}
+
+/* ── Emergency response styling ── */
+.emergency-banner {
+    background: var(--sf-emergency);
+    color: #fff;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 1.1rem;
+    text-align: center;
+    margin-bottom: 1rem;
+    animation: sf-pulse 2s ease-in-out infinite;
+}
+.emergency-response {
+    border-left: 4px solid var(--sf-emergency);
+    background: linear-gradient(135deg, var(--sf-emergency-bg) 0%, var(--sf-card-bg) 100%);
+    padding: 1.5rem;
+    border-radius: 8px;
+}
+@keyframes sf-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.85; }
 }

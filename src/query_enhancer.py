@@ -183,6 +183,72 @@ DOMAIN_SYNONYMS = {
     },
 }
 
+# ---------------------------------------------------------------------------
+# Youth/Student colloquial → formal industry/labor term mappings
+# Designed for vocational high school students (직업계고 학생)
+# ---------------------------------------------------------------------------
+YOUTH_COLLOQUIAL_MAP = {
+    # === 노동 관련 ===
+    '알바': ['아르바이트', '단시간근로'],
+    '알바하다': ['근로', '시간제근로'],
+    '쌤': ['담당교사', '현장실습교사'],
+    '사장님': ['사업주', '사용자'],
+    '월급': ['임금', '급여'],
+    '월급 안 줘': ['임금체불', '근로기준법 위반'],
+    '돈 안 줘': ['임금체불', '급여 미지급'],
+    '야근': ['연장근로', '초과근무'],
+    '야근 강요': ['연장근로 강제', '청소년 근로시간 제한'],
+    '잘리다': ['해고', '부당해고'],
+    '짤리다': ['해고', '부당해고'],
+    '잘렸': ['해고', '부당해고'],
+    '짤렸': ['해고', '부당해고'],
+    '퇴직금 안 줘': ['퇴직급여 미지급'],
+    '쉬는 날': ['휴일', '주휴일'],
+    '계약서': ['근로계약서'],
+    '계약서 안 써': ['근로계약서 미작성'],
+    # === 부상/건강 관련 ===
+    '다쳤어': ['부상', '산업재해'],
+    '아파': ['건강 이상', '직업병'],
+    '베였어': ['절상', '외상'],
+    '허리 아파': ['근골격계 질환', '요통'],
+    '손목 아파': ['근골격계 질환', '수근관 증후군'],
+    '피부 트러블': ['직업성 피부질환', '접촉성 피부염'],
+    '귀가 안 들려': ['소음성 난청', '청력 손실'],
+    '눈이 아파': ['안구 손상', '시력 장해'],
+    # === 화학물질 관련 ===
+    '약품': ['화학물질', '유해물질'],
+    '약품 냄새': ['유해가스 노출', '화학물질 흡입'],
+    '냄새가 심해': ['유해가스', '환기 부족'],
+    '세척액': ['세정제', '유기용제'],
+    '가루': ['분진', '입자상 물질'],
+    # === 작업환경 관련 ===
+    '시끄러워': ['소음', '청력보존프로그램'],
+    '더워': ['고온작업', '열사병 예방'],
+    '추워': ['한냉작업', '저체온증'],
+    '어두워': ['조도 부족', '작업장 조명'],
+    '무거워': ['중량물 취급', '인력운반 작업'],
+    '높은 데': ['고소작업', '추락 위험'],
+    '좁은 데': ['밀폐공간', '밀폐공간 작업'],
+    # === 보호구 관련 ===
+    '마스크': ['방진마스크', '호흡보호구'],
+    '장갑': ['보호장갑', '내화학장갑'],
+    '안경': ['보안경', '보호안경'],
+    '모자': ['안전모', '보호모'],
+    '귀마개': ['귀마개', '청력보호구'],
+    # === 권리/제도 관련 ===
+    '보험': ['4대보험', '산재보험'],
+    '보건증': ['건강진단결과서', '채용시건강진단'],
+    '성희롱': ['직장 내 성희롱', '성희롱 예방교육'],
+    '괴롭힘': ['직장 내 괴롭힘'],
+    '폭언': ['직장 내 괴롭힘', '언어폭력'],
+}
+
+# Keywords that signal a youth/student labor context → boost protection terms
+_YOUTH_LABOR_TRIGGERS = frozenset([
+    '알바', '현장실습', '인턴', '실습생', '청소년', '학생', '고등학',
+])
+_YOUTH_PROTECTION_TERMS = ['청소년 근로기준법', '근로계약서']
+
 
 class QueryEnhancer(HttpClientMixin):
     """
@@ -263,10 +329,10 @@ class QueryEnhancer(HttpClientMixin):
             return resp.choices[0].message.content
 
     def expand_with_synonyms(self, query: str, domain: str = '') -> str:
-        """Expand query with domain-specific synonyms.
+        """Expand query with domain-specific synonyms AND youth colloquial mappings.
 
         Appends synonym terms found in the query to improve retrieval recall.
-        Does not modify the original query — only appends synonyms.
+        Also maps student colloquial expressions to formal industry/labor terms.
 
         Args:
             query: Original user query.
@@ -275,24 +341,42 @@ class QueryEnhancer(HttpClientMixin):
         Returns:
             Query with appended synonyms, or original query if no matches.
         """
-        synonyms_map = DOMAIN_SYNONYMS.get(domain, {})
-        if not synonyms_map:
-            return query
-
         added = []
         query_lower = query.lower()
+
+        # 1. Domain-specific synonym expansion (existing)
+        synonyms_map = DOMAIN_SYNONYMS.get(domain, {})
         for term, syns in synonyms_map.items():
             if term.lower() in query_lower:
                 for syn in syns:
                     if syn.lower() not in query_lower and syn not in added:
                         added.append(syn)
-                        if len(added) >= 5:  # Limit expansion to avoid noise
+                        if len(added) >= 5:
                             break
             if len(added) >= 5:
                 break
 
-        if added:
-            return f"{query} ({' '.join(added)})"
+        # 2. Youth colloquial → formal term mapping
+        youth_added = []
+        for colloquial, formal_terms in YOUTH_COLLOQUIAL_MAP.items():
+            if colloquial in query_lower:
+                for term in formal_terms:
+                    if term.lower() not in query_lower and term not in added and term not in youth_added:
+                        youth_added.append(term)
+                        if len(youth_added) >= 4:
+                            break
+            if len(youth_added) >= 4:
+                break
+
+        # 3. Youth labor context → boost protection terms
+        if any(kw in query_lower for kw in _YOUTH_LABOR_TRIGGERS):
+            for term in _YOUTH_PROTECTION_TERMS:
+                if term not in added and term not in youth_added and term.lower() not in query_lower:
+                    youth_added.append(term)
+
+        all_added = added + youth_added
+        if all_added:
+            return f"{query} ({' '.join(all_added)})"
         return query
 
     @staticmethod
@@ -334,6 +418,8 @@ class QueryEnhancer(HttpClientMixin):
 2. 번호나 기호 없이 질문만 작성
 3. 원래 의미를 유지하면서 다양한 표현 사용
 4. 기술 용어의 경우 영문/한글 번역도 포함
+5. 질문자는 직업계고 학생(청소년)일 수 있습니다 — 구어체나 일상 표현이 있으면 산업/노동법 전문 용어로도 쿼리를 생성하세요
+6. 질문 이면의 '법적 보호 필요성'이나 '잠재적 위험 요인'을 추론하여 확장하세요
 
 변형된 질문들:"""
 

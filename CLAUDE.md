@@ -9,7 +9,7 @@ SafeFactory is a multi-domain RAG (Retrieval-Augmented Generation) system with t
 1. **CLI** (`main.py`): Processes documents (images, markdown, JSON) into vector embeddings and uploads to Pinecone
 2. **Web App** (`web_app.py`): Flask application providing semantic search, AI-powered Q&A, community forum, MSDS lookup, and admin panel
 
-The system serves Korean-language knowledge bases across 5 domains: semiconductor manufacturing (NCS), Korean labor law, workplace safety training, OSHA-equivalent safety guidelines, and chemical safety (MSDS).
+The system serves Korean-language knowledge bases across 4 active domains: semiconductor manufacturing (NCS), workplace safety training, OSHA-equivalent safety guidelines (KOSHA), and chemical safety (MSDS). The laborlaw domain is currently disabled (`[LABORLAW_DISABLED]` markers across 14 files — search `grep -rn "LABORLAW_DISABLED"` to find all disable points).
 
 ## Commands
 
@@ -56,7 +56,7 @@ nohup venv/bin/gunicorn web_app:app --bind 127.0.0.1:5001 --workers 2 --timeout 
 
 Required in `.env` (see `.env.example` for full list):
 - `OPENAI_API_KEY` — embeddings (text-embedding-3-small) and Vision API (gpt-4o-mini)
-- `GEMINI_API_KEY` — RAG answer generation via Google Gemini
+- `GEMINI_API_KEY` — RAG answer generation via Google Gemini + Gemini Embedding 2 (optional)
 - `PINECONE_API_KEY` / `PINECONE_INDEX_NAME` — vector database
 - `SECRET_KEY` — Flask sessions and Fernet token encryption
 - `GOOGLE_CLIENT_ID/SECRET`, `KAKAO_CLIENT_ID/SECRET` — OAuth social login
@@ -93,7 +93,7 @@ Query → P0:DomainClassifier → QueryTypeClassifier(5 types) → P1:QueryEnhan
 - Custom LLM system prompt (`DOMAIN_PROMPTS`)
 - Domain-specific metadata filters (`services/filters.py`)
 
-Domains: `semiconductor-v2` (default), `laborlaw`, `field-training`, `kosha`, `msds`
+Active domains: `semiconductor-v2` (default), `field-training`, `kosha`, `msds`. Disabled: `laborlaw` (`[LABORLAW_DISABLED]`)
 
 ### Automatic Domain Routing
 
@@ -155,9 +155,10 @@ Jinja2 templates in `templates/` with inline `<script>` blocks. All pages extend
 - **Vector IDs**: MD5 hash of `source_file + chunk_index + content_preview` (deterministic/idempotent)
 - **Metadata limit**: Content previews truncated to 1000 chars for Pinecone
 - **Serverless Pinecone**: `ServerlessSpec` with AWS us-east-1
-- **Embedding dimensions**: 1536 (text-embedding-3-small) or 3072 (text-embedding-3-large)
+- **Embedding models**: OpenAI (`text-embedding-3-small` 1536D, `text-embedding-3-large` 3072D) and Gemini (`gemini-embedding-2-preview` 3072D native, MRL 1536D). `EmbeddingGenerator` auto-detects provider from model name. Gemini models use `task_type` parameter (`RETRIEVAL_QUERY` for search, `RETRIEVAL_DOCUMENT` for ingest) and `output_dimensionality` for MRL dimension control.
 - **Reranking**: Optional — either Pinecone Inference API or local cross-encoder (`sentence-transformers`)
 - **Streaming**: `/ask/stream` uses Server-Sent Events (SSE) for real-time LLM responses
+- **Emergency responder**: `services/emergency_responder.py` detects emergency queries (화학물질 노출, 감전, 화상 등) and returns immediate first-aid guidance before RAG pipeline runs. Frontend renders emergency banner with `renderAskResults()` in `domain.html`
 - **Safety cross-search**: Semiconductor domain answers automatically search `kosha` namespace for safety/health context and append it as supplementary references
 - **MSDS cross-search**: Automatically detects chemical names in queries/context and fetches MSDS data
 - **GraphRAG**: Entity-relation graph enriches vector search with knowledge graph traversal (hop_depth=2)
@@ -174,6 +175,16 @@ Jinja2 templates in `templates/` with inline `<script>` blocks. All pages extend
 - **Change chunking**: Edit `SemanticChunker._split_by_structure()` in `src/semantic_chunker.py`
 - **Add GraphRAG config**: Add `community` block to namespace in `services/graph_config.py`
 - **Add LLM provider**: Add provider branch in `api/v1/search.py` `api_ask()` Phase 8 section
+- **Add embedding model**: Add to `EmbeddingGenerator.MODELS` dict and `GEMINI_MODELS` set (if Gemini) in `src/embedding_generator.py`, add to `_VALID_SETTING_VALUES['embedding_model']` and `embedding_models` list in `api/v1/admin.py`
+- **Benchmark embeddings**: `python scripts/benchmark_embeddings.py --domain semiconductor-v2` compares OpenAI vs Gemini search quality. Requires `*-gemini` namespace to be ingested via `python scripts/ingest_gemini_test.py`
+
+## Metadata Key Differences by Namespace
+
+Different namespaces store text in different metadata keys. When accessing document text from Pinecone vectors:
+- `semiconductor-v2`, `kosha`, `safeguide`, `field-training`: `content_preview` (also `content`)
+- `laborlaw-v2`, `counsel`, `precedent` (disabled): `chunk_text` (also `text` for counsel)
+
+Always check for `content_preview` → `chunk_text` → `text` → `content` fallback order.
 
 # currentDate
-Today's date is 2026-03-18.
+Today's date is 2026-03-19.
