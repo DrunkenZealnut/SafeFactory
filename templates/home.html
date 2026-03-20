@@ -1070,7 +1070,7 @@ function initRoadmapGraph() {
 
     function draw() {
         time += 0.016;
-        if (!selectedNode) simulate();
+        if (!selectedNode && !hoverNode) simulate();
         var ctx = canvas.getContext('2d');
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         ctx.clearRect(0, 0, W, H);
@@ -1138,7 +1138,7 @@ function initRoadmapGraph() {
             }
 
             // Node body
-            var bodyAlpha = dimmed ? 0.04 : (nd.level === 0 ? 0.95 : nd.level === 1 ? 0.85 : nd.level === 2 ? 0.65 : 0.45);
+            var bodyAlpha = dimmed ? 0.05 : (nd.level === 0 ? 1 : nd.level === 1 ? 0.9 : nd.level === 2 ? 0.75 : 0.55);
             ctx.beginPath();
             ctx.arc(nd.x, nd.y, nodeR, 0, Math.PI * 2);
             ctx.fillStyle = 'rgba(' + rgb.join(',') + ',' + bodyAlpha * pulse + ')';
@@ -1160,9 +1160,9 @@ function initRoadmapGraph() {
             var fontSize = (nd.level === 0 ? 10.5 : nd.level === 1 ? 10.5 : nd.level === 2 ? 9 : 7.5) / cam.zoom;
             ctx.font = (nd.level <= 1 ? '700 ' : '400 ') + fontSize + 'px "Noto Sans KR",sans-serif';
             ctx.textAlign = 'center';
-            var textAlpha = dimmed ? 0.06 : (nd.level === 0 ? 0.95 : nd.level === 1 ? 0.9 : nd.level === 2 ? 0.7 : 0.45);
-            // Fade text more when zoomed out
-            if (cam.zoom < 1 && nd.level >= 2) textAlpha *= Math.max(0.3, cam.zoom);
+            var textAlpha = dimmed ? 0.08 : (nd.level === 0 ? 1 : nd.level === 1 ? 0.95 : nd.level === 2 ? 0.85 : 0.7);
+            // Fade text slightly when zoomed out
+            if (cam.zoom < 1 && nd.level >= 2) textAlpha *= Math.max(0.5, cam.zoom);
             ctx.fillStyle = 'rgba(230,230,245,' + textAlpha + ')';
             if (nd.level === 0) {
                 var lines = nd.name.split('\n');
