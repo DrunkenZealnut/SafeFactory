@@ -1052,6 +1052,81 @@
         color: var(--primary-color);
     }
 
+    /* NCS Category Browser */
+    .ncs-browser {
+        margin-top: 16px;
+        padding: 14px;
+        background: rgba(var(--primary-color-rgb), 0.03);
+        border: 1px solid rgba(var(--primary-color-rgb), 0.08);
+        border-radius: 12px;
+    }
+    .ncs-tabs {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 10px;
+        flex-wrap: wrap;
+    }
+    .ncs-tab {
+        padding: 7px 14px;
+        border: 1px solid var(--sf-border);
+        border-radius: 8px;
+        background: var(--sf-card-bg);
+        color: var(--sf-text-2);
+        font-size: 0.82em;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+    .ncs-tab:hover { border-color: var(--primary-color); color: var(--primary-color); }
+    .ncs-tab.active {
+        background: rgba(var(--primary-color-rgb), 0.1);
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+        font-weight: 600;
+    }
+    .ncs-tab .count {
+        font-size: 0.8em;
+        opacity: 0.6;
+    }
+    .ncs-modules {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    .ncs-module {
+        display: flex;
+        align-items: center;
+        padding: 8px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background 0.15s;
+        gap: 8px;
+    }
+    .ncs-module:hover {
+        background: rgba(var(--primary-color-rgb), 0.06);
+    }
+    .ncs-module-code {
+        font-size: 0.72em;
+        color: #999;
+        font-family: monospace;
+        flex-shrink: 0;
+        width: 100px;
+    }
+    .ncs-module-title {
+        font-size: 0.88em;
+        color: var(--sf-text-1);
+        flex: 1;
+    }
+    .ncs-module-arrow {
+        color: #ccc;
+        font-size: 0.8em;
+        flex-shrink: 0;
+    }
+
     /* Popular questions section */
     .popular-questions {
         margin-top: 12px;
@@ -1249,6 +1324,16 @@
                         <a href="/wordcloud" class="pq-cloud-link">☁️ 클라우드 보기</a>
                     </div>
                     <div id="popularQuestionsList"></div>
+                </div>
+
+                <!-- NCS Category Browser -->
+                <div class="ncs-browser" id="ncsBrowser" style="display:none;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                        <div style="font-weight:600;font-size:0.95em;color:var(--text-color);">📚 NCS 학습 모듈</div>
+                        <span id="ncsTotalCount" style="font-size:0.8em;color:#888;"></span>
+                    </div>
+                    <div class="ncs-tabs" id="ncsTabs"></div>
+                    <div class="ncs-modules" id="ncsModules"></div>
                 </div>
 
                 <!-- Loading -->
@@ -1459,7 +1544,55 @@
     // Set default namespace value on page load
     document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('askNamespace').value = DEFAULT_NAMESPACE;
+        loadNcsCategories();
     });
+
+    // NCS Category Browser
+    var _ncsData = null;
+    async function loadNcsCategories() {
+        try {
+            var res = await fetch('/api/v1/ncs/categories');
+            var json = await res.json();
+            if (!json.success || !json.data.categories.length) return;
+            _ncsData = json.data.categories;
+            var browser = document.getElementById('ncsBrowser');
+            browser.style.display = '';
+            document.getElementById('ncsTotalCount').textContent = json.data.total_modules + '개 능력단위';
+            var tabsEl = document.getElementById('ncsTabs');
+            tabsEl.innerHTML = _ncsData.map(function(c, i) {
+                return '<button class="ncs-tab' + (i === 0 ? ' active' : '') + '" data-idx="' + i + '">' +
+                    c.icon + ' ' + c.name + ' <span class="count">(' + c.module_count + ')</span></button>';
+            }).join('');
+            tabsEl.addEventListener('click', function(e) {
+                var btn = e.target.closest('.ncs-tab');
+                if (!btn) return;
+                tabsEl.querySelectorAll('.ncs-tab').forEach(function(b) { b.classList.remove('active'); });
+                btn.classList.add('active');
+                renderNcsModules(+btn.dataset.idx);
+            });
+            renderNcsModules(0);
+        } catch (e) { console.error('NCS load failed:', e); }
+    }
+
+    function renderNcsModules(catIdx) {
+        var cat = _ncsData[catIdx];
+        var el = document.getElementById('ncsModules');
+        el.innerHTML = cat.modules.map(function(m) {
+            return '<div class="ncs-module" onclick="searchNcsModule(\'' +
+                m.title.replace(/'/g, "\\'") + '\')">' +
+                '<span class="ncs-module-code">' + (m.code || '') + '</span>' +
+                '<span class="ncs-module-title">' + m.title + '</span>' +
+                '<span class="ncs-module-arrow">→</span></div>';
+        }).join('');
+    }
+
+    function searchNcsModule(title) {
+        var input = document.getElementById('askQuery');
+        input.value = title;
+        input.focus();
+        // Auto-submit
+        document.getElementById('askForm').dispatchEvent(new Event('submit', {bubbles: true}));
+    }
 
     // Sample question click handlers
     document.querySelectorAll('.sample-question').forEach(link => {
