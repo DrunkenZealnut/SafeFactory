@@ -131,6 +131,38 @@ JSON만 출력하세요. 설명이나 마크다운 없이 순수 JSON만."""
         if not gen_nodes:
             return error_response('AI가 유효한 그래프를 생성하지 못했습니다.', 500)
 
+        # Validate schema: required keys, valid types, edge references
+        valid_types = {'m', 's', 'd', 'sh'}
+        node_ids = set()
+        validated_nodes = []
+        for n in gen_nodes:
+            if not isinstance(n, dict) or 'id' not in n or 'label' not in n:
+                continue
+            n_id = str(n['id'])
+            if n_id in node_ids:
+                continue
+            node_ids.add(n_id)
+            n['id'] = n_id
+            if n.get('type') not in valid_types:
+                n['type'] = 's'
+            validated_nodes.append(n)
+        gen_nodes = validated_nodes
+
+        validated_edges = []
+        for e in gen_edges:
+            if not isinstance(e, dict):
+                continue
+            src = str(e.get('source', ''))
+            tgt = str(e.get('target', ''))
+            if src in node_ids and tgt in node_ids and src != tgt:
+                e['source'] = src
+                e['target'] = tgt
+                validated_edges.append(e)
+        gen_edges = validated_edges
+
+        if not gen_nodes:
+            return error_response('AI 응답에 유효한 노드가 없습니다.', 500)
+
     except json.JSONDecodeError as e:
         logging.exception('Graph AI JSON parse failed')
         return error_response(f'AI 응답 파싱 실패: {e}', 500)

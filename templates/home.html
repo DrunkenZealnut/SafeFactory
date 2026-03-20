@@ -800,13 +800,11 @@ resize();
 
 // Fetch graph data from API (DB-driven, AI-generated)
 var nodes=[], edges=[], nmap={}, cx, cy;
-var graphLoaded=false;
+var graphLoaded=false, graphEmpty=false;
 
 fetch('/api/v1/graph/data').then(function(r){return r.json();}).then(function(resp){
   if(!resp.success||!resp.data||resp.data.empty) {
-    // Show empty state message
-    ctx.fillStyle='#6c7086';ctx.font='14px "Noto Sans KR",sans-serif';
-    ctx.textAlign='center';ctx.fillText('관리자 페이지에서 그래프를 생성해주세요',W/2,H/2);
+    graphEmpty=true;
     return;
   }
   var data=resp.data;
@@ -952,6 +950,11 @@ var bgColor=getComputedStyle(document.documentElement).getPropertyValue('--sf-gr
 
 function draw(){
   ctx.clearRect(0,0,W,H);ctx.fillStyle=bgColor;ctx.fillRect(0,0,W,H);
+  if(graphEmpty){
+    ctx.fillStyle='#6c7086';ctx.font='14px "Noto Sans KR",sans-serif';
+    ctx.textAlign='center';ctx.fillText('관리자 페이지에서 그래프를 생성해주세요',W/2,H/2);
+    return;
+  }
   if(!graphLoaded)return;
   ctx.save();ctx.translate(cx+panX,cy+panY);ctx.scale(zoom,zoom);ctx.translate(-cx,-cy);
 

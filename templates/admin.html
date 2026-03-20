@@ -2180,7 +2180,7 @@ async function generateGraph() {
     try {
         const { data, message } = await apiFetch('/graph/generate', {
             method: 'POST',
-            body: JSON.stringify({ seed: seed, namespace: 'default' }),
+            body: JSON.stringify({ seed: seed }),
         });
         showToast(message);
         status.textContent = `생성 완료: ${data.nodes}개 노드, ${data.edges}개 엣지`;
