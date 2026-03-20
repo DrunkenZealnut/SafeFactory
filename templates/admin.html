@@ -672,7 +672,15 @@
                     <div id="graph-gen-status" style="margin-top:10px;font-size:13px;color:var(--sf-text-3);"></div>
                 </div>
 
-                <h3 style="color:var(--sf-text-1);margin-bottom:12px;">현재 그래프 현황</h3>
+                <h3 style="color:var(--sf-text-1);margin-bottom:12px;">저장된 그래프 목록</h3>
+                <div class="table-wrapper" style="margin-bottom:20px;">
+                    <table>
+                        <thead><tr><th>이름</th><th>노드</th><th>연결</th><th>상태</th><th>관리</th></tr></thead>
+                        <tbody id="graph-list-table"></tbody>
+                    </table>
+                </div>
+
+                <h3 style="color:var(--sf-text-1);margin-bottom:12px;">활성 그래프 노드 상세</h3>
                 <div style="display:flex;gap:16px;margin-bottom:16px;">
                     <div style="background:var(--sf-surface);border:1px solid var(--sf-border);border-radius:8px;padding:14px 20px;text-align:center;">
                         <div style="font-size:24px;font-weight:700;color:var(--sf-purple);" id="graph-node-count">-</div>
@@ -2063,13 +2071,34 @@ async function saveSettings() {
 // Graph Management
 // ---------------------------------------------------------------------------
 async function loadGraphStats() {
+    // Load saved graph list
+    try {
+        const { data } = await apiFetch('/graph/list');
+        const tb = document.getElementById('graph-list-table');
+        if (!data.graphs.length) {
+            tb.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--sf-text-3);">저장된 그래프가 없습니다.</td></tr>';
+        } else {
+            tb.innerHTML = data.graphs.map(g => `<tr>
+                <td>${escHtml(g.namespace)}</td>
+                <td>${fmtNumber(g.nodes)}</td>
+                <td>${fmtNumber(g.edges)}</td>
+                <td>${g.active ? '<span style="color:#4caf50;font-weight:600;">활성</span>' : '<span style="color:var(--sf-text-3);">비활성</span>'}</td>
+                <td>
+                    ${g.active ? '' : '<button class="admin-btn admin-btn-sm admin-btn-primary" onclick="activateGraph(\'' + escHtml(g.namespace) + '\')">활성화</button> '}
+                    <button class="admin-btn admin-btn-sm" style="color:var(--sf-red);" onclick="deleteGraph('${escHtml(g.namespace)}')">삭제</button>
+                </td>
+            </tr>`).join('');
+        }
+    } catch (e) { console.error('Graph list failed:', e); }
+
+    // Load active graph details
     try {
         const res = await fetch('/api/v1/graph/data');
         const { data } = await res.json();
         if (!data || data.empty) {
             document.getElementById('graph-node-count').textContent = '0';
             document.getElementById('graph-edge-count').textContent = '0';
-            document.getElementById('graph-node-table').innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--sf-text-3);">그래프 데이터가 없습니다. AI 생성을 실행해주세요.</td></tr>';
+            document.getElementById('graph-node-table').innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--sf-text-3);">활성 그래프가 없습니다.</td></tr>';
             return;
         }
         document.getElementById('graph-node-count').textContent = data.nodes.length;
@@ -2081,6 +2110,29 @@ async function loadGraphStats() {
     } catch (e) {
         console.error('Graph stats load failed:', e);
     }
+}
+
+async function activateGraph(ns) {
+    try {
+        const { message } = await apiFetch('/graph/activate', {
+            method: 'POST',
+            body: JSON.stringify({ namespace: ns }),
+        });
+        showToast(message);
+        loadGraphStats();
+    } catch (e) { showToast('활성화 실패: ' + e.message, true); }
+}
+
+async function deleteGraph(ns) {
+    if (!confirm('"' + ns + '" 그래프를 삭제하시겠습니까?')) return;
+    try {
+        const { message } = await apiFetch('/graph/clear', {
+            method: 'POST',
+            body: JSON.stringify({ namespace: ns }),
+        });
+        showToast(message);
+        loadGraphStats();
+    } catch (e) { showToast('삭제 실패: ' + e.message, true); }
 }
 
 async function generateGraph() {

@@ -16,7 +16,11 @@ from models import GraphEdge, GraphNode, db
 @v1_bp.route('/graph/data', methods=['GET'])
 def api_graph_data():
     """Return graph nodes and edges for the homepage visualization."""
-    ns = request.args.get('namespace', 'default')
+    from models import SystemSetting
+    ns = request.args.get('namespace')
+    if not ns:
+        setting = SystemSetting.query.filter_by(key='active_graph_namespace').first()
+        ns = setting.value if setting else 'default'
     nodes = GraphNode.query.filter_by(namespace=ns).all()
     edges = GraphEdge.query.filter_by(namespace=ns).all()
 
@@ -59,7 +63,9 @@ def api_graph_generate():
 
     body = request.get_json(silent=True) or {}
     seed = (body.get('seed') or '').strip()
-    ns = body.get('namespace', 'default').strip()
+    ns = body.get('namespace', '').strip()
+    if not ns:
+        ns = re.sub(r'[^a-zA-Z0-9가-힣_-]', '_', seed)[:40] or 'default'
 
     if not seed:
         return error_response('시드 단어를 입력해주세요.', 400)
@@ -163,8 +169,17 @@ JSON만 출력하세요. 설명이나 마크다운 없이 순수 JSON만."""
         logging.exception('Graph save failed')
         return error_response('그래프 저장 실패', 500)
 
+    # Auto-activate the newly generated graph
+    from models import SystemSetting
+    setting = SystemSetting.query.filter_by(key='active_graph_namespace').first()
+    if setting:
+        setting.value = ns
+    else:
+        db.session.add(SystemSetting(key='active_graph_namespace', value=ns))
+    db.session.commit()
+
     return success_response(
-        data={'nodes': len(gen_nodes), 'edges': len(gen_edges)},
+        data={'nodes': len(gen_nodes), 'edges': len(gen_edges), 'namespace': ns},
         message=f'"{seed}" 주제로 {len(gen_nodes)}개 노드, {len(gen_edges)}개 엣지 생성 완료',
     )
 
@@ -189,3 +204,68 @@ def api_graph_clear():
         return error_response('삭제 실패', 500)
 
     return success_response(message=f'네임스페이스 "{ns}" 그래프 초기화 완료')
+
+
+@v1_bp.route('/admin/graph/list', methods=['GET'])
+def api_graph_list():
+    """List all saved graph namespaces with node/edge counts."""
+    err = _admin_required_check()
+    if err:
+        return err
+
+    from models import SystemSetting
+
+    rows = (
+        db.session.query(
+            GraphNode.namespace,
+            db.func.count(GraphNode.id).label('node_count'),
+        )
+        .group_by(GraphNode.namespace)
+        .all()
+    )
+
+    active_ns = SystemSetting.query.filter_by(key='active_graph_namespace').first()
+    active = active_ns.value if active_ns else 'default'
+
+    graphs = []
+    for r in rows:
+        edge_count = GraphEdge.query.filter_by(namespace=r.namespace).count()
+        graphs.append({
+            'namespace': r.namespace,
+            'nodes': r.node_count,
+            'edges': edge_count,
+            'active': r.namespace == active,
+        })
+
+    return success_response(data={'graphs': graphs, 'active': active})
+
+
+@v1_bp.route('/admin/graph/activate', methods=['POST'])
+def api_graph_activate():
+    """Set the active graph namespace shown on homepage."""
+    err = _admin_required_check()
+    if err:
+        return err
+
+    from models import SystemSetting
+
+    body = request.get_json(silent=True) or {}
+    ns = body.get('namespace', 'default').strip()
+
+    # Verify namespace has data
+    if GraphNode.query.filter_by(namespace=ns).count() == 0:
+        return error_response(f'네임스페이스 "{ns}"에 그래프 데이터가 없습니다.', 404)
+
+    setting = SystemSetting.query.filter_by(key='active_graph_namespace').first()
+    if setting:
+        setting.value = ns
+    else:
+        db.session.add(SystemSetting(key='active_graph_namespace', value=ns))
+
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        return error_response('설정 저장 실패', 500)
+
+    return success_response(message=f'"{ns}" 그래프가 활성화되었습니다.')
