@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ko" class="theme-dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SafeFactory RAG Pipeline</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { interpolate-size: allow-keywords; }
+    html.theme-dark {
+      --bg: #0A0A0A; --surface: #141414; --surface-hover: #1C1C1C;
+      --border: rgba(255,255,255,0.06); --text: #EDEDED; --text-secondary: #888;
+      --accent: #3b82f6; --accent-secondary: #8b5cf6;
+      --positive: #10b981; --negative: #f43f5e; --warning: #f59e0b;
+      --phase-query: #6366f1; --phase-search: #3b82f6; --phase-enrich: #8b5cf6;
+      --phase-optimize: #f59e0b; --phase-generate: #10b981; --phase-cross: #ec4899;
+      --connector: rgba(255,255,255,0.08); --glow: rgba(99,102,241,0.15);
+    }
+    html.theme-light {
+      --bg: #FAFAF9; --surface: #FFFFFF; --surface-hover: #F5F5F4;
+      --border: rgba(0,0,0,0.08); --text: #0f172a; --text-secondary: #64748b;
+      --accent: #2563eb; --accent-secondary: #7c3aed;
+      --positive: #059669; --negative: #e11d48; --warning: #d97706;
+      --phase-query: #4f46e5; --phase-search: #2563eb; --phase-enrich: #7c3aed;
+      --phase-optimize: #d97706; --phase-generate: #059669; --phase-cross: #db2777;
+      --connector: rgba(0,0,0,0.1); --glow: rgba(99,102,241,0.08);
+    }
+    body { font-family:'Noto Sans KR','Inter',-apple-system,sans-serif; background:var(--bg); color:var(--text); line-height:1.6; -webkit-font-smoothing:antialiased; transition:background 0.3s,color 0.3s; }
+    h1,h2,h3,h4 { color:var(--text); letter-spacing:-0.03em; line-height:1.2; }
+    h1 { font-weight:800; font-size:clamp(2.5rem,5vw,3.5rem); }
+    h2 { font-weight:700; font-size:2rem; }
+    h3 { font-weight:600; font-size:1.5rem; }
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:24px; transition:box-shadow 0.2s; }
+    .card:hover { box-shadow:0 0 0 1px var(--border),0 8px 20px rgba(0,0,0,0.1); }
+    @keyframes fadeInUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+    .animate { animation:fadeInUp 0.6s ease-out both; }
+    .animate.delay-1{animation-delay:.1s} .animate.delay-2{animation-delay:.2s}
+    .animate.delay-3{animation-delay:.3s} .animate.delay-4{animation-delay:.4s}
+    .reveal { opacity:0; transform:translateY(24px); transition:opacity 0.6s,transform 0.6s; }
+    .reveal.visible { opacity:1; transform:translateY(0); }
+    @media(prefers-reduced-motion:reduce){ *,*::before,*::after{animation:none!important;transition:none!important} .reveal{opacity:1;transform:none} }
+    @media print { body{background:white!important;color:black!important} .viz-menu{display:none!important} .reveal{opacity:1!important;transform:none!important} .card{break-inside:avoid;border:1px solid #ddd;box-shadow:none} .phase-detail{display:block!important;max-height:none!important} }
+    .viz-menu{position:fixed;top:16px;right:16px;z-index:9999}
+    .viz-menu-toggle{width:44px;height:44px;border-radius:12px;background:var(--surface);border:1px solid var(--border);color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(12px)}
+    .viz-menu-toggle:hover{background:var(--surface-hover)}
+    .viz-menu-dropdown{position:absolute;top:52px;right:0;min-width:200px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:8px;opacity:0;visibility:hidden;transform:translateY(-8px);transition:all 0.2s;backdrop-filter:blur(16px)}
+    .viz-menu-dropdown.open{opacity:1;visibility:visible;transform:translateY(0)}
+    .viz-menu-dropdown button{width:100%;padding:10px 14px;border:none;border-radius:8px;background:transparent;color:var(--text);font-size:14px;font-family:inherit;cursor:pointer;text-align:left;display:flex;align-items:center;gap:10px}
+    .viz-menu-dropdown button:hover{background:var(--surface-hover)}
+    .container{max-width:920px;margin:0 auto;padding:0 24px}
+    .hero{padding:80px 0 40px;text-align:center}
+    .hero p{color:var(--text-secondary);font-size:1.1rem;margin-top:12px;max-width:600px;margin-left:auto;margin-right:auto}
+    .pipeline{padding:0 0 80px}
+    .phase-group{margin-bottom:8px;position:relative}
+    .connector{display:flex;justify-content:center;padding:4px 0}
+    .connector-line{width:2px;height:28px;background:var(--connector);position:relative}
+    .connector-line::after{content:'';position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid var(--connector)}
+    .connector-branch{display:flex;justify-content:center;align-items:center;gap:8px;padding:4px 0;color:var(--text-secondary);font-size:.75rem}
+    .connector-branch .line{flex:1;height:1px;background:var(--connector);max-width:80px}
+    .phase-node{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px 24px;cursor:pointer;transition:all 0.25s;position:relative;overflow:hidden}
+    .phase-node::before{content:'';position:absolute;top:0;left:0;width:4px;height:100%;border-radius:16px 0 0 16px}
+    .phase-node:hover{border-color:var(--accent);box-shadow:0 4px 24px var(--glow);transform:translateY(-1px)}
+    .phase-node.active{border-color:var(--accent);box-shadow:0 4px 24px var(--glow)}
+    .phase-query .phase-node::before{background:var(--phase-query)}
+    .phase-search .phase-node::before{background:var(--phase-search)}
+    .phase-enrich .phase-node::before{background:var(--phase-enrich)}
+    .phase-optimize .phase-node::before{background:var(--phase-optimize)}
+    .phase-generate .phase-node::before{background:var(--phase-generate)}
+    .phase-cross .phase-node::before{background:var(--phase-cross)}
+    .phase-header{display:flex;align-items:center;gap:12px}
+    .phase-badge{font-size:.7rem;font-weight:700;letter-spacing:.04em;padding:3px 8px;border-radius:6px;white-space:nowrap;text-transform:uppercase}
+    .phase-query .phase-badge{background:rgba(99,102,241,.15);color:var(--phase-query)}
+    .phase-search .phase-badge{background:rgba(59,130,246,.15);color:var(--phase-search)}
+    .phase-enrich .phase-badge{background:rgba(139,92,246,.15);color:var(--phase-enrich)}
+    .phase-optimize .phase-badge{background:rgba(245,158,11,.15);color:var(--phase-optimize)}
+    .phase-generate .phase-badge{background:rgba(16,185,129,.15);color:var(--phase-generate)}
+    .phase-cross .phase-badge{background:rgba(236,72,153,.15);color:var(--phase-cross)}
+    .phase-title{font-size:1.05rem;font-weight:600;flex:1}
+    .phase-subtitle{color:var(--text-secondary);font-size:.85rem;margin-top:4px;padding-left:4px}
+    .phase-expand{color:var(--text-secondary);font-size:.8rem;transition:transform 0.3s;flex-shrink:0}
+    .phase-node.active .phase-expand{transform:rotate(180deg)}
+    .phase-detail{max-height:0;overflow:hidden;transition:max-height 0.4s ease,padding 0.3s;padding:0 4px}
+    .phase-node.active .phase-detail{max-height:800px;padding:16px 4px 0}
+    .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+    .detail-card{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px}
+    .detail-card h4{font-size:.78rem;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+    .detail-card p,.detail-card ul{font-size:.85rem;color:var(--text);line-height:1.6}
+    .detail-card ul{padding-left:16px}
+    .detail-card li{margin-bottom:2px}
+    .detail-card code{font-size:.78rem;background:rgba(99,102,241,.1);padding:1px 5px;border-radius:4px;font-family:'SF Mono','Fira Code',monospace}
+    .detail-full{grid-column:1/-1}
+    .tag{display:inline-block;font-size:.72rem;padding:2px 7px;border-radius:4px;background:rgba(99,102,241,.1);color:var(--accent);margin:2px 2px 2px 0;font-weight:500}
+    .tag-green{background:rgba(16,185,129,.1);color:var(--positive)}
+    .tag-amber{background:rgba(245,158,11,.1);color:var(--warning)}
+    .tag-pink{background:rgba(236,72,153,.1);color:var(--phase-cross)}
+    .legend{display:flex;flex-wrap:wrap;justify-content:center;gap:16px;margin-bottom:48px}
+    .legend-item{display:flex;align-items:center;gap:6px;font-size:.82rem;color:var(--text-secondary)}
+    .legend-dot{width:10px;height:10px;border-radius:3px}
+    .stats-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:48px}
+    .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center}
+    .stat-value{font-size:2rem;font-weight:800;color:var(--accent)}
+    .stat-label{font-size:.78rem;color:var(--text-secondary);margin-top:2px}
+    .parallel-wrapper{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .parallel-label{text-align:center;font-size:.72rem;color:var(--text-secondary);margin-bottom:6px;font-weight:500;text-transform:uppercase;letter-spacing:.05em}
+    .filter-bar{display:flex;justify-content:center;gap:6px;margin-bottom:32px;flex-wrap:wrap}
+    .filter-btn{padding:6px 14px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text-secondary);font-size:.82rem;cursor:pointer;font-family:inherit;transition:all 0.2s}
+    .filter-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+    .filter-btn:hover:not(.active){border-color:var(--accent);color:var(--text)}
+    @media(max-width:768px){.hero{padding:60px 0 30px}.detail-grid{grid-template-columns:1fr}.parallel-wrapper{grid-template-columns:1fr}.stats-bar{grid-template-columns:repeat(2,1fr)}.container{padding:0 16px}}
+    @media(max-width:375px){body{overflow-x:hidden}h1{font-size:2rem}.stat-value{font-size:1.6rem}}
+  </style>
+</head>
+<body>
+  <a href="#main-content" class="skip-link" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;z-index:10000;padding:8px 16px;background:var(--accent);color:white;text-decoration:none;border-radius:4px;">Skip to content</a>
+  <div class="viz-menu">
+    <button class="viz-menu-toggle" onclick="toggleMenu()" aria-label="Menu"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="5" x2="17" y2="5"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="15" x2="17" y2="15"/></svg></button>
+    <div class="viz-menu-dropdown" id="vizMenuDropdown">
+      <button onclick="cycleTheme()"><span id="themeIcon">🌙</span><span id="themeLabel">Dark</span></button>
+      <button onclick="downloadImage()"><span>📥</span><span>Download PNG</span></button>
+      <button onclick="window.print()"><span>🖨️</span><span>Print / PDF</span></button>
+    </div>
+  </div>
+  <main id="main-content" role="main">
+    <section class="hero container">
+      <h1 class="animate">SafeFactory RAG Pipeline</h1>
+      <p class="animate delay-1">질문 입력부터 AI 답변 생성까지 — 11단계 검색 증강 생성 파이프라인의 전체 흐름</p>
+    </section>
+    <section class="container animate delay-2">
+      <div class="stats-bar">
+        <div class="stat-card"><div class="stat-value" data-count="11">0</div><div class="stat-label">Pipeline 단계</div></div>
+        <div class="stat-card"><div class="stat-value" data-count="5">0</div><div class="stat-label">도메인</div></div>
+        <div class="stat-card"><div class="stat-value" data-count="5">0</div><div class="stat-label">질문 유형</div></div>
+        <div class="stat-card"><div class="stat-value" data-count="3">0</div><div class="stat-label">LLM 프로바이더</div></div>
+      </div>
+    </section>
+    <section class="container animate delay-3">
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--phase-query)"></div>쿼리 분석</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--phase-search)"></div>검색</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--phase-enrich)"></div>보강</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--phase-optimize)"></div>최적화</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--phase-generate)"></div>생성</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--phase-cross)"></div>교차 검색</div>
+      </div>
+      <div class="filter-bar">
+        <button class="filter-btn active" onclick="filterPhases('all',this)">전체</button>
+        <button class="filter-btn" onclick="filterPhases('phase-query',this)">쿼리 분석</button>
+        <button class="filter-btn" onclick="filterPhases('phase-search',this)">검색</button>
+        <button class="filter-btn" onclick="filterPhases('phase-enrich',this)">보강</button>
+        <button class="filter-btn" onclick="filterPhases('phase-optimize',this)">최적화</button>
+        <button class="filter-btn" onclick="filterPhases('phase-generate',this)">생성</button>
+      </div>
+    </section>
+    <section class="pipeline container">
+
+      <div class="phase-group phase-query" data-reveal><div class="phase-node" onclick="togglePhase(this)"><div class="phase-header"><span class="phase-badge">Phase 0</span><span class="phase-title">Domain Classification</span><span class="phase-expand">▼</span></div><div class="phase-subtitle">자동 도메인 라우팅 + 쿼리 유형 분류</div><div class="phase-detail"><div class="detail-grid"><div class="detail-card"><h4>도메인 라우팅</h4><p><code>classify_domain()</code> — 키워드 스코어링으로 최적 네임스페이스 자동 감지</p><div style="margin-top:8px"><span class="tag">semiconductor-v2</span><span class="tag">field-training</span><span class="tag">kosha</span><span class="tag">msds</span><span class="tag">laborlaw</span></div></div><div class="detail-card"><h4>쿼리 유형 분류</h4><p><code>classify_query_type()</code> → 5가지 유형별 라우팅 설정 적용</p><div style="margin-top:8px"><span class="tag tag-green">factual</span><span class="tag tag-green">procedural</span><span class="tag tag-green">comparison</span><span class="tag tag-green">calculation</span><span class="tag tag-green">overview</span></div></div><div class="detail-card detail-full"><h4>적응형 파라미터</h4><ul><li>도메인 confidence &lt; 0.7 → <code>top_k</code> 적응적 확대 (1.5~2x)</li><li>도메인 confidence &lt; 0.6 → HyDE 자동 활성화 (CI-1)</li><li>각 쿼리 유형별 <code>QUERY_TYPE_CONFIG</code>로 후속 단계 제어</li></ul></div></div></div></div></div>
+
+      <div class="connector"><div class="connector-line"></div></div>
+
+      <div class="phase-group phase-query" data-reveal><div class="phase-node" onclick="togglePhase(this)"><div class="phase-header"><span class="phase-badge">Phase 1</span><span class="phase-title">Query Enhancement</span><span class="phase-expand">▼</span></div><div class="phase-subtitle">다중 쿼리 생성 + HyDE 가상 문서 + 동의어 확장</div><div class="phase-detail"><div class="detail-grid"><div class="detail-card"><h4>Multi-Query</h4><p>원본 질문에서 의미적 변형 쿼리 2~3개 자동 생성. 다양한 표현으로 검색 커버리지 확대</p></div><div class="detail-card"><h4>HyDE</h4><p>Hypothetical Document Embeddings — LLM이 가상 답변을 생성하고, 그 임베딩으로 검색. 질문-문서 간 의미 갭 해소</p></div><div class="detail-card"><h4>동의어 확장</h4><p>도메인별 동의어 사전으로 쿼리 변형 추가. 예: "식각" → "에칭", "etching"</p></div><div class="detail-card"><h4>키워드 추출</h4><p>BM25 하이브리드 검색용 핵심 키워드 추출. 빈 키워드 시 정규식 폴백 (QW-1)</p></div></div></div></div></div>
+
+      <div class="connector"><div class="connector-line"></div></div>
+
+      <div class="phase-group phase-search" data-reveal><div class="phase-node" onclick="togglePhase(this)"><div class="phase-header"><span class="phase-badge">Phase 2</span><span class="phase-title">Multi-Query Vector Search</span><span class="phase-expand">▼</span></div><div class="phase-subtitle">Pinecone 벡터 DB에서 다중 쿼리 병렬 검색 + 중복 제거</div><div class="phase-detail"><div class="detail-grid"><div class="detail-card"><h4>검색 실행</h4><p><code>_search_with_variations()</code> — 일반 쿼리 + HyDE 쿼리를 모두 Pinecone에 검색. 실패 시 1회 자동 재시도</p></div><div class="detail-card"><h4>중복 제거</h4><p>SHA-256 content hash로 동일 문서 필터링. 다중 쿼리에서 같은 청크가 중복 검색되는 것을 방지</p></div><div class="detail-card detail-full"><h4>임베딩 모델</h4><div style="margin-top:4px"><span class="tag">Gemini Embedding 2 (3072D → MRL 1536D)</span><span class="tag">text-embedding-3-small (1536D)</span><span class="tag">text-embedding-3-large (3072D)</span></div></div></div></div></div></div>
+
+      <div class="connector"><div class="connector-line"></div></div>
+
+      <div data-reveal>
+        <div class="connector-branch"><span class="line"></span>병렬 보강<span class="line"></span></div>
+        <div class="parallel-wrapper">
+          <div class="phase-group phase-enrich"><div class="parallel-label">Phase 3</div><div class="phase-node" onclick="togglePhase(this)"><div class="phase-header"><span class="phase-badge">GraphRAG</span><span class="phase-title">Entity Enrichment</span><span class="phase-expand">▼</span></div><div class="phase-subtitle">지식 그래프 엔티티 2-hop 탐색</div><div class="phase-detail"><div class="detail-grid" style="grid-template-columns:1fr"><div class="detail-card"><h4>그래프 탐색</h4><p>KGEntity/KGRelation 그래프에서 관련 엔티티 2-hop 탐색. 벡터 검색에서 놓친 연관 청크를 발견하여 결과에 추가</p><div style="margin-top:6px"><span class="tag tag-amber">조건부</span> 네임스페이스별 graph_config 설정 필요</div></div></div></div></div></div>
+          <div class="phase-group phase-enrich"><div class="parallel-label">Phase 3.5</div><div class="phase-node" onclick="togglePhase(this)"><div class="phase-header"><span class="phase-badge">Global</span><span class="phase-title">Community Search</span><span class="phase-expand">▼</span></div><div class="phase-subtitle">Leiden 커뮤니티 기반 글로벌 검색</div><div class="phase-detail"><div class="detail-grid" style="grid-template-columns:1fr"><div class="detail-card"><h4>커뮤니티 검색</h4><p>Leiden 알고리즘으로 감지된 엔티티 커뮤니티의 LLM 요약문을 활용. <code>overview</code> 유형 질문에서 도메인 전체 맥락 제공</p><div style="margin-top:6px"><span class="tag tag-amber">조건부</span> overview 쿼리 + community 설정 활성 시</div></div></div></div></div></div>
+        </div>
+        <div class="connector-branch"><span class="line"></span>병합<span class="line"></span></div>
+      </div>
+
+      <div class="connector"><div class="connector-line"></div></div>
+
+      <div class="phase-group phase-search" data-reveal><div class="phase-node" onclick="togglePhase(this)"><div class="phase-header"><span class="phase-badge">Phase 4</span><span class="phase-title">Hybrid Search (BM25 + Vector)</span><span class="phase-expand">▼</span></div><div class="phase-subtitle">키워드 검색(BM25)과 벡터 검색을 RRF로 융합</div><div class="phase-detail"><div class="detail-grid"><div class="detail-card"><h4>BM25 키워드 부스팅</h4><p><code>search_with_keyword_boost()</code> — 추출된 키워드와 BM25 스코어로 벡터 결과를 재정렬</p></div><div class="detail-card"><h4>RRF 융합</h4><p>Reciprocal Rank Fusion으로 벡터 유사도와 키워드 매칭 순위를 통합. 도메인별 가중치 적용</p></div></div></div></div></div>
+
+      <div class="connector"><div class="connector-line"></div></div>
+
+      <div class="phase-group phase-optimize" data-reveal><div class="phase-node" onclick="togglePhase(this)"><div class="phase-header"><span class="phase-badge">Phase 5</span><span class="phase-title">Reranking</span><span class="phase-expand">▼</span></div><div class="phase-subtitle">Cross-Encoder 70% + Original Score 30% 하이브리드 리랭킹</div><div class="phase-detail"><div class="detail-grid"><div class="detail-card"><h4>하이브리드 리랭킹</h4><p><code>hybrid_rerank()</code> — Cross-encoder 모델이 query-document 쌍을 직접 평가. 원본 벡터 스코어와 가중 합산</p></div><div class="detail-card"><h4>도메인별 가중치</h4><p><code>DOMAIN_RERANK_CONFIG</code>로 도메인별 rerank/original 비율 조정. 기본: 70:30</p><div style="margin-top:6px"><span class="tag">Pinecone Inference API</span><span class="tag">Local Cross-Encoder</span></div></div></div></div></div></div>
+
+      <div class="connector"><div class="connector-line"></div></div>
+
+      <div class="phase-group phase-optimize" data-reveal><div class="phase-node" onclick="togglePhase(this)"><div class="phase-header"><span class="phase-badge">Phase 5.5</span><span class="phase-title">MMR Diversity</span><span class="phase-expand">▼</span></div><div class="phase-subtitle">유사 중복 문서 제거로 컨텍스트 다양성 확보</div><div class="phase-detail"><div class="detail-grid" style="grid-template-columns:1fr"><div class="detail-card"><h4>Near-Duplicate Removal</h4><p>문서 내용의 앞 200자를 기준으로 동일 내용 필터링. 같은 소스에서 추출된 중복 청크가 컨텍스트 슬롯을 낭비하는 것을 방지</p></div></div></div></div></div>
+
+      <div class="connector"><div class="connector-line"></div></div>
+
+      <div class="phase-group phase-optimize" data-reveal><div class="phase-node" onclick="togglePhase(this)"><div class="phase-header"><span class="phase-badge">Phase 6</span><span class="phase-title">Context Optimization</span><span class="phase-expand">▼</span></div><div class="phase-subtitle">관련도 필터링 → 중복 제거 → Lost-in-Middle 재배치</div><div class="phase-detail"><div class="detail-grid"><div class="detail-card"><h4>스코어 필터링</h4><p>최소 관련도 점수(<code>MIN_RELEVANCE_SCORE=0.2</code>) 미만 제거. 토큰 수 80 미만 노이즈 청크 제거</p></div><div class="detail-card"><h4>Lost-in-Middle 방지</h4><p>LLM이 중간 문서를 무시하는 현상 방지. 고관련도 문서를 앞뒤에, 저관련도를 중간에 배치</p></div><div class="detail-card detail-full"><h4>재검색 폴백 (RB-1)</h4><p>결과 3개 미만 + 도메인 confidence &lt; 0.5 → HyDE 활성화하여 재검색. 기존 결과에 신규 문서 추가</p></div></div></div></div></div>
+
+      <div class="connector"><div class="connector-line"></div></div>
+
+      <div class="phase-group phase-generate" data-reveal><div class="phase-node" onclick="togglePhase(this)"><div class="phase-header"><span class="phase-badge">Phase 7</span><span class="phase-title">Build Context + Sources</span><span class="phase-expand">▼</span></div><div class="phase-subtitle">LLM 프롬프트용 컨텍스트 조립 + 출처 메타데이터 구성</div><div class="phase-detail"><div class="detail-grid"><div class="detail-card"><h4>컨텍스트 조립</h4><p>각 검색 결과를 <code>[N] (출처: file) content</code> 형식으로 번호 매기기. 커뮤니티 글로벌 컨텍스트가 있으면 앞에 삽입</p></div><div class="detail-card"><h4>출처 메타데이터</h4><p>source_file, file_type, score, content_preview, NCS 카테고리, 이미지 URL 등 프론트엔드 표시용 구조화</p></div></div></div></div></div>
+
+      <div class="connector"><div class="connector-line"></div></div>
+
+      <div data-reveal>
+        <div class="connector-branch"><span class="line"></span>교차 검색<span class="line"></span></div>
+        <div class="parallel-wrapper">
+          <div class="phase-group phase-cross"><div class="parallel-label">Phase 7.5a</div><div class="phase-node" onclick="togglePhase(this)"><div class="phase-header"><span class="phase-badge">Safety</span><span class="phase-title">안전보건 교차 검색</span><span class="phase-expand">▼</span></div><div class="phase-subtitle">반도체 → kosha 자동 참조</div><div class="phase-detail"><div class="detail-grid" style="grid-template-columns:1fr"><div class="detail-card"><h4>안전보건 크로스서치</h4><p>반도체 도메인 답변에 kosha 네임스페이스에서 안전/보건 관련 컨텍스트를 자동 검색하여 보충 참조로 첨부</p><div style="margin-top:6px"><span class="tag tag-pink">top_k=5, min_score=0.3</span></div></div></div></div></div></div>
+          <div class="phase-group phase-cross"><div class="parallel-label">Phase 7.5b</div><div class="phase-node" onclick="togglePhase(this)"><div class="phase-header"><span class="phase-badge">MSDS</span><span class="phase-title">MSDS 자동 연결</span><span class="phase-expand">▼</span></div><div class="phase-subtitle">화학물질 감지 → MSDS API</div><div class="phase-detail"><div class="detail-grid" style="grid-template-columns:1fr"><div class="detail-card"><h4>화학물질 자동 감지</h4><p>질문/컨텍스트에서 화학물질명, CAS 번호, 공정 키워드(CMP→실리카, 식각→불산 등)를 감지. KOSHA MSDS API로 유해성, 응급조치, 보호구 정보를 자동 조회</p><div style="margin-top:6px"><span class="tag tag-pink">최대 3개 물질</span><span class="tag tag-pink">병렬 API 호출</span></div></div></div></div></div></div>
+        </div>
+        <div class="connector-branch"><span class="line"></span>병합<span class="line"></span></div>
+      </div>
+
+      <div class="connector"><div class="connector-line"></div></div>
+
+      <div class="phase-group phase-generate" data-reveal><div class="phase-node" onclick="togglePhase(this)" style="border-width:2px"><div class="phase-header"><span class="phase-badge">Phase 8</span><span class="phase-title">LLM Answer Generation</span><span class="phase-expand">▼</span></div><div class="phase-subtitle">컨텍스트 + 시스템 프롬프트 → AI 답변 생성 (SSE 스트리밍)</div><div class="phase-detail"><div class="detail-grid"><div class="detail-card"><h4>LLM 프로바이더</h4><div style="margin-top:4px"><span class="tag tag-green">Gemini (기본)</span><span class="tag">OpenAI</span><span class="tag">Anthropic</span></div><p style="margin-top:8px">네임스페이스별 모델 오버라이드 가능 (<code>_NAMESPACE_MODEL_OVERRIDE</code>)</p></div><div class="detail-card"><h4>프롬프트 구성</h4><ul><li>도메인별 시스템 프롬프트 (<code>DOMAIN_PROMPTS</code>)</li><li>Chain-of-Thought 지시문</li><li>시각 자료 가이드라인</li><li>안전보건/MSDS 참조 주입</li></ul></div><div class="detail-card"><h4>스트리밍</h4><p><code>/ask/stream</code> — Server-Sent Events로 실시간 토큰 전달. 프론트엔드에서 점진적 렌더링</p></div><div class="detail-card"><h4>후처리</h4><ul><li><code>post_process_answer()</code> — 잘못된 인용 번호 제거</li><li><code>compute_answer_confidence()</code> — 답변 신뢰도 계산 (인용 40% + 소스 품질 35% + 충실도 25%)</li></ul></div></div></div></div></div>
+
+      <div class="connector"><div class="connector-line"></div></div>
+
+      <div class="phase-group phase-generate" data-reveal><div class="phase-node" style="text-align:center;cursor:default;border-style:dashed"><div style="font-size:1.1rem;font-weight:700;color:var(--positive)">Response</div><div style="font-size:.85rem;color:var(--text-secondary);margin-top:4px">답변 + 출처 + 이미지 + 신뢰도 + 지연시간</div></div></div>
+
+    </section>
+    <section class="container" style="padding-bottom:80px" data-reveal>
+      <div class="card" style="text-align:center">
+        <h3 style="margin-bottom:12px">핵심 소스 코드</h3>
+        <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:8px">
+          <span class="tag">services/rag_pipeline.py</span><span class="tag">services/query_router.py</span><span class="tag">services/singletons.py</span><span class="tag">src/query_enhancer.py</span><span class="tag">src/reranker.py</span><span class="tag">src/hybrid_searcher.py</span><span class="tag">src/context_optimizer.py</span><span class="tag">services/community_searcher.py</span><span class="tag">services/graph_config.py</span><span class="tag">api/v1/search.py</span>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script>
+    function toggleMenu(){var d=document.getElementById('vizMenuDropdown');if(d)d.classList.toggle('open')}
+    document.addEventListener('click',function(e){if(!e.target.closest('.viz-menu')){var d=document.getElementById('vizMenuDropdown');if(d)d.classList.remove('open')}});
+    document.addEventListener('keydown',function(e){if(e.key==='Escape'){var d=document.getElementById('vizMenuDropdown');if(d)d.classList.remove('open')}});
+    var savedTheme=localStorage.getItem('viz-theme');
+    var currentTheme=savedTheme||(window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');
+    function applyTheme(t){document.documentElement.className='theme-'+t;document.getElementById('themeIcon').textContent=t==='dark'?'🌙':'☀️';document.getElementById('themeLabel').textContent=t==='dark'?'Dark':'Light';localStorage.setItem('viz-theme',t);currentTheme=t}
+    function cycleTheme(){applyTheme(currentTheme==='dark'?'light':'dark')}
+    applyTheme(currentTheme);
+    document.querySelectorAll('[data-reveal]').forEach(function(el){el.classList.add('reveal')});
+    var revealObserver=new IntersectionObserver(function(entries){entries.forEach(function(e){if(e.isIntersecting){e.target.classList.add('visible');revealObserver.unobserve(e.target)}})},{threshold:0.15});
+    document.querySelectorAll('.reveal').forEach(function(el){revealObserver.observe(el)});
+    function animateCounters(){document.querySelectorAll('[data-count]').forEach(function(el){if(el.dataset.counted)return;el.dataset.counted='1';var target=parseFloat(el.dataset.count),prefix=el.dataset.prefix||'',suffix=el.dataset.suffix||'';var start=performance.now(),duration=1200;(function tick(now){var p=Math.min((now-start)/duration,1),eased=1-Math.pow(1-p,3);el.textContent=prefix+Math.round(target*eased).toLocaleString()+suffix;if(p<1)requestAnimationFrame(tick)})(start)})}
+    var counterEl=document.querySelector('[data-count]');
+    if(counterEl){var cObs=new IntersectionObserver(function(entries){entries.forEach(function(e){if(e.isIntersecting){animateCounters();cObs.disconnect()}})},{threshold:0.3});cObs.observe(counterEl)}
+    async function downloadImage(){var menu=document.querySelector('.viz-menu');menu.style.display='none';try{var url=await htmlToImage.toPng(document.body,{quality:1,pixelRatio:2,filter:function(n){return!n.classList||!n.classList.contains('viz-menu')}});var a=document.createElement('a');a.href=url;a.download='safefactory-rag-pipeline.png';a.click()}catch(e){console.error(e)}menu.style.display=''}
+    function togglePhase(el){var wasActive=el.classList.contains('active');document.querySelectorAll('.phase-node.active').forEach(function(n){if(n!==el)n.classList.remove('active')});el.classList.toggle('active',!wasActive)}
+    function filterPhases(cat,btn){document.querySelectorAll('.filter-btn').forEach(function(b){b.classList.remove('active')});btn.classList.add('active');document.querySelectorAll('.phase-group').forEach(function(g){if(cat==='all'||g.classList.contains(cat)){g.style.opacity='1'}else{g.style.opacity='0.15'}});document.querySelectorAll('.connector,.connector-branch').forEach(function(c){c.style.opacity=cat==='all'?'1':'0.3'})}
+  </script>
+</body>
+</html>
