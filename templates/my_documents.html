@@ -472,6 +472,12 @@
     .chat-answer h1, .chat-answer h2, .chat-answer h3 { color: #e0e0e0; font-size: 1em; margin: 12px 0 6px; }
     .chat-answer ul, .chat-answer ol { padding-left: 20px; }
     .chat-answer code { background: rgba(255,255,255,0.08); padding: 2px 5px; border-radius: 4px; font-size: 0.85em; }
+    .chat-answer pre { background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; overflow-x: auto; }
+    .chat-answer blockquote { border-left: 3px solid rgba(0,212,255,0.3); margin: 8px 0; padding: 4px 12px; color: #aaa; }
+    .chat-answer table { border-collapse: collapse; width: 100%; margin: 8px 0; }
+    .chat-answer th, .chat-answer td { border: 1px solid rgba(255,255,255,0.1); padding: 6px 10px; font-size: 0.85em; }
+    .chat-answer th { background: rgba(255,255,255,0.05); }
+    @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0;} }
     .chat-sources {
         margin-top: 8px;
         font-size: 0.78rem;
@@ -1120,11 +1126,14 @@ async function askMyDocs() {
                     var evt = JSON.parse(line.substring(6));
                     if (evt.type === 'content' || evt.type === 'token') {
                         fullAnswer += evt.data;
-                        // Show plain text while streaming (fast)
-                        answerEl.textContent = fullAnswer;
+                        if (typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
+                            answerEl.innerHTML = DOMPurify.sanitize(marked.parse(fullAnswer)) + '<span style="color:#00d4ff;animation:blink 1s infinite;">▌</span>';
+                        } else {
+                            answerEl.textContent = fullAnswer;
+                        }
                         answerEl.scrollTop = answerEl.scrollHeight;
                     } else if (evt.type === 'done') {
-                        // Render markdown once streaming is complete
+                        // Final render without cursor
                         if (fullAnswer && typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
                             answerEl.innerHTML = DOMPurify.sanitize(marked.parse(fullAnswer));
                         }
