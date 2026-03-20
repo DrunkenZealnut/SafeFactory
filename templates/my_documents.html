@@ -693,7 +693,8 @@ async function loadBookmarks(page) {
         const json = await res.json();
         if (!json.success) throw new Error(json.error);
         renderBookmarks(json.data);
-        updateChatSection();
+        // Non-blocking: don't let chat section errors affect bookmark list
+        updateChatSection().catch(function(e) { console.error('Chat section:', e); });
     } catch (e) {
         document.getElementById('bookmarkContainer').innerHTML =
             `<div class="empty-state"><div class="icon">&#x26A0;</div><div>${e.message || '불러오기 실패'}</div></div>`;
@@ -1034,7 +1035,7 @@ async function updateChatSection() {
         while (true) {
             var res = await fetch('/api/v1/bookmarks?page=' + page + '&per_page=50');
             var j = await res.json();
-            if (!j.success || !j.data.items.length) break;
+            if (!j.success || !j.data || !j.data.items || !j.data.items.length) break;
             allItems = allItems.concat(j.data.items);
             if (page >= j.data.pages) break;
             page++;
