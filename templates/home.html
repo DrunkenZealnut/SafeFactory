@@ -381,19 +381,25 @@
     .rm-legend-dot {
         width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
     }
-    /* Accessible node list (sr-only visual, keyboard navigable) */
+    /* Accessible node list — visually hidden, keyboard/sr accessible */
     .graph-a11y-list {
-        position: relative; z-index: 2;
+        position: absolute; width: 1px; height: 1px;
+        padding: 0; margin: -1px; overflow: hidden;
+        clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+    }
+    .graph-a11y-list:focus-within {
+        position: relative; width: auto; height: auto;
+        clip: auto; white-space: normal; margin: 0;
         display: flex; flex-wrap: wrap; gap: 6px 10px;
-        padding-top: 8px;
+        padding-top: 8px; z-index: 2;
     }
     .graph-a11y-list a {
         font-size: 10px; color: var(--sf-graph-text-dim);
         text-decoration: none; padding: 2px 6px;
         border: 1px solid var(--sf-graph-divider);
-        border-radius: 4px; transition: all 0.2s;
+        border-radius: 4px;
     }
-    .graph-a11y-list a:hover, .graph-a11y-list a:focus {
+    .graph-a11y-list a:focus {
         color: var(--sf-graph-text); border-color: var(--sf-graph-border);
         outline: 1px solid var(--sf-graph-tooltip-border);
     }
@@ -947,7 +953,7 @@ function initRoadmapGraph() {
         var procs = ROADMAP.processes, n = procs.length;
         for (var i = 0; i < n; i++) {
             var a = (i / n) * Math.PI * 2 - Math.PI / 2;
-            var dist = Math.min(W, H) * 0.22;
+            var dist = Math.min(W, H) * 0.28;
             var pIdx = nodes.length;
             nodes.push({ x: cx + dist * Math.cos(a) + (Math.random()-0.5)*20,
                 y: cy + dist * Math.sin(a) + (Math.random()-0.5)*20,
@@ -957,7 +963,7 @@ function initRoadmapGraph() {
             var kids = procs[i].children;
             for (var j = 0; j < kids.length; j++) {
                 var a2 = a + (j - 1) * 0.35;
-                var dist2 = dist * 1.7;
+                var dist2 = dist * 1.8;
                 var kIdx = nodes.length;
                 nodes.push({ x: cx + dist2 * Math.cos(a2) + (Math.random()-0.5)*30,
                     y: cy + dist2 * Math.sin(a2) + (Math.random()-0.5)*30,
@@ -968,7 +974,7 @@ function initRoadmapGraph() {
                 var leafs = kids[j].children;
                 for (var k = 0; k < leafs.length; k++) {
                     var a3 = a2 + (k - 1) * 0.18;
-                    var dist3 = dist * 2.4;
+                    var dist3 = dist * 2.5;
                     var lIdx = nodes.length;
                     nodes.push({ x: cx + dist3 * Math.cos(a3) + (Math.random()-0.5)*40,
                         y: cy + dist3 * Math.sin(a3) + (Math.random()-0.5)*40,
@@ -983,13 +989,13 @@ function initRoadmapGraph() {
 
     // Force simulation
     function simulate() {
-        var cx = W/2, cy = H/2, damping = 0.92, pad = 20;
+        var cx = W/2, cy = H/2, damping = 0.92, pad = 10;
         for (var i = 0; i < nodes.length; i++) {
             var nd = nodes[i];
             if (nd.fixed) continue;
             // Gravity to center
             var dx = cx - nd.x, dy = cy - nd.y;
-            var grav = 0.0003 * (nd.level === 1 ? 1.5 : nd.level === 2 ? 1 : 0.6);
+            var grav = 0.0002 * (nd.level === 1 ? 1.5 : nd.level === 2 ? 1 : 0.5);
             nd.vx += dx * grav; nd.vy += dy * grav;
         }
         // Edge springs
@@ -997,7 +1003,7 @@ function initRoadmapGraph() {
             var a = nodes[edges[e].from], b = nodes[edges[e].to];
             var dx = b.x - a.x, dy = b.y - a.y;
             var dist = Math.sqrt(dx*dx + dy*dy) || 1;
-            var target = b.level === 1 ? W*0.18 : b.level === 2 ? W*0.12 : W*0.08;
+            var target = b.level === 1 ? W*0.24 : b.level === 2 ? W*0.16 : W*0.11;
             var force = (dist - target) * 0.003;
             var fx = (dx / dist) * force, fy = (dy / dist) * force;
             if (!b.fixed) { b.vx -= fx; b.vy -= fy; }
@@ -1010,9 +1016,9 @@ function initRoadmapGraph() {
                 if (a.level !== b.level) continue;
                 var dx = b.x - a.x, dy = b.y - a.y;
                 var dist = Math.sqrt(dx*dx + dy*dy) || 1;
-                var minDist = (a.r + b.r) * 4;
+                var minDist = (a.r + b.r) * 5;
                 if (dist < minDist) {
-                    var force = (minDist - dist) * 0.01 / dist;
+                    var force = (minDist - dist) * 0.015 / dist;
                     var fx = dx * force, fy = dy * force;
                     if (!a.fixed) { a.vx -= fx; a.vy -= fy; }
                     if (!b.fixed) { b.vx += fx; b.vy += fy; }
