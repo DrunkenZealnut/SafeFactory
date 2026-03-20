@@ -870,10 +870,14 @@ function renderNcsModules(catIdx) {
     _currentCatIdx = catIdx;
     var cat = _ncsData[catIdx];
     var el = document.getElementById('ncsModules');
+    if (!cat || !Array.isArray(cat.modules)) {
+        el.innerHTML = '<div style="padding:8px;color:#666;font-size:0.8rem;">표시할 모듈이 없습니다.</div>';
+        return;
+    }
     el.innerHTML = cat.modules.map(function(m, i) {
         var t = escapeHtml(m.title);
         var sf = 'documents/semiconductor/ncs/data/' + escapeAttr(cat.name) + '/' + escapeAttr(m.dirname);
-        return '<div class="ncs-module">' +
+        return '<div class="ncs-module" role="button" tabindex="0" onkeydown="if(event.key===\'Enter\')previewNcsModule(\'' + escapeAttr(m.dirname).replace(/'/g, "\\'") + '\',\'' + escapeAttr(cat.name).replace(/'/g, "\\'") + '\',\'' + t.replace(/'/g, "\\'") + '\')">' +
             '<input type="checkbox" class="ncs-module-check" data-title="' + escapeAttr(m.title) + '" data-sf="' + sf + '" onchange="updateNcsCount()" onclick="event.stopPropagation()">' +
             '<span class="ncs-module-code">' + escapeHtml(m.code || '') + '</span>' +
             '<span class="ncs-module-title" onclick="previewNcsModule(\'' + escapeAttr(m.dirname).replace(/'/g, "\\'") + '\',\'' + escapeAttr(cat.name).replace(/'/g, "\\'") + '\',\'' + t.replace(/'/g, "\\'") + '\')" style="cursor:pointer;">' + t + '</span>' +

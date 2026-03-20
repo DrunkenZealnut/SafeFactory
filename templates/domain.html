@@ -1580,8 +1580,8 @@
         el.innerHTML = cat.modules.map(function(m) {
             return '<div class="ncs-module" onclick="searchNcsModule(\'' +
                 m.title.replace(/'/g, "\\'") + '\')">' +
-                '<span class="ncs-module-code">' + (m.code || '') + '</span>' +
-                '<span class="ncs-module-title">' + m.title + '</span>' +
+                '<span class="ncs-module-code">' + escapeHtml(m.code || '') + '</span>' +
+                '<span class="ncs-module-title">' + escapeHtml(m.title) + '</span>' +
                 '<span class="ncs-module-arrow">→</span></div>';
         }).join('');
     }
