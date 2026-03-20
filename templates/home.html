@@ -1175,31 +1175,45 @@ function initRoadmapGraph() {
 
         ctx.restore();
 
-        // Revalidate hover
+        // Revalidate hover + tooltip after zoom/pan/simulation
         if (lastMouseX >= 0 && !dragNode && !isPanning) {
             var wp = screenToWorld(lastMouseX, lastMouseY);
             var newHover = hitTestWorld(wp.x, wp.y);
             if (newHover !== hoverNode) {
                 hoverNode = newHover;
                 updateCursor();
-                if (!newHover) tooltip.classList.remove('visible');
+                if (newHover) {
+                    tipTitle.textContent = newHover.name.replace('\n', ' ');
+                    var h = getHeat(newHover.name.replace('\n', ''));
+                    tipInfo.textContent = newHover.desc || '';
+                    if (h > 0) tipInfo.textContent += (tipInfo.textContent ? ' · ' : '') + '인기도 ' + h;
+                } else {
+                    tooltip.classList.remove('visible');
+                }
             }
         }
 
         animId = isVisible ? requestAnimationFrame(draw) : null;
     }
 
+    function getNodeRadius(nd) {
+        var heat = getHeat(nd.name.replace('\n', ''));
+        var connBonus = Math.min(nd.conns * 0.8, 6);
+        var heatBonus = heat > 0 ? Math.min(heat / 25, 5) : 0;
+        return nd.r + connBonus + heatBonus;
+    }
+
     function hitTestWorld(wx, wy) {
         for (var i = 0; i < nodes.length; i++) {
             var nd = nodes[i], dx = wx - nd.x, dy = wy - nd.y;
-            var hitR = Math.max(nd.r + 8, 16);
+            var hitR = Math.max(getNodeRadius(nd) + 6, 16);
             if (dx*dx + dy*dy < hitR*hitR) return nd;
         }
         return null;
     }
 
     function updateCursor() {
-        canvas.style.cursor = dragNode ? 'grabbing' : hoverNode ? 'grab' : (isPanning ? 'grabbing' : 'default');
+        canvas.style.cursor = (dragNode || isPanning) ? 'grabbing' : (hoverNode && !hoverNode.fixed) ? 'grab' : hoverNode ? 'pointer' : 'default';
     }
 
     // ── Mouse events ──
@@ -1278,6 +1292,12 @@ function initRoadmapGraph() {
         updateCursor();
     });
 
+    function syncLegendActive() {
+        legendEl.querySelectorAll('.rm-legend-item').forEach(function(el) {
+            el.classList.toggle('active', selectedNode && +el.dataset.idx === selectedNode.processIdx);
+        });
+    }
+
     // Click — toggle selection (only if not dragging/panning)
     var mouseDownPos = null;
     canvas.addEventListener('mousedown', function(e) {
@@ -1303,9 +1323,11 @@ function initRoadmapGraph() {
 
     // Zoom — mouse wheel
     canvas.addEventListener('wheel', function(e) {
-        e.preventDefault();
         var zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-        cam.zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, cam.zoom * zoomFactor));
+        var nextZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, cam.zoom * zoomFactor));
+        if (nextZoom === cam.zoom) return; // at limit, allow page scroll
+        e.preventDefault();
+        cam.zoom = nextZoom;
     }, { passive: false });
 
     // Touch — tap vs scroll (no drag/zoom on mobile for simplicity)
