@@ -850,6 +850,7 @@ fetch('/api/v1/graph/data').then(function(r){return r.json();}).then(function(re
       if(!item)return;
       var t=item.dataset.type;
       filterType=(filterType===t)?null:t;
+      filterMain=null;
       syncFilterUI();
     });
   }
@@ -866,12 +867,20 @@ var dragging=null,dragOff={x:0,y:0},hovered=null,filterMain=null,filterType=null
 function syncFilterUI(){
   // Update right-side process buttons
   fb.querySelectorAll('button').forEach(function(x){
-    x.style.background=filterMain&&x.dataset.id===filterMain?'rgba(203,166,247,0.25)':'transparent';
+    var active=filterMain&&x.dataset.id===filterMain;
+    x.style.background=active?'rgba(203,166,247,0.4)':'transparent';
+    x.style.color=active?'#e2e0ff':'';
+    x.style.borderColor=active?'rgba(203,166,247,0.7)':'';
+    x.style.fontWeight=active?'600':'';
   });
   // Update left-side type legend
   var leg=document.getElementById('graphLegend');
   if(leg) leg.querySelectorAll('[data-type]').forEach(function(el){
-    el.style.background=filterType&&el.dataset.type===filterType?'rgba(200,200,255,0.15)':'';
+    var active=filterType&&el.dataset.type===filterType;
+    el.style.background=active?'rgba(200,200,255,0.25)':'';
+    el.style.borderRadius='6px';
+    el.style.fontWeight=active?'700':'';
+    el.style.color=active?'#fff':'';
   });
 }
 
@@ -891,6 +900,7 @@ function mkBtn(label,id){
     if(!id){filterMain=null;}
     else if(filterMain===id){filterMain=null;}
     else{filterMain=id;}
+    filterType=null;
     syncFilterUI();
   };
   fb.appendChild(b);
@@ -1048,6 +1058,7 @@ canvas.addEventListener('click',function(e){
   var p=getPos(e);var n=findNode(p);
   if(n&&n.t==='m'){
     if(filterMain===n.id)filterMain=null;else filterMain=n.id;
+    filterType=null;
     syncFilterUI();
   }
 });
