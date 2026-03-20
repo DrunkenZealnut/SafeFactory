@@ -916,9 +916,16 @@ function initRoadmapGraph() {
     var dpr = window.devicePixelRatio || 1;
     var W, H, nodes = [], edges = [], hoverNode = null, selectedNode = null, time = 0;
     var isVisible = true, animId = null;
-    var lastMouseX = -1, lastMouseY = -1; // track cursor for hover revalidation
+    var lastMouseX = -1, lastMouseY = -1;
 
-    // Visibility API — pause when hidden
+    // Camera (zoom/pan)
+    var cam = { x: 0, y: 0, zoom: 1 };
+    var MIN_ZOOM = 0.3, MAX_ZOOM = 3;
+
+    // Drag state
+    var dragNode = null, isPanning = false, panStart = null;
+
+    // Visibility API
     document.addEventListener('visibilitychange', function() {
         isVisible = !document.hidden;
         if (isVisible && !animId) animId = requestAnimationFrame(draw);
@@ -952,12 +959,27 @@ function initRoadmapGraph() {
         return [parseInt(hex.slice(1,3),16), parseInt(hex.slice(3,5),16), parseInt(hex.slice(5,7),16)];
     }
 
+    // Convert screen coords to world coords
+    function screenToWorld(sx, sy) {
+        return { x: (sx - W/2) / cam.zoom + W/2 - cam.x, y: (sy - H/2) / cam.zoom + H/2 - cam.y };
+    }
+
+    // Get connected node indices for a node (Obsidian-style: direct neighbors only)
+    function getConnected(nodeIdx) {
+        var set = {};
+        set[nodeIdx] = true;
+        for (var e = 0; e < edges.length; e++) {
+            if (edges[e].from === nodeIdx) set[edges[e].to] = true;
+            if (edges[e].to === nodeIdx) set[edges[e].from] = true;
+        }
+        return set;
+    }
+
     function buildGraph() {
         nodes = []; edges = [];
         var cx = W / 2, cy = H / 2;
-        // Center
         nodes.push({ x: cx, y: cy, vx: 0, vy: 0, r: 22, name: '반도체\n8대 공정',
-            level: 0, color: '#a78bfa', parent: -1, processIdx: -1, desc: '', fixed: true });
+            level: 0, color: '#a78bfa', parent: -1, processIdx: -1, desc: '', fixed: true, conns: 0 });
         var procs = ROADMAP.processes, n = procs.length;
         for (var i = 0; i < n; i++) {
             var a = (i / n) * Math.PI * 2 - Math.PI / 2;
@@ -966,7 +988,7 @@ function initRoadmapGraph() {
             nodes.push({ x: cx + dist * Math.cos(a) + (Math.random()-0.5)*20,
                 y: cy + dist * Math.sin(a) + (Math.random()-0.5)*20,
                 vx: 0, vy: 0, r: 14, name: procs[i].name, level: 1,
-                color: procs[i].color, parent: 0, processIdx: i, desc: procs[i].desc, fixed: false });
+                color: procs[i].color, parent: 0, processIdx: i, desc: procs[i].desc, fixed: false, conns: 0 });
             edges.push({ from: 0, to: pIdx });
             var kids = procs[i].children;
             for (var j = 0; j < kids.length; j++) {
@@ -977,7 +999,7 @@ function initRoadmapGraph() {
                     y: cy + dist2 * Math.sin(a2) + (Math.random()-0.5)*30,
                     vx: 0, vy: 0, r: 8, name: kids[j].name, level: 2,
                     color: procs[i].color, parent: pIdx, processIdx: i,
-                    desc: procs[i].name + ' › ' + kids[j].name, fixed: false });
+                    desc: procs[i].name + ' › ' + kids[j].name, fixed: false, conns: 0 });
                 edges.push({ from: pIdx, to: kIdx });
                 var leafs = kids[j].children;
                 for (var k = 0; k < leafs.length; k++) {
@@ -988,25 +1010,27 @@ function initRoadmapGraph() {
                         y: cy + dist3 * Math.sin(a3) + (Math.random()-0.5)*40,
                         vx: 0, vy: 0, r: 3.5, name: leafs[k], level: 3,
                         color: procs[i].color, parent: kIdx, processIdx: i,
-                        desc: procs[i].name + ' › ' + kids[j].name + ' › ' + leafs[k], fixed: false });
+                        desc: procs[i].name + ' › ' + kids[j].name + ' › ' + leafs[k], fixed: false, conns: 0 });
                     edges.push({ from: kIdx, to: lIdx });
                 }
             }
         }
+        // Count connections per node → dynamic node size
+        for (var e = 0; e < edges.length; e++) {
+            nodes[edges[e].from].conns++;
+            nodes[edges[e].to].conns++;
+        }
     }
 
-    // Force simulation
     function simulate() {
         var cx = W/2, cy = H/2, damping = 0.92, pad = 10;
         for (var i = 0; i < nodes.length; i++) {
             var nd = nodes[i];
-            if (nd.fixed) continue;
-            // Gravity to center
+            if (nd.fixed || nd.dragging) continue;
             var dx = cx - nd.x, dy = cy - nd.y;
             var grav = 0.0002 * (nd.level === 1 ? 1.5 : nd.level === 2 ? 1 : 0.5);
             nd.vx += dx * grav; nd.vy += dy * grav;
         }
-        // Edge springs
         for (var e = 0; e < edges.length; e++) {
             var a = nodes[edges[e].from], b = nodes[edges[e].to];
             var dx = b.x - a.x, dy = b.y - a.y;
@@ -1014,10 +1038,9 @@ function initRoadmapGraph() {
             var target = b.level === 1 ? W*0.24 : b.level === 2 ? W*0.16 : W*0.11;
             var force = (dist - target) * 0.003;
             var fx = (dx / dist) * force, fy = (dy / dist) * force;
-            if (!b.fixed) { b.vx -= fx; b.vy -= fy; }
-            if (!a.fixed) { a.vx += fx; a.vy += fy; }
+            if (!b.fixed && !b.dragging) { b.vx -= fx; b.vy -= fy; }
+            if (!a.fixed && !a.dragging) { a.vx += fx; a.vy += fy; }
         }
-        // Repulsion between same-level nearby nodes
         for (var i = 0; i < nodes.length; i++) {
             for (var j = i + 1; j < nodes.length; j++) {
                 var a = nodes[i], b = nodes[j];
@@ -1028,15 +1051,14 @@ function initRoadmapGraph() {
                 if (dist < minDist) {
                     var force = (minDist - dist) * 0.015 / dist;
                     var fx = dx * force, fy = dy * force;
-                    if (!a.fixed) { a.vx -= fx; a.vy -= fy; }
-                    if (!b.fixed) { b.vx += fx; b.vy += fy; }
+                    if (!a.fixed && !a.dragging) { a.vx -= fx; a.vy -= fy; }
+                    if (!b.fixed && !b.dragging) { b.vx += fx; b.vy += fy; }
                 }
             }
         }
-        // Integrate + gentle organic drift
         for (var i = 0; i < nodes.length; i++) {
             var nd = nodes[i];
-            if (nd.fixed) continue;
+            if (nd.fixed || nd.dragging) continue;
             nd.vx += Math.sin(time * 0.7 + i * 1.3) * 0.015;
             nd.vy += Math.cos(time * 0.5 + i * 0.9) * 0.015;
             nd.vx *= damping; nd.vy *= damping;
@@ -1052,47 +1074,62 @@ function initRoadmapGraph() {
         var ctx = canvas.getContext('2d');
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         ctx.clearRect(0, 0, W, H);
+
+        // Apply camera transform
+        ctx.save();
+        ctx.translate(W/2, H/2);
+        ctx.scale(cam.zoom, cam.zoom);
+        ctx.translate(-W/2 + cam.x, -H/2 + cam.y);
+
+        // Determine focus node and connected set (Obsidian-style: direct neighbors)
         var focusNode = hoverNode || selectedNode;
-        var hlProc = focusNode ? focusNode.processIdx : -1;
+        var connSet = null;
+        if (focusNode) {
+            var focusIdx = nodes.indexOf(focusNode);
+            connSet = getConnected(focusIdx);
+        }
 
         // Draw edges
         for (var e = 0; e < edges.length; e++) {
-            var a = nodes[edges[e].from], b = nodes[edges[e].to];
-            var isHl = hlProc >= 0 && b.processIdx === hlProc;
-            var dimmed = hlProc >= 0 && !isHl;
+            var ei = edges[e], a = nodes[ei.from], b = nodes[ei.to];
+            var edgeConnected = connSet && (connSet[ei.from] && connSet[ei.to]);
+            var dimmed = connSet && !edgeConnected;
             var rgb = hexToRgb(b.color);
-            var alpha = dimmed ? 0.03 : isHl ? 0.5 : 0.1;
-            var lw = dimmed ? 0.3 : isHl ? (b.level <= 2 ? 1.8 : 1) : (b.level <= 2 ? 0.7 : 0.4);
+            var alpha = dimmed ? 0.02 : edgeConnected ? 0.55 : 0.1;
+            var lw = dimmed ? 0.3 : edgeConnected ? (b.level <= 2 ? 2 : 1.2) : (b.level <= 2 ? 0.7 : 0.4);
             ctx.beginPath();
             ctx.moveTo(a.x, a.y);
             ctx.lineTo(b.x, b.y);
             ctx.strokeStyle = 'rgba(' + rgb.join(',') + ',' + alpha + ')';
-            ctx.lineWidth = lw;
+            ctx.lineWidth = lw / cam.zoom;
             ctx.stroke();
-            // Glow on highlighted edges
-            if (isHl && b.level <= 2) {
-                ctx.strokeStyle = 'rgba(' + rgb.join(',') + ',0.08)';
-                ctx.lineWidth = lw + 4;
+            if (edgeConnected && b.level <= 2) {
+                ctx.strokeStyle = 'rgba(' + rgb.join(',') + ',0.1)';
+                ctx.lineWidth = (lw + 5) / cam.zoom;
                 ctx.stroke();
             }
         }
 
-        // Draw nodes (back to front)
+        // Draw nodes
         for (var i = nodes.length - 1; i >= 0; i--) {
             var nd = nodes[i];
-            var isHl = hlProc >= 0 && (nd.processIdx === hlProc || nd.level === 0);
-            var dimmed = hlProc >= 0 && !isHl;
+            var isConn = connSet ? !!connSet[i] : false;
+            var dimmed = connSet && !isConn;
             var isHovered = hoverNode === nd;
             var heat = getHeat(nd.name.replace('\n', ''));
             var rgb = hexToRgb(nd.color);
             var pulse = Math.sin(time * 1.5 + i * 0.4) * 0.12 + 0.88;
-            var nodeR = nd.r * (isHovered ? 1.4 : 1) + (heat > 0 ? Math.min(heat / 25, 5) : 0);
 
-            // Outer glow (always for level 0-1, for hot nodes)
+            // Dynamic node size: base + connection bonus + heat bonus
+            var connBonus = Math.min(nd.conns * 0.8, 6);
+            var heatBonus = heat > 0 ? Math.min(heat / 25, 5) : 0;
+            var nodeR = (nd.r + connBonus + heatBonus) * (isHovered ? 1.35 : 1);
+
+            // Outer glow
             if (!dimmed && (nd.level <= 1 || heat > 5 || isHovered)) {
                 var glowR = nodeR * (nd.level === 0 ? 4 : nd.level === 1 ? 3.5 : 3);
                 var glowAlpha = (nd.level === 0 ? 0.12 : nd.level === 1 ? 0.08 : 0.06) * pulse;
-                if (isHovered) glowAlpha *= 2;
+                if (isHovered) glowAlpha *= 2.5;
                 var grd = ctx.createRadialGradient(nd.x, nd.y, nodeR * 0.5, nd.x, nd.y, glowR);
                 grd.addColorStop(0, 'rgba(' + rgb.join(',') + ',' + glowAlpha + ')');
                 grd.addColorStop(1, 'rgba(' + rgb.join(',') + ',0)');
@@ -1101,25 +1138,31 @@ function initRoadmapGraph() {
             }
 
             // Node body
-            var bodyAlpha = dimmed ? 0.06 : (nd.level === 0 ? 0.95 : nd.level === 1 ? 0.85 : nd.level === 2 ? 0.65 : 0.45);
+            var bodyAlpha = dimmed ? 0.04 : (nd.level === 0 ? 0.95 : nd.level === 1 ? 0.85 : nd.level === 2 ? 0.65 : 0.45);
             ctx.beginPath();
             ctx.arc(nd.x, nd.y, nodeR, 0, Math.PI * 2);
             ctx.fillStyle = 'rgba(' + rgb.join(',') + ',' + bodyAlpha * pulse + ')';
             ctx.fill();
 
-            // Bright rim
+            // Rim
             if (!dimmed && nd.level <= 2) {
                 ctx.strokeStyle = 'rgba(' + rgb.join(',') + ',' + (isHovered ? 0.9 : 0.35) + ')';
-                ctx.lineWidth = isHovered ? 2 : 0.8;
+                ctx.lineWidth = (isHovered ? 2.5 : 1) / cam.zoom;
                 ctx.stroke();
             }
 
-            // Label
-            if (dimmed && nd.level >= 3) continue;
-            var fontSize = nd.level === 0 ? 10.5 : nd.level === 1 ? 10.5 : nd.level === 2 ? 9 : 7.5;
+            // Label — fade by zoom level
+            if (dimmed && nd.level >= 2) continue;
+            var showText = (nd.level === 0) || (nd.level === 1) ||
+                           (nd.level === 2 && cam.zoom >= 0.7) ||
+                           (nd.level === 3 && cam.zoom >= 1.2);
+            if (!showText && !isHovered && !(connSet && isConn)) continue;
+            var fontSize = (nd.level === 0 ? 10.5 : nd.level === 1 ? 10.5 : nd.level === 2 ? 9 : 7.5) / cam.zoom;
             ctx.font = (nd.level <= 1 ? '700 ' : '400 ') + fontSize + 'px "Noto Sans KR",sans-serif';
             ctx.textAlign = 'center';
-            var textAlpha = dimmed ? 0.08 : (nd.level === 0 ? 0.95 : nd.level === 1 ? 0.9 : nd.level === 2 ? 0.7 : 0.45);
+            var textAlpha = dimmed ? 0.06 : (nd.level === 0 ? 0.95 : nd.level === 1 ? 0.9 : nd.level === 2 ? 0.7 : 0.45);
+            // Fade text more when zoomed out
+            if (cam.zoom < 1 && nd.level >= 2) textAlpha *= Math.max(0.3, cam.zoom);
             ctx.fillStyle = 'rgba(230,230,245,' + textAlpha + ')';
             if (nd.level === 0) {
                 var lines = nd.name.split('\n');
@@ -1130,12 +1173,15 @@ function initRoadmapGraph() {
             }
         }
 
-        // Revalidate hover against moved nodes
-        if (lastMouseX >= 0) {
-            var newHover = hitTest(lastMouseX, lastMouseY);
+        ctx.restore();
+
+        // Revalidate hover
+        if (lastMouseX >= 0 && !dragNode && !isPanning) {
+            var wp = screenToWorld(lastMouseX, lastMouseY);
+            var newHover = hitTestWorld(wp.x, wp.y);
             if (newHover !== hoverNode) {
                 hoverNode = newHover;
-                canvas.style.cursor = newHover ? 'pointer' : 'default';
+                updateCursor();
                 if (!newHover) tooltip.classList.remove('visible');
             }
         }
@@ -1143,46 +1189,110 @@ function initRoadmapGraph() {
         animId = isVisible ? requestAnimationFrame(draw) : null;
     }
 
-    function hitTest(mx, my) {
+    function hitTestWorld(wx, wy) {
         for (var i = 0; i < nodes.length; i++) {
-            var nd = nodes[i], dx = mx - nd.x, dy = my - nd.y;
+            var nd = nodes[i], dx = wx - nd.x, dy = wy - nd.y;
             var hitR = Math.max(nd.r + 8, 16);
             if (dx*dx + dy*dy < hitR*hitR) return nd;
         }
         return null;
     }
 
+    function updateCursor() {
+        canvas.style.cursor = dragNode ? 'grabbing' : hoverNode ? 'grab' : (isPanning ? 'grabbing' : 'default');
+    }
+
+    // ── Mouse events ──
     canvas.addEventListener('mousemove', function(e) {
         var rect = canvas.getBoundingClientRect();
-        var mx = (e.clientX - rect.left) * (W / rect.width);
-        var my = (e.clientY - rect.top) * (H / rect.height);
-        lastMouseX = mx; lastMouseY = my;
-        var nd = hitTest(mx, my);
+        var sx = (e.clientX - rect.left) * (W / rect.width);
+        var sy = (e.clientY - rect.top) * (H / rect.height);
+        lastMouseX = sx; lastMouseY = sy;
+
+        if (dragNode) {
+            var wp = screenToWorld(sx, sy);
+            dragNode.x = wp.x; dragNode.y = wp.y;
+            dragNode.vx = 0; dragNode.vy = 0;
+            return;
+        }
+        if (isPanning && panStart) {
+            var dx = (sx - panStart.sx) / cam.zoom;
+            var dy = (sy - panStart.sy) / cam.zoom;
+            cam.x = panStart.cx + dx;
+            cam.y = panStart.cy + dy;
+            return;
+        }
+
+        var wp = screenToWorld(sx, sy);
+        var nd = hitTestWorld(wp.x, wp.y);
         hoverNode = nd;
-        canvas.style.cursor = nd ? 'pointer' : 'default';
+        updateCursor();
         if (nd) {
             tipTitle.textContent = nd.name.replace('\n', ' ');
             var heat = getHeat(nd.name.replace('\n', ''));
             tipInfo.textContent = nd.desc || '';
             if (heat > 0) tipInfo.textContent += (tipInfo.textContent ? ' · ' : '') + '인기도 ' + heat;
-            if (nd.level === 0) tipInfo.textContent = '클릭하여 전체 학습';
+            if (nd.level === 0) tipInfo.textContent = '클릭하여 네트워크 보기';
             var tx = e.clientX - rect.left, ty = e.clientY - rect.top;
             tooltip.style.left = Math.min(tx + 14, rect.width - 190) + 'px';
             tooltip.style.top = (ty - 44) + 'px';
             tooltip.classList.add('visible');
         } else { tooltip.classList.remove('visible'); }
     });
-    canvas.addEventListener('mouseleave', function() { hoverNode = null; lastMouseX = lastMouseY = -1; tooltip.classList.remove('visible'); });
 
-    function syncLegendActive() {
-        legendEl.querySelectorAll('.rm-legend-item').forEach(function(el) {
-            el.classList.toggle('active', selectedNode && +el.dataset.idx === selectedNode.processIdx);
-        });
-    }
-
-    canvas.addEventListener('click', function(e) {
+    canvas.addEventListener('mousedown', function(e) {
         var rect = canvas.getBoundingClientRect();
-        var nd = hitTest((e.clientX-rect.left)*(W/rect.width), (e.clientY-rect.top)*(H/rect.height));
+        var sx = (e.clientX - rect.left) * (W / rect.width);
+        var sy = (e.clientY - rect.top) * (H / rect.height);
+        var wp = screenToWorld(sx, sy);
+        var nd = hitTestWorld(wp.x, wp.y);
+        if (nd && !nd.fixed) {
+            dragNode = nd;
+            nd.dragging = true;
+            updateCursor();
+        } else if (!nd) {
+            isPanning = true;
+            panStart = { sx: sx, sy: sy, cx: cam.x, cy: cam.y };
+            updateCursor();
+        }
+    });
+
+    canvas.addEventListener('mouseup', function(e) {
+        if (dragNode) {
+            var wasDrag = true;
+            dragNode.dragging = false;
+            dragNode = null;
+        }
+        if (isPanning) {
+            isPanning = false;
+            panStart = null;
+        }
+        updateCursor();
+    });
+
+    canvas.addEventListener('mouseleave', function() {
+        if (dragNode) { dragNode.dragging = false; dragNode = null; }
+        isPanning = false; panStart = null;
+        hoverNode = null; lastMouseX = lastMouseY = -1;
+        tooltip.classList.remove('visible');
+        updateCursor();
+    });
+
+    // Click — toggle selection (only if not dragging/panning)
+    var mouseDownPos = null;
+    canvas.addEventListener('mousedown', function(e) {
+        mouseDownPos = { x: e.clientX, y: e.clientY };
+    });
+    canvas.addEventListener('click', function(e) {
+        if (mouseDownPos) {
+            var dx = e.clientX - mouseDownPos.x, dy = e.clientY - mouseDownPos.y;
+            if (Math.abs(dx) > 5 || Math.abs(dy) > 5) return; // was drag/pan
+        }
+        var rect = canvas.getBoundingClientRect();
+        var sx = (e.clientX - rect.left) * (W / rect.width);
+        var sy = (e.clientY - rect.top) * (H / rect.height);
+        var wp = screenToWorld(sx, sy);
+        var nd = hitTestWorld(wp.x, wp.y);
         if (nd) {
             selectedNode = (selectedNode === nd) ? null : nd;
         } else {
@@ -1191,7 +1301,14 @@ function initRoadmapGraph() {
         syncLegendActive();
     });
 
-    // Touch — tap vs scroll
+    // Zoom — mouse wheel
+    canvas.addEventListener('wheel', function(e) {
+        e.preventDefault();
+        var zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+        cam.zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, cam.zoom * zoomFactor));
+    }, { passive: false });
+
+    // Touch — tap vs scroll (no drag/zoom on mobile for simplicity)
     var touchStart = null;
     canvas.addEventListener('touchstart', function(e) { var t=e.touches[0]; touchStart={x:t.clientX,y:t.clientY}; }, {passive:true});
     canvas.addEventListener('touchend', function(e) {
@@ -1200,12 +1317,12 @@ function initRoadmapGraph() {
         touchStart = null;
         if (Math.abs(dx)>10 || Math.abs(dy)>10) return;
         var rect = canvas.getBoundingClientRect();
-        var nd = hitTest((t.clientX-rect.left)*(W/rect.width), (t.clientY-rect.top)*(H/rect.height));
-        if (nd) {
-            selectedNode = (selectedNode === nd) ? null : nd;
-        } else {
-            selectedNode = null;
-        }
+        var sx = (t.clientX-rect.left)*(W/rect.width);
+        var sy = (t.clientY-rect.top)*(H/rect.height);
+        var wp = screenToWorld(sx, sy);
+        var nd = hitTestWorld(wp.x, wp.y);
+        if (nd) { selectedNode = (selectedNode === nd) ? null : nd; }
+        else { selectedNode = null; }
         syncLegendActive();
     });
 
