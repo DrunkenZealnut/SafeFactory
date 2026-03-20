@@ -802,99 +802,47 @@ var W,H,dpr,zoom=1,panX=0,panY=0;
 function resize(){var r=container.getBoundingClientRect();dpr=window.devicePixelRatio||1;W=r.width;H=r.height;canvas.width=W*dpr;canvas.height=H*dpr;canvas.style.width=W+'px';canvas.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0);}
 resize();
 
-var M='#cba6f7',S='#89b4fa',D='#f9e2af',SH='#a6e3a1',FL='#f38ba8';
-var nodes=[
-  {id:'w',l:'웨이퍼 제조',r:24,c:M,d:'단결정 실리콘 잉곳→웨이퍼 가공',t:'m',o:1},
-  {id:'ox',l:'산화 공정',r:24,c:M,d:'SiO₂ 절연막 형성 (Gate Oxide)',t:'m',o:2},
-  {id:'ph',l:'포토리소그래피',r:24,c:M,d:'마스크 패턴을 웨이퍼에 전사',t:'m',o:3},
-  {id:'et',l:'식각 공정',r:24,c:M,d:'불필요 박막 선택적 제거',t:'m',o:4},
-  {id:'dep',l:'박막 증착',r:24,c:M,d:'CVD/PVD/ALD 등 박막 형성',t:'m',o:5},
-  {id:'met',l:'금속 배선',r:24,c:M,d:'다층 Cu/Al 배선 형성',t:'m',o:6},
-  {id:'eds',l:'EDS 검사',r:24,c:M,d:'전기적 다이 분류 (Electrical Die Sorting)',t:'m',o:7},
-  {id:'pkg',l:'패키징',r:24,c:M,d:'칩 보호·방열·외부 연결',t:'m',o:8},
-  {id:'ingot',l:'잉곳 성장',r:14,c:S,d:'고순도 실리콘 단결정 성장',t:'s',p:'w'},
-  {id:'slice',l:'슬라이싱',r:14,c:S,d:'잉곳을 얇은 웨이퍼로 절단',t:'s',p:'w'},
-  {id:'polish',l:'연마/세정',r:14,c:S,d:'표면 평탄화 및 불순물 제거',t:'s',p:'w'},
-  {id:'cz',l:'CZ법',r:9,c:D,d:'초크랄스키법 - 대구경 잉곳 성장',t:'d',p:'ingot'},
-  {id:'fz',l:'FZ법',r:9,c:D,d:'부유대법 - 고순도 잉곳',t:'d',p:'ingot'},
-  {id:'dwire',l:'다이아몬드 와이어',r:9,c:D,d:'와이어소를 이용한 정밀 절단',t:'d',p:'slice'},
-  {id:'lap',l:'래핑/폴리싱',r:9,c:D,d:'기계적·화학적 표면 평탄화',t:'d',p:'polish'},
-  {id:'dry_ox',l:'건식 산화',r:14,c:S,d:'O₂ 가스로 고품질 얇은 산화막',t:'s',p:'ox'},
-  {id:'wet_ox',l:'습식 산화',r:14,c:S,d:'H₂O 증기로 빠른 두꺼운 산화막',t:'s',p:'ox'},
-  {id:'thermal',l:'열산화',r:9,c:D,d:'800~1200°C 고온 퍼니스',t:'d',p:'dry_ox'},
-  {id:'rto',l:'RTO',r:9,c:D,d:'급속 열처리 산화 (Rapid Thermal)',t:'d',p:'dry_ox'},
-  {id:'wvg',l:'WVG',r:9,c:D,d:'Water Vapor Generator 습식 산화',t:'d',p:'wet_ox'},
-  {id:'pr',l:'감광제 도포',r:14,c:S,d:'포토레지스트 스핀코팅',t:'s',p:'ph'},
-  {id:'exp',l:'노광',r:14,c:S,d:'빛으로 패턴 전사 (Stepper/Scanner)',t:'s',p:'ph'},
-  {id:'dev',l:'현상',r:14,c:S,d:'노광된 감광제 선택적 용해',t:'s',p:'ph'},
-  {id:'spin',l:'스핀코팅',r:9,c:D,d:'3000~6000rpm 균일 도포',t:'d',p:'pr'},
-  {id:'softbk',l:'소프트베이크',r:9,c:D,d:'용매 증발 90~110°C',t:'d',p:'pr'},
-  {id:'euv',l:'EUV',r:9,c:D,d:'극자외선 13.5nm, 5nm 이하 공정',t:'d',p:'exp'},
-  {id:'duv',l:'DUV/ArF',r:9,c:D,d:'심자외선 193nm + 이머전',t:'d',p:'exp'},
-  {id:'mask',l:'레티클/마스크',r:9,c:D,d:'회로 패턴 원판 (4x 축소)',t:'d',p:'exp'},
-  {id:'pdev',l:'양성/음성 현상',r:9,c:D,d:'Positive/Negative tone 선택',t:'d',p:'dev'},
-  {id:'dry_et',l:'건식 식각',r:14,c:S,d:'플라즈마 기반 이방성 식각',t:'s',p:'et'},
-  {id:'wet_et',l:'습식 식각',r:14,c:S,d:'화학 용액 등방성 식각',t:'s',p:'et'},
-  {id:'rie',l:'RIE',r:9,c:D,d:'반응성 이온 식각',t:'d',p:'dry_et'},
-  {id:'icp',l:'ICP',r:9,c:D,d:'유도결합 플라즈마 고밀도 식각',t:'d',p:'dry_et'},
-  {id:'etch_ald',l:'ALE',r:9,c:D,d:'원자층 식각 - 원자 단위 정밀',t:'d',p:'dry_et'},
-  {id:'boe',l:'BOE',r:9,c:D,d:'버퍼드 불산 SiO₂ 제거',t:'d',p:'wet_et'},
-  {id:'sc1',l:'SC-1/SC-2',r:9,c:D,d:'RCA 세정 기반 습식 공정',t:'d',p:'wet_et'},
-  {id:'cvd',l:'CVD',r:14,c:S,d:'화학 기상 증착 (기체 반응)',t:'s',p:'dep'},
-  {id:'pvd',l:'PVD',r:14,c:S,d:'물리 기상 증착 (물리적 전달)',t:'s',p:'dep'},
-  {id:'ald',l:'ALD',r:14,c:S,d:'원자층 증착 (단분자층 제어)',t:'s',p:'dep'},
-  {id:'epi',l:'에피택시',r:14,c:S,d:'결정 성장 박막 증착',t:'s',p:'dep'},
-  {id:'pecvd',l:'PECVD',r:9,c:D,d:'플라즈마 보조 CVD (저온 가능)',t:'d',p:'cvd'},
-  {id:'lpcvd',l:'LPCVD',r:9,c:D,d:'저압 CVD - 균일성 우수',t:'d',p:'cvd'},
-  {id:'mocvd',l:'MOCVD',r:9,c:D,d:'유기금속 CVD - III-V 화합물',t:'d',p:'cvd'},
-  {id:'sput',l:'스퍼터링',r:9,c:D,d:'Ar 이온 타겟 충돌 증착',t:'d',p:'pvd'},
-  {id:'evap',l:'증발법',r:9,c:D,d:'열/전자빔 증발 증착',t:'d',p:'pvd'},
-  {id:'thald',l:'Thermal ALD',r:9,c:D,d:'열에너지 구동 자기제한 증착',t:'d',p:'ald'},
-  {id:'peald',l:'PE-ALD',r:9,c:D,d:'플라즈마 보조 ALD (저온)',t:'d',p:'ald'},
-  {id:'mbe',l:'MBE',r:9,c:D,d:'분자선 에피택시 - 초정밀',t:'d',p:'epi'},
-  {id:'dam',l:'다마신 공정',r:14,c:S,d:'절연막에 트렌치 형성 후 Cu 매립',t:'s',p:'met'},
-  {id:'bar',l:'배리어 메탈',r:14,c:S,d:'Cu 확산 방지층 (Ta/TaN)',t:'s',p:'met'},
-  {id:'sdam',l:'싱글 다마신',r:9,c:D,d:'비아/트렌치 개별 형성',t:'d',p:'dam'},
-  {id:'ddam',l:'듀얼 다마신',r:9,c:D,d:'비아+트렌치 동시 형성 (주류)',t:'d',p:'dam'},
-  {id:'ecp',l:'전해도금 (ECP)',r:9,c:D,d:'Cu 시드 위에 전기도금 매립',t:'d',p:'dam'},
-  {id:'tatan',l:'Ta/TaN',r:9,c:D,d:'PVD/ALD 배리어층 증착',t:'d',p:'bar'},
-  {id:'wtest',l:'웨이퍼 테스트',r:14,c:S,d:'프로브 카드로 다이별 전기 검사',t:'s',p:'eds'},
-  {id:'burn',l:'번인 테스트',r:14,c:S,d:'가속 수명 스트레스 시험',t:'s',p:'eds'},
-  {id:'probe',l:'프로브 카드',r:9,c:D,d:'미세 탐침으로 패드 접촉',t:'d',p:'wtest'},
-  {id:'inkd',l:'잉킹/맵핑',r:9,c:D,d:'불량 다이 마킹 및 웨이퍼맵 생성',t:'d',p:'wtest'},
-  {id:'htol',l:'HTOL',r:9,c:D,d:'고온 동작 수명 시험 125°C',t:'d',p:'burn'},
-  {id:'dice',l:'다이싱',r:14,c:S,d:'웨이퍼를 개별 칩으로 분리',t:'s',p:'pkg'},
-  {id:'bond',l:'본딩',r:14,c:S,d:'칩과 리드프레임 전기 연결',t:'s',p:'pkg'},
-  {id:'mold',l:'몰딩',r:14,c:S,d:'에폭시 수지로 칩 밀봉 보호',t:'s',p:'pkg'},
-  {id:'ftest',l:'최종 검사',r:14,c:S,d:'패키징 후 기능·신뢰성 검사',t:'s',p:'pkg'},
-  {id:'blade',l:'블레이드 다이싱',r:9,c:D,d:'다이아몬드 블레이드 절단',t:'d',p:'dice'},
-  {id:'laser',l:'레이저 다이싱',r:9,c:D,d:'스텔스/어블레이션 비접촉',t:'d',p:'dice'},
-  {id:'wb',l:'와이어 본딩',r:9,c:D,d:'금/구리선 볼-웨지 연결',t:'d',p:'bond'},
-  {id:'fc',l:'플립칩',r:9,c:D,d:'범프로 기판에 직접 접합',t:'d',p:'bond'},
-  {id:'tsv',l:'TSV',r:9,c:D,d:'실리콘 관통 비아 3D 적층',t:'d',p:'bond'},
-  {id:'emc',l:'EMC',r:9,c:D,d:'에폭시 몰딩 컴파운드 경화',t:'d',p:'mold'},
-  {id:'mark',l:'레이저 마킹',r:9,c:D,d:'칩 표면 식별 정보 각인',t:'d',p:'ftest'},
-  {id:'cmp',l:'CMP',r:15,c:SH,d:'화학적 기계적 연마 - 전 공정 평탄화',t:'sh'},
-  {id:'plasma',l:'플라즈마 기술',r:15,c:SH,d:'식각·증착·세정 등 핵심 기반 기술',t:'sh'},
-  {id:'clean',l:'세정 공정',r:15,c:SH,d:'매 공정 전후 웨이퍼 표면 정화',t:'sh'},
-  {id:'ion',l:'이온 주입',r:15,c:SH,d:'도핑을 통한 전기적 특성 제어',t:'sh'},
-  {id:'anneal',l:'열처리',r:15,c:SH,d:'결정 결함 회복·활성화 어닐링',t:'sh'},
-];
+// Fetch graph data from API (DB-driven, AI-generated)
+var nodes=[], edges=[], nmap={}, cx, cy;
+var graphLoaded=false;
 
-var edges=[];
-var mainIds=['w','ox','ph','et','dep','met','eds','pkg'];
-for(var i=0;i<mainIds.length-1;i++) edges.push({s:mainIds[i],t:mainIds[i+1],flow:true});
-nodes.forEach(function(n){if(n.p)edges.push({s:n.p,t:n.id});});
-[['w','cmp'],['dep','cmp'],['met','cmp'],['et','plasma'],['dep','plasma'],['dry_et','plasma'],['pecvd','plasma'],['peald','plasma'],
- ['w','clean'],['ph','clean'],['et','clean'],['dep','clean'],['met','clean'],
- ['ox','ion'],['et','ion'],['w','anneal'],['ox','anneal'],['met','anneal']].forEach(function(pair){edges.push({s:pair[0],t:pair[1]});});
+fetch('/api/v1/graph/data').then(function(r){return r.json();}).then(function(resp){
+  if(!resp.success||!resp.data||resp.data.empty) {
+    // Show empty state message
+    ctx.fillStyle='#6c7086';ctx.font='14px "Noto Sans KR",sans-serif';
+    ctx.textAlign='center';ctx.fillText('관리자 페이지에서 그래프를 생성해주세요',W/2,H/2);
+    return;
+  }
+  var data=resp.data;
+  data.nodes.forEach(function(n){
+    nodes.push({id:n.id,l:n.l,r:n.r||14,c:n.c||'#89b4fa',d:n.d||'',t:n.t||'s',o:n.o,p:n.p});
+  });
+  data.edges.forEach(function(e){
+    edges.push({s:e.s,t:e.t,flow:!!e.flow});
+  });
+  // Also add parent→child edges from node.p (if not already in edges)
+  var edgeSet={};
+  edges.forEach(function(e){edgeSet[e.s+'→'+e.t]=true;});
+  nodes.forEach(function(n){
+    if(n.p&&!edgeSet[n.p+'→'+n.id]){edges.push({s:n.p,t:n.id,flow:false});}
+  });
 
-var nmap={};var cx=W/2,cy=H/2;
-nodes.forEach(function(n){n.x=cx+Math.random()*200-100;n.y=cy+Math.random()*200-100;n.vx=0;n.vy=0;nmap[n.id]=n;});
-nodes.filter(function(n){return n.t==='m';}).forEach(function(n,i){
-  var ang=-Math.PI*0.75+i*(Math.PI*1.5/7);
-  n.x=cx+Math.cos(ang)*240;n.y=cy+Math.sin(ang)*190;
-});
+  cx=W/2;cy=H/2;
+  nodes.forEach(function(n){n.x=cx+Math.random()*200-100;n.y=cy+Math.random()*200-100;n.vx=0;n.vy=0;nmap[n.id]=n;});
+  var mainNodes=nodes.filter(function(n){return n.t==='m';});
+  mainNodes.forEach(function(n,i){
+    var ang=-Math.PI*0.75+i*(Math.PI*1.5/Math.max(mainNodes.length-1,1));
+    n.x=cx+Math.cos(ang)*240;n.y=cy+Math.sin(ang)*190;
+  });
+  graphLoaded=true;
+  buildFilterButtons();
+}).catch(function(e){console.error('Graph data fetch failed:',e);});
+
+function buildFilterButtons(){
+  var mainNodes=nodes.filter(function(n){return n.t==='m';});
+  mkBtn('전체',null);
+  mainNodes.forEach(function(n){mkBtn((n.o||'')+'.'+n.l,n.id);});
+}
 
 var dragging=null,dragOff={x:0,y:0},hovered=null,filterMain=null;
 
@@ -917,10 +865,10 @@ function mkBtn(label,id){
   };
   fb.appendChild(b);
 }
-mkBtn('전체',null);
-nodes.filter(function(n){return n.t==='m';}).forEach(function(n){mkBtn(n.o+'.'+n.l,n.id);});
+// Filter buttons are built dynamically after graph data loads
 
 function simulate(){
+  if(!graphLoaded)return;
   var dt=0.25;
   for(var iter=0;iter<2;iter++){
     for(var i=0;i<nodes.length;i++){for(var j=i+1;j<nodes.length;j++){
@@ -955,6 +903,7 @@ var bgColor=getComputedStyle(document.documentElement).getPropertyValue('--sf-gr
 
 function draw(){
   ctx.clearRect(0,0,W,H);ctx.fillStyle=bgColor;ctx.fillRect(0,0,W,H);
+  if(!graphLoaded)return;
   ctx.save();ctx.translate(cx+panX,cy+panY);ctx.scale(zoom,zoom);ctx.translate(-cx,-cy);
 
   var filterSet=filterMain?getTree(filterMain):null;
