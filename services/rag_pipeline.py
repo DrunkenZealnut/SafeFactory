@@ -835,6 +835,24 @@ def run_rag_pipeline(data):
     # ========================================
     domain_filter = build_domain_filter(search_query, namespace)
 
+    # Support source_file restriction (e.g., "my documents" chat)
+    # When source_files is provided, REPLACE domain_filter entirely
+    # (domain_filter may conflict with source_file paths)
+    source_files = data.get('source_files')
+    if source_files and isinstance(source_files, list):
+        # Expand folder paths to include common file extensions
+        expanded = set(source_files)
+        for sf in source_files:
+            if not sf.endswith(('.md', '.json', '.pdf', '.txt')):
+                base = sf.rstrip('/')
+                name = base.split('/')[-1]
+                for ext in ('.md', '.json'):
+                    expanded.add(f'{base}/{name}{ext}')
+        sf_list = list(expanded)
+        domain_filter = {'source_file': {'$in': sf_list}}
+        logging.info("[RAG] source_files filter REPLACES domain_filter: %d files (expanded from %d)",
+                     len(sf_list), len(source_files))
+
     _t0 = time.perf_counter()
     top_k_mult = route_cfg.get('top_k_mult', TOP_K_DEFAULT_MULT)
     if skip_bm25:
