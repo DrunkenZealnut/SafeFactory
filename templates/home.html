@@ -1229,10 +1229,7 @@ function initRoadmapGraph() {
         } else {
             selectedNode = target;
         }
-        // Update active state on legend items
-        legendEl.querySelectorAll('.rm-legend-item').forEach(function(el) {
-            el.classList.toggle('active', selectedNode && +el.dataset.idx === selectedNode.processIdx);
-        });
+        syncLegendActive();
     });
     // Keyboard enter/space support for legend
     legendEl.addEventListener('keydown', function(e) {
