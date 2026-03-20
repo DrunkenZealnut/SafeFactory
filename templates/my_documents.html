@@ -2,6 +2,13 @@
 
 {% block title %}나의 자료 - SafeFactory{% endblock %}
 
+{% block head_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/marked@17.0.2/lib/marked.umd.js"
+    integrity="sha384-MORynz2HhOGeXoX8l0HjS/jigIh/wXMRLN32OE9D4aSjqDBzPQkY3XP/FBWd1r+L" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"
+    integrity="sha384-EqHWMxrjKJu0gWlpfsH2JIjz1QBUKjEFmDDJjAm7xH2pJJDMHmKvAoa/4OYdCBu" crossorigin="anonymous"></script>
+{% endblock %}
+
 {% block head_extra %}
     body {
         background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
