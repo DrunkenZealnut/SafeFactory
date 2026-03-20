@@ -49,6 +49,16 @@
     --sf-input-border: #e2e8f0;
     --sf-heading-color: #1e293b;
 
+    /* ── 지식 그래프 (Obsidian-style) ── */
+    --sf-graph-bg:          #0a0a0f;
+    --sf-graph-border:      rgba(120, 120, 160, 0.12);
+    --sf-graph-text:        rgba(220, 220, 240, 0.9);
+    --sf-graph-text-dim:    rgba(160, 160, 190, 0.5);
+    --sf-graph-text-muted:  rgba(140, 140, 170, 0.6);
+    --sf-graph-tooltip-bg:  rgba(12, 12, 20, 0.96);
+    --sf-graph-tooltip-border: rgba(140, 120, 255, 0.25);
+    --sf-graph-divider:     rgba(255, 255, 255, 0.04);
+
     /* ── 응급 Fast-Track ── */
     --sf-emergency:       #ef4444;
     --sf-emergency-bg:    #fef2f2;
