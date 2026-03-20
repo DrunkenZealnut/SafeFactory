@@ -378,6 +378,13 @@
         cursor: pointer; transition: color 0.2s; text-decoration: none;
     }
     .rm-legend-item:hover { color: var(--sf-graph-text); }
+    .rm-legend-item.active {
+        color: var(--sf-graph-text);
+        font-weight: 600;
+    }
+    .rm-legend-item.active .rm-legend-dot {
+        box-shadow: 0 0 6px currentColor;
+    }
     .rm-legend-dot {
         width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
     }
@@ -1041,7 +1048,7 @@ function initRoadmapGraph() {
 
     function draw() {
         time += 0.016;
-        simulate();
+        if (!selectedNode) simulate();
         var ctx = canvas.getContext('2d');
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         ctx.clearRect(0, 0, W, H);
@@ -1167,15 +1174,21 @@ function initRoadmapGraph() {
     });
     canvas.addEventListener('mouseleave', function() { hoverNode = null; lastMouseX = lastMouseY = -1; tooltip.classList.remove('visible'); });
 
+    function syncLegendActive() {
+        legendEl.querySelectorAll('.rm-legend-item').forEach(function(el) {
+            el.classList.toggle('active', selectedNode && +el.dataset.idx === selectedNode.processIdx);
+        });
+    }
+
     canvas.addEventListener('click', function(e) {
         var rect = canvas.getBoundingClientRect();
         var nd = hitTest((e.clientX-rect.left)*(W/rect.width), (e.clientY-rect.top)*(H/rect.height));
         if (nd) {
-            // Toggle selection: click same node deselects, click different selects
             selectedNode = (selectedNode === nd) ? null : nd;
         } else {
             selectedNode = null;
         }
+        syncLegendActive();
     });
 
     // Touch — tap vs scroll
@@ -1193,14 +1206,38 @@ function initRoadmapGraph() {
         } else {
             selectedNode = null;
         }
+        syncLegendActive();
     });
 
-    // Accessible legend
+    // Interactive legend — click highlights graph, no page navigation
     var legendEl = document.getElementById('roadmapLegend');
-    legendEl.innerHTML = ROADMAP.processes.map(function(p) {
-        return '<a class="rm-legend-item" href="/learn?q=' + encodeURIComponent(p.name + ' 공정') + '">' +
-            '<span class="rm-legend-dot" style="background:' + p.color + '"></span>' + p.name + '</a>';
+    legendEl.innerHTML = ROADMAP.processes.map(function(p, i) {
+        return '<span class="rm-legend-item" tabindex="0" role="button" data-idx="' + i + '">' +
+            '<span class="rm-legend-dot" style="background:' + p.color + '"></span>' + p.name + '</span>';
     }).join('');
+    legendEl.addEventListener('click', function(e) {
+        var item = e.target.closest('.rm-legend-item');
+        if (!item) return;
+        var idx = +item.dataset.idx;
+        // Find the level-1 node for this process
+        var target = null;
+        for (var i = 0; i < nodes.length; i++) {
+            if (nodes[i].level === 1 && nodes[i].processIdx === idx) { target = nodes[i]; break; }
+        }
+        if (target && selectedNode && selectedNode.processIdx === idx) {
+            selectedNode = null; // toggle off
+        } else {
+            selectedNode = target;
+        }
+        syncLegendActive();
+    });
+    // Keyboard enter/space support for legend
+    legendEl.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            e.target.click();
+        }
+    });
 
     // Keyboard-accessible node list (all clickable nodes as links)
     var a11yEl = document.getElementById('graphA11yList');
