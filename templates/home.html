@@ -850,11 +850,7 @@ fetch('/api/v1/graph/data').then(function(r){return r.json();}).then(function(re
       if(!item)return;
       var t=item.dataset.type;
       filterType=(filterType===t)?null:t;
-      filterMain=null; // clear process filter when type filter active
-      fb.querySelectorAll('button').forEach(function(x){x.style.background='transparent';});
-      legendEl.querySelectorAll('[data-type]').forEach(function(el){
-        el.style.background=(filterType&&el.dataset.type===filterType)?'rgba(200,200,255,0.15)':'';
-      });
+      syncFilterUI();
     });
   }
 }).catch(function(e){console.error('Graph data fetch failed:',e);});
@@ -866,6 +862,18 @@ function buildFilterButtons(){
 }
 
 var dragging=null,dragOff={x:0,y:0},hovered=null,filterMain=null,filterType=null;
+
+function syncFilterUI(){
+  // Update right-side process buttons
+  fb.querySelectorAll('button').forEach(function(x){
+    x.style.background=filterMain&&x.dataset.id===filterMain?'rgba(203,166,247,0.25)':'transparent';
+  });
+  // Update left-side type legend
+  var leg=document.getElementById('graphLegend');
+  if(leg) leg.querySelectorAll('[data-type]').forEach(function(el){
+    el.style.background=filterType&&el.dataset.type===filterType?'rgba(200,200,255,0.15)':'';
+  });
+}
 
 function getConn(node){var s=new Set();edges.forEach(function(e){if(e.s===node.id)s.add(e.t);if(e.t===node.id)s.add(e.s);});return s;}
 function getTree(rootId){
@@ -880,9 +888,10 @@ var fb=document.getElementById('graphFilter');
 function mkBtn(label,id){
   var b=document.createElement('button');b.textContent=label;b.dataset.id=id||'';
   b.onclick=function(){
-    if(!id){filterMain=null;fb.querySelectorAll('button').forEach(function(x){x.style.background='transparent';});return;}
-    if(filterMain===id){filterMain=null;fb.querySelectorAll('button').forEach(function(x){x.style.background='transparent';});}
-    else{filterMain=id;fb.querySelectorAll('button').forEach(function(x){x.style.background=x.dataset.id===id?'rgba(203,166,247,0.25)':'transparent';});}
+    if(!id){filterMain=null;}
+    else if(filterMain===id){filterMain=null;}
+    else{filterMain=id;}
+    syncFilterUI();
   };
   fb.appendChild(b);
 }
@@ -1039,7 +1048,7 @@ canvas.addEventListener('click',function(e){
   var p=getPos(e);var n=findNode(p);
   if(n&&n.t==='m'){
     if(filterMain===n.id)filterMain=null;else filterMain=n.id;
-    fb.querySelectorAll('button').forEach(function(x){x.style.background=x.dataset.id===filterMain?'rgba(203,166,247,0.25)':'transparent';});
+    syncFilterUI();
   }
 });
 
