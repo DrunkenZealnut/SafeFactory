@@ -25,21 +25,22 @@
             position: sticky;
             top: 0;
             z-index: 100;
-            background: rgba(255, 255, 255, 0.92);
+            background: rgba(255, 255, 255, 0.95);
+            background: color-mix(in srgb, var(--sf-nav-bg) 95%, transparent);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border-bottom: 1px solid var(--sf-border);
             box-shadow: var(--sf-shadow-sm);
         }
 
-        .sf-nav-inner {
+        /* Top Row: Logo + Actions */
+        .sf-nav-top {
             max-width: 960px;
             margin: 0 auto;
-            padding: 12px 24px;
+            padding: 10px 24px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            gap: 16px;
         }
 
         /* Logo */
@@ -50,31 +51,36 @@
             text-decoration: none;
             flex-shrink: 0;
         }
-        .sf-nav-logo-icon { font-size: 24px; }
+        .sf-nav-logo-icon { font-size: 22px; }
         .sf-nav-logo-text {
             font-family: 'Outfit', 'Noto Sans KR', sans-serif;
-            font-size: 18px;
+            font-size: 17px;
             font-weight: 700;
             color: var(--sf-purple);
             letter-spacing: -0.5px;
         }
         .sf-nav-logo-text .accent { color: var(--sf-amber-dark); }
 
-        /* Center Tabs */
+        /* Tab Bar (always visible) */
+        .sf-nav-tabbar {
+            border-top: 1px solid var(--sf-border);
+        }
         .sf-nav-tabs {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 0 16px;
             display: flex;
-            gap: 2px;
+            gap: 0;
             overflow-x: auto;
             scrollbar-width: none;
         }
         .sf-nav-tabs::-webkit-scrollbar { display: none; }
 
         .sf-nav-tab {
-            font-size: 13.5px;
+            font-size: 13px;
             font-weight: 500;
             color: var(--sf-text-3);
-            padding: 8px 16px;
-            border-radius: 8px;
+            padding: 10px 16px;
             cursor: pointer;
             transition: all 0.2s;
             display: flex;
@@ -83,58 +89,35 @@
             text-decoration: none;
             white-space: nowrap;
             position: relative;
+            border-bottom: 2.5px solid transparent;
+            flex: 1;
+            justify-content: center;
         }
         .sf-nav-tab:hover {
             color: var(--sf-text-1);
-            background: var(--sf-surface, rgba(0, 0, 0, 0.03));
+            background: var(--sf-surface, #f1f3f7);
         }
         .sf-nav-tab.active {
-            background: transparent;
             color: var(--sf-purple);
             font-weight: 600;
-        }
-        .sf-nav-tab.active::after {
-            content: '';
-            position: absolute;
-            bottom: -13px;
-            left: 16px;
-            right: 16px;
-            height: 2px;
-            background: var(--sf-amber, #f59e0b);
-            border-radius: 1px;
+            border-bottom-color: var(--sf-amber, #f59e0b);
+            background: color-mix(in srgb, var(--sf-amber) 4%, transparent);
         }
 
         /* Right Actions */
         .sf-nav-actions {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
             flex-shrink: 0;
         }
-
-        .sf-nav-bell {
-            width: 38px;
-            height: 38px;
-            border-radius: 10px;
-            background: var(--sf-card-bg);
-            border: 1px solid var(--sf-border);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-            cursor: pointer;
-            position: relative;
-            transition: border-color 0.2s;
-            color: var(--sf-text-1);
-        }
-        .sf-nav-bell:hover { border-color: var(--sf-purple); }
 
         .sf-nav-login-btn {
             font-size: 13px;
             font-weight: 600;
-            color: #fff;
+            color: var(--sf-card-bg);
             background: var(--sf-purple);
-            padding: 9px 20px;
+            padding: 8px 18px;
             border-radius: 8px;
             cursor: pointer;
             border: none;
@@ -147,11 +130,11 @@
         .sf-nav-user {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
         }
         .sf-nav-avatar {
-            width: 30px;
-            height: 30px;
+            width: 28px;
+            height: 28px;
             border-radius: 50%;
             object-fit: cover;
             border: 2px solid var(--sf-border);
@@ -160,30 +143,62 @@
             font-size: 13px;
             color: var(--sf-text-2);
             font-weight: 500;
+            max-width: 80px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
-        .sf-nav-link {
-            font-size: 12px;
-            color: var(--sf-text-3);
-            text-decoration: none;
-            padding: 5px 10px;
-            border-radius: 6px;
+        .sf-nav-icon-btn {
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            background: transparent;
+            border: 1px solid var(--sf-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            cursor: pointer;
             transition: all 0.2s;
+            color: var(--sf-text-2);
+            text-decoration: none;
+            position: relative;
         }
-        .sf-nav-link:hover {
-            color: var(--sf-text-1);
-            background: rgba(0, 0, 0, 0.04);
+        .sf-nav-icon-btn:hover {
+            border-color: var(--sf-purple);
+            color: var(--sf-purple);
+            background: var(--sf-purple-lighter, #f1f5f9);
         }
-        .sf-nav-admin {
-            font-size: 12px;
+        .sf-nav-icon-btn[data-tooltip]::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--sf-purple-dark, #0f172a);
+            color: var(--sf-card-bg);
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 5px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.15s;
+        }
+        .sf-nav-icon-btn:hover[data-tooltip]::after { opacity: 1; }
+
+        .sf-nav-admin-badge {
+            font-size: 11px;
             color: var(--sf-amber-dark, #d97706);
             text-decoration: none;
-            padding: 5px 10px;
-            border-radius: 6px;
-            background: rgba(245, 158, 11, 0.08);
-            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 5px;
+            background: color-mix(in srgb, var(--sf-amber) 10%, transparent);
+            font-weight: 700;
             transition: all 0.2s;
+            line-height: 1;
         }
-        .sf-nav-admin:hover { background: rgba(245, 158, 11, 0.15); }
+        .sf-nav-admin-badge:hover { background: color-mix(in srgb, var(--sf-amber) 18%, transparent); }
 
         .logout-form {
             display: inline;
@@ -195,134 +210,39 @@
             border: none;
             cursor: pointer;
             font: inherit;
-            font-size: 12px;
-            color: var(--sf-text-4);
-            padding: 5px 10px;
-            border-radius: 6px;
+            font-size: 14px;
+            color: var(--sf-text-3);
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             transition: all 0.2s;
         }
         .sf-nav-logout-btn:hover {
-            color: var(--sf-text-1);
-            background: rgba(0, 0, 0, 0.04);
+            color: var(--sf-red);
+            background: color-mix(in srgb, var(--sf-red) 6%, transparent);
         }
 
         .sf-nav-divider {
             width: 1px;
-            height: 24px;
+            height: 20px;
             background: var(--sf-border);
-            margin: 0 4px;
-        }
-
-        /* ===== Mobile Menu ===== */
-        .sf-nav-hamburger {
-            display: none;
-            width: 38px;
-            height: 38px;
-            border-radius: 10px;
-            background: var(--sf-card-bg);
-            border: 1px solid var(--sf-border);
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            cursor: pointer;
-            color: var(--sf-text-1);
-        }
-
-        .sf-mobile-menu {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(255, 255, 255, 0.97);
-            backdrop-filter: blur(20px);
-            z-index: 200;
-            padding: 20px;
-            flex-direction: column;
-        }
-        .sf-mobile-menu.open { display: flex; }
-
-        .sf-mobile-menu-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-        }
-        .sf-mobile-menu-close {
-            width: 38px;
-            height: 38px;
-            border-radius: 10px;
-            background: var(--sf-card-bg);
-            border: 1px solid var(--sf-border);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            cursor: pointer;
-            color: var(--sf-text-1);
-        }
-
-        .sf-mobile-menu-links {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-        .sf-mobile-menu-links a {
-            font-size: 16px;
-            font-weight: 500;
-            color: var(--sf-text-2);
-            text-decoration: none;
-            padding: 14px 16px;
-            border-radius: 12px;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .sf-mobile-menu-links a:hover,
-        .sf-mobile-menu-links a.active {
-            background: rgba(30, 41, 59, 0.04);
-            color: var(--sf-text-1);
-        }
-        .sf-mobile-menu-links a.active {
-            background: var(--sf-purple);
-            color: #fff;
-        }
-
-        .sf-mobile-auth {
-            margin-top: auto;
-            padding-top: 20px;
-            border-top: 1px solid var(--sf-border);
-        }
-
-        .sf-mobile-auth-link {
-            display: block;
-            text-align: center;
-            color: var(--sf-text-2);
-            text-decoration: none;
-            padding: 12px;
-            border-radius: 10px;
-            background: var(--sf-card-bg);
-            border: 1px solid var(--sf-border);
-        }
-
-        .sf-mobile-login-btn {
-            display: block;
-            text-align: center;
-            width: 100%;
+            margin: 0 2px;
         }
 
         /* ===== Responsive ===== */
         @media (max-width: 900px) {
-            .sf-nav-tabs { display: none; }
-            .sf-nav-hamburger { display: flex; }
-            .sf-nav-inner { padding: 10px 16px; }
+            .sf-nav-top { padding: 8px 16px; }
+            .sf-nav-tabs { padding: 0 16px; }
         }
 
         @media (max-width: 600px) {
             .sf-nav-username { display: none; }
-            .sf-nav-link, .sf-nav-admin { display: none; }
+            .sf-nav-top { padding: 8px 12px; }
+            .sf-nav-tabs { padding: 0 4px; gap: 0; }
+            .sf-nav-tab { padding: 9px 8px; font-size: 12.5px; flex: 1; }
         }
 
         /* ===== Page Content Area ===== */
@@ -399,83 +319,48 @@
 <body>
     <!-- Navbar -->
     <nav class="sf-nav">
-        <div class="sf-nav-inner">
+        <div class="sf-nav-top">
             <a href="/" class="sf-nav-logo">
                 <span class="sf-nav-logo-icon">🏭</span>
                 <span class="sf-nav-logo-text">Safe<span class="accent">Factory</span></span>
             </a>
 
-            <div class="sf-nav-tabs">
-                <a href="/" class="sf-nav-tab {% block nav_home %}{% endblock %}">🏠 홈</a>
-                <a href="/learn" class="sf-nav-tab {% block nav_learn %}{% endblock %}">📚 학습하기</a>
-                <a href="/msds" class="sf-nav-tab {% block nav_msds %}{% endblock %}">🧪 MSDS</a>
-                <a href="/questions" class="sf-nav-tab {% block nav_questions %}{% endblock %}">❓ 공유질문</a>
-                <a href="/community" class="sf-nav-tab {% block nav_community %}{% endblock %}">💬 커뮤니티</a>
-                <a href="/news" class="sf-nav-tab {% block nav_news %}{% endblock %}">📰 뉴스</a>
-            </div>
-
             <div class="sf-nav-actions">
                 {% if current_user.is_authenticated %}
-                <button class="sf-nav-bell" title="알림">🔔</button>
-                <span class="sf-nav-divider"></span>
                 <div class="sf-nav-user">
                     {% if current_user.profile_image and current_user.profile_image.startswith(('http://', 'https://')) %}
                     <img src="{{ current_user.profile_image }}" alt="" class="sf-nav-avatar">
                     {% endif %}
                     <span class="sf-nav-username">{{ current_user.name }}</span>
-                    {% if current_user.role == 'admin' %}
-                    <a href="/admin" class="sf-nav-admin">관리자</a>
-                    {% endif %}
-                    <a href="/history" class="sf-nav-link">검색기록</a>
-                    <a href="/my-documents" class="sf-nav-link">나의 자료</a>
-                    <a href="/mypage" class="sf-nav-link">마이페이지</a>
-                    <form action="/logout" method="POST" class="logout-form">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="sf-nav-logout-btn">로그아웃</button>
-                    </form>
                 </div>
+                {% if current_user.role == 'admin' %}
+                <a href="/admin" class="sf-nav-admin-badge">관리자</a>
+                {% endif %}
+                <span class="sf-nav-divider"></span>
+                <a href="/history" class="sf-nav-icon-btn" data-tooltip="검색기록" aria-label="검색기록">🔍</a>
+                <a href="/my-documents" class="sf-nav-icon-btn" data-tooltip="나의 자료" aria-label="나의 자료">📄</a>
+                <a href="/mypage" class="sf-nav-icon-btn" data-tooltip="마이페이지" aria-label="마이페이지">👤</a>
+                <form action="/logout" method="POST" class="logout-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="sf-nav-logout-btn" title="로그아웃" aria-label="로그아웃">⏻</button>
+                </form>
                 {% else %}
                 <a href="/login" class="sf-nav-login-btn">로그인</a>
                 {% endif %}
+            </div>
+        </div>
 
-                <button class="sf-nav-hamburger" onclick="sfMobileMenuOpen()" aria-label="메뉴 열기" aria-expanded="false" aria-controls="sfMobileMenu">☰</button>
+        <div class="sf-nav-tabbar">
+            <div class="sf-nav-tabs">
+                <a href="/" class="sf-nav-tab {% block nav_home %}{% endblock %}">홈</a>
+                <a href="/learn" class="sf-nav-tab {% block nav_learn %}{% endblock %}">학습하기</a>
+                <a href="/msds" class="sf-nav-tab {% block nav_msds %}{% endblock %}">MSDS</a>
+                <a href="/questions" class="sf-nav-tab {% block nav_questions %}{% endblock %}">공유질문</a>
+                <a href="/community" class="sf-nav-tab {% block nav_community %}{% endblock %}">커뮤니티</a>
+                <a href="/news" class="sf-nav-tab {% block nav_news %}{% endblock %}">뉴스</a>
             </div>
         </div>
     </nav>
-
-    <!-- Mobile Menu -->
-    <div id="sfMobileMenu" class="sf-mobile-menu" role="dialog" aria-modal="true" aria-label="내비게이션 메뉴">
-        <div class="sf-mobile-menu-header">
-            <a href="/" class="sf-nav-logo">
-                <span class="sf-nav-logo-icon">🏭</span>
-                <span class="sf-nav-logo-text">Safe<span class="accent">Factory</span></span>
-            </a>
-            <button class="sf-mobile-menu-close" onclick="sfMobileMenuClose()" aria-label="메뉴 닫기">✕</button>
-        </div>
-        <div class="sf-mobile-menu-links">
-            <a href="/" class="{% block mobile_nav_home %}{% endblock %}">🏠 홈</a>
-            <a href="/learn" class="{% block mobile_nav_learn %}{% endblock %}">📚 학습하기</a>
-            <a href="/msds" class="{% block mobile_nav_msds %}{% endblock %}">🧪 MSDS</a>
-            <a href="/questions" class="{% block mobile_nav_questions %}{% endblock %}">❓ 공유질문</a>
-            <a href="/community" class="{% block mobile_nav_community %}{% endblock %}">💬 커뮤니티</a>
-            <a href="/news" class="{% block mobile_nav_news %}{% endblock %}">📰 뉴스</a>
-        </div>
-        <div class="sf-mobile-auth">
-            {% if current_user.is_authenticated %}
-            <a href="/history" class="sf-mobile-auth-link">
-                검색기록
-            </a>
-            <a href="/my-documents" class="sf-mobile-auth-link">
-                나의 자료
-            </a>
-            <a href="/mypage" class="sf-mobile-auth-link">
-                마이페이지
-            </a>
-            {% else %}
-            <a href="/login" class="sf-nav-login-btn sf-mobile-login-btn">로그인</a>
-            {% endif %}
-        </div>
-    </div>
 
     <!-- Page Content -->
     <main class="sf-page-content">
@@ -502,54 +387,7 @@
     </footer>
 
     <script>
-    (function() {
-        var menu = document.getElementById('sfMobileMenu');
-        var hamburger = document.querySelector('.sf-nav-hamburger');
-        var closeBtn = menu.querySelector('.sf-mobile-menu-close');
-
-        function getFocusable() {
-            return menu.querySelectorAll('a[href], button, [tabindex]:not([tabindex="-1"])');
-        }
-
-        window.sfMobileMenuOpen = function() {
-            menu.classList.add('open');
-            hamburger.setAttribute('aria-expanded', 'true');
-            closeBtn.focus();
-            document.body.style.overflow = 'hidden';
-        };
-
-        window.sfMobileMenuClose = function() {
-            menu.classList.remove('open');
-            hamburger.setAttribute('aria-expanded', 'false');
-            document.body.style.overflow = '';
-            hamburger.focus();
-        };
-
-        menu.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                sfMobileMenuClose();
-                return;
-            }
-            if (e.key !== 'Tab') return;
-
-            var focusable = getFocusable();
-            if (!focusable.length) return;
-            var first = focusable[0];
-            var last = focusable[focusable.length - 1];
-
-            if (e.shiftKey) {
-                if (document.activeElement === first) {
-                    e.preventDefault();
-                    last.focus();
-                }
-            } else {
-                if (document.activeElement === last) {
-                    e.preventDefault();
-                    first.focus();
-                }
-            }
-        });
-    })();
+    /* no mobile menu JS needed — tabs are always visible */
     </script>
     {% block scripts %}{% endblock %}
 </body>
