@@ -889,8 +889,13 @@ function getTree(rootId){
   var s=new Set([rootId]);var changed=true;
   // Include child tree (non-flow edges)
   while(changed){changed=false;edges.forEach(function(e){if(!e.flow&&s.has(e.s)&&!s.has(e.t)){s.add(e.t);changed=true;}});}
-  // Include all main process nodes (flow-connected) so prev/next are visible
-  nodes.forEach(function(n){if(n.t==='m')s.add(n.id);});
+  // Include prev/next main process via flow edges (1 hop only)
+  edges.forEach(function(e){
+    if(e.flow){
+      if(e.s===rootId)s.add(e.t);
+      if(e.t===rootId)s.add(e.s);
+    }
+  });
   // Include shared tech connected to the tree
   nodes.filter(function(n){return n.t==='sh';}).forEach(function(n){edges.forEach(function(e){if((e.s===n.id&&s.has(e.t))||(e.t===n.id&&s.has(e.s)))s.add(n.id);});});
   return s;
