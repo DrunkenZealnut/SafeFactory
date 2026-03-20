@@ -291,6 +291,110 @@
         cursor: default;
     }
 
+    /* NCS Category Tabs */
+    .ncs-section {
+        margin-top: 12px;
+    }
+    .ncs-section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+    .ncs-section-title {
+        font-size: 0.85rem;
+        color: #aaa;
+        font-weight: 500;
+    }
+    .ncs-total {
+        font-size: 0.75rem;
+        color: #666;
+    }
+    .ncs-tabs {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 8px;
+        flex-wrap: wrap;
+    }
+    .ncs-tab {
+        padding: 6px 12px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.04);
+        color: #999;
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        font: inherit;
+    }
+    .ncs-tab:hover { border-color: rgba(0, 212, 255, 0.3); color: #ccc; }
+    .ncs-tab.active {
+        background: rgba(0, 212, 255, 0.1);
+        border-color: rgba(0, 212, 255, 0.4);
+        color: #00d4ff;
+        font-weight: 600;
+    }
+    .ncs-tab .cnt { font-size: 0.75em; opacity: 0.6; }
+    .ncs-modules {
+        max-height: 420px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    .ncs-module {
+        display: flex;
+        align-items: center;
+        padding: 8px 10px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background 0.15s;
+        gap: 8px;
+    }
+    .ncs-module:hover { background: rgba(255, 255, 255, 0.05); }
+    .ncs-module-code {
+        font-size: 0.7rem;
+        color: #666;
+        font-family: monospace;
+        width: 90px;
+        flex-shrink: 0;
+    }
+    .ncs-module-title {
+        font-size: 0.85rem;
+        color: #ccc;
+        flex: 1;
+    }
+    .ncs-module-check {
+        flex-shrink: 0;
+        width: 18px;
+        height: 18px;
+        accent-color: #00d4ff;
+        cursor: pointer;
+    }
+    .ncs-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+        align-items: center;
+    }
+    .btn-ncs-add {
+        padding: 8px 18px;
+        border-radius: 8px;
+        border: 1px solid rgba(0, 212, 255, 0.3);
+        background: rgba(0, 212, 255, 0.1);
+        color: #00d4ff;
+        font-size: 0.85rem;
+        font: inherit;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .btn-ncs-add:hover { background: rgba(0, 212, 255, 0.2); }
+    .btn-ncs-add:disabled { opacity: 0.4; cursor: default; }
+    .ncs-selected-count {
+        font-size: 0.8rem;
+        color: #888;
+    }
+
     /* PDF Modal */
     .pdf-modal-overlay {
         display: none;
@@ -417,6 +521,19 @@
             <button onclick="searchAndAdd()">🔍 검색</button>
         </div>
         <div class="search-results" id="searchResults"></div>
+
+        <div class="ncs-section" id="ncsSection" style="display:none;">
+            <div class="ncs-section-header">
+                <span class="ncs-section-title">📚 NCS 능력단위에서 선택</span>
+                <span class="ncs-total" id="ncsTotalLabel"></span>
+            </div>
+            <div class="ncs-tabs" id="ncsTabs"></div>
+            <div class="ncs-modules" id="ncsModules"></div>
+            <div class="ncs-actions">
+                <button class="btn-ncs-add" id="btnNcsAdd" onclick="addSelectedModules()" disabled>선택 추가</button>
+                <span class="ncs-selected-count" id="ncsSelectedCount"></span>
+            </div>
+        </div>
     </div>
 
     <div id="bookmarkContainer">
@@ -721,6 +838,105 @@ async function addFromSearch(btn) {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => loadBookmarks(1));
+// NCS Category Browser
+var _ncsData = null;
+async function loadNcsCategories() {
+    try {
+        var res = await fetch('/api/v1/ncs/categories');
+        var json = await res.json();
+        if (!json.success || !json.data.categories.length) return;
+        _ncsData = json.data.categories;
+        document.getElementById('ncsSection').style.display = '';
+        document.getElementById('ncsTotalLabel').textContent = json.data.total_modules + '개 모듈';
+        var tabsEl = document.getElementById('ncsTabs');
+        tabsEl.innerHTML = _ncsData.map(function(c, i) {
+            return '<button class="ncs-tab' + (i === 0 ? ' active' : '') + '" data-idx="' + i + '">' +
+                c.icon + ' ' + c.name + ' <span class="cnt">(' + c.module_count + ')</span></button>';
+        }).join('');
+        tabsEl.addEventListener('click', function(e) {
+            var btn = e.target.closest('.ncs-tab');
+            if (!btn) return;
+            tabsEl.querySelectorAll('.ncs-tab').forEach(function(b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+            renderNcsModules(+btn.dataset.idx);
+        });
+        renderNcsModules(0);
+    } catch (e) { console.error('NCS load failed:', e); }
+}
+
+var _currentCatIdx = 0;
+
+function renderNcsModules(catIdx) {
+    _currentCatIdx = catIdx;
+    var cat = _ncsData[catIdx];
+    var el = document.getElementById('ncsModules');
+    if (!cat || !Array.isArray(cat.modules)) {
+        el.innerHTML = '<div style="padding:8px;color:#666;font-size:0.8rem;">표시할 모듈이 없습니다.</div>';
+        return;
+    }
+    el.innerHTML = cat.modules.map(function(m, i) {
+        var t = escapeHtml(m.title);
+        var sf = 'documents/semiconductor/ncs/data/' + escapeAttr(cat.name) + '/' + escapeAttr(m.dirname);
+        return '<div class="ncs-module" role="button" tabindex="0" onkeydown="if(event.key===\'Enter\')previewNcsModule(\'' + escapeAttr(m.dirname).replace(/'/g, "\\'") + '\',\'' + escapeAttr(cat.name).replace(/'/g, "\\'") + '\',\'' + t.replace(/'/g, "\\'") + '\')">' +
+            '<input type="checkbox" class="ncs-module-check" data-title="' + escapeAttr(m.title) + '" data-sf="' + sf + '" onchange="updateNcsCount()" onclick="event.stopPropagation()">' +
+            '<span class="ncs-module-code">' + escapeHtml(m.code || '') + '</span>' +
+            '<span class="ncs-module-title" onclick="previewNcsModule(\'' + escapeAttr(m.dirname).replace(/'/g, "\\'") + '\',\'' + escapeAttr(cat.name).replace(/'/g, "\\'") + '\',\'' + t.replace(/'/g, "\\'") + '\')" style="cursor:pointer;">' + t + '</span>' +
+            '</div>';
+    }).join('');
+    updateNcsCount();
+}
+
+function updateNcsCount() {
+    var checks = document.querySelectorAll('.ncs-module-check:checked');
+    var btn = document.getElementById('btnNcsAdd');
+    var label = document.getElementById('ncsSelectedCount');
+    btn.disabled = checks.length === 0;
+    label.textContent = checks.length > 0 ? checks.length + '개 선택됨' : '';
+}
+
+async function addSelectedModules() {
+    var checks = document.querySelectorAll('.ncs-module-check:checked');
+    if (!checks.length) return;
+    var btn = document.getElementById('btnNcsAdd');
+    btn.disabled = true;
+    btn.textContent = '추가 중...';
+    var added = 0;
+    for (var i = 0; i < checks.length; i++) {
+        var cb = checks[i];
+        try {
+            var res = await fetch('/api/v1/bookmarks', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    source_file: cb.dataset.sf,
+                    title: cb.dataset.title,
+                    namespace: 'semiconductor-v2'
+                })
+            });
+            var json = await res.json();
+            if (json.success) added++;
+            cb.checked = false;
+        } catch (e) {}
+    }
+    btn.textContent = '선택 추가';
+    btn.disabled = true;
+    updateNcsCount();
+    if (added > 0) {
+        alert(added + '개 자료가 추가되었습니다.');
+        loadBookmarks(currentPage);
+    }
+}
+
+function previewNcsModule(dirname, catName, title) {
+    // Try to find PDF in the module directory
+    var basePath = 'documents/semiconductor/ncs/pdfs/' + catName + '/';
+    // Use the PDF modal with a search fallback
+    openPdfFromBookmark(basePath + dirname, title, 'semiconductor-v2');
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadBookmarks(1);
+    loadNcsCategories();
+});
 </script>
 {% endblock %}

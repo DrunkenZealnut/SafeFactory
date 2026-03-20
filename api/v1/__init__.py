@@ -17,3 +17,4 @@ from api.v1 import bookmarks   # noqa: E402, F401
 from api.v1 import questions   # noqa: E402, F401
 from api.v1 import user        # noqa: E402, F401
 from api.v1 import graph       # noqa: E402, F401
+from api.v1 import ncs_browse  # noqa: E402, F401
