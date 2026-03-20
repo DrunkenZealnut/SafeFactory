@@ -843,8 +843,19 @@ fetch('/api/v1/graph/data').then(function(r){return r.json();}).then(function(re
   if(legendEl){
     legendEl.innerHTML=Object.keys(seenTypes).map(function(t){
       var info=typeInfo[t]||{label:t,size:6};
-      return '<span><span style="width:'+info.size+'px;height:'+info.size+'px;border-radius:50%;background:'+seenTypes[t]+';display:inline-block"></span>'+info.label+'</span>';
+      return '<span data-type="'+t+'" style="cursor:pointer;padding:2px 6px;border-radius:6px;transition:all 0.2s"><span style="width:'+info.size+'px;height:'+info.size+'px;border-radius:50%;background:'+seenTypes[t]+';display:inline-block"></span>'+info.label+'</span>';
     }).join('');
+    legendEl.addEventListener('click',function(e){
+      var item=e.target.closest('[data-type]');
+      if(!item)return;
+      var t=item.dataset.type;
+      filterType=(filterType===t)?null:t;
+      filterMain=null; // clear process filter when type filter active
+      fb.querySelectorAll('button').forEach(function(x){x.style.background='transparent';});
+      legendEl.querySelectorAll('[data-type]').forEach(function(el){
+        el.style.background=(filterType&&el.dataset.type===filterType)?'rgba(200,200,255,0.15)':'';
+      });
+    });
   }
 }).catch(function(e){console.error('Graph data fetch failed:',e);});
 
@@ -854,7 +865,7 @@ function buildFilterButtons(){
   mainNodes.forEach(function(n){mkBtn((n.o||'')+'.'+n.l,n.id);});
 }
 
-var dragging=null,dragOff={x:0,y:0},hovered=null,filterMain=null;
+var dragging=null,dragOff={x:0,y:0},hovered=null,filterMain=null,filterType=null;
 
 function getConn(node){var s=new Set();edges.forEach(function(e){if(e.s===node.id)s.add(e.t);if(e.t===node.id)s.add(e.s);});return s;}
 function getTree(rootId){
@@ -917,11 +928,18 @@ function draw(){
   ctx.save();ctx.translate(cx+panX,cy+panY);ctx.scale(zoom,zoom);ctx.translate(-cx,-cy);
 
   var filterSet=filterMain?getTree(filterMain):null;
+  // Type filter: build set of node IDs matching the type
+  var typeSet=null;
+  if(filterType){
+    typeSet=new Set();
+    nodes.forEach(function(n){if(n.t===filterType)typeSet.add(n.id);});
+  }
   var connSet=hovered?getConn(hovered):null;
 
   edges.forEach(function(e){
     var a=nmap[e.s],b=nmap[e.t];if(!a||!b)return;
     var alpha=0.35,lw=1;
+    if(typeSet&&!typeSet.has(e.s)&&!typeSet.has(e.t)){alpha=0.03;lw=0.3;}
     if(filterSet&&!filterSet.has(e.s)&&!filterSet.has(e.t)){alpha=0.05;lw=0.4;}
     if(hovered){
       if(e.s===hovered.id||e.t===hovered.id){alpha=0.85;lw=2.2;}
@@ -934,7 +952,9 @@ function draw(){
   // flow arrows
   edges.filter(function(e){return e.flow;}).forEach(function(e){
     var a=nmap[e.s],b=nmap[e.t];
-    var alpha=filterSet&&(!filterSet.has(e.s)||!filterSet.has(e.t))?0.03:0.3;
+    var alpha=0.3;
+    if(typeSet&&!typeSet.has(e.s)&&!typeSet.has(e.t))alpha=0.02;
+    if(filterSet&&(!filterSet.has(e.s)||!filterSet.has(e.t)))alpha=0.03;
     if(hovered){alpha=(e.s===hovered.id||e.t===hovered.id)?0.8:0.04;}
     var mx=(a.x+b.x)/2,my=(a.y+b.y)/2,ang=Math.atan2(b.y-a.y,b.x-a.x);
     ctx.save();ctx.translate(mx,my);ctx.rotate(ang);
@@ -945,6 +965,7 @@ function draw(){
   // nodes
   nodes.forEach(function(n){
     var alpha=1,glow=0;
+    if(typeSet&&!typeSet.has(n.id)){alpha=0.06;}
     if(filterSet&&!filterSet.has(n.id)){alpha=0.08;}
     if(hovered){
       if(n===hovered){alpha=1;glow=14;}
