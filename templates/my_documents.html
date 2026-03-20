@@ -1111,7 +1111,7 @@ async function askMyDocs() {
                 if (!line.startsWith('data: ')) continue;
                 try {
                     var evt = JSON.parse(line.substring(6));
-                    if (evt.type === 'content') {
+                    if (evt.type === 'content' || evt.type === 'token') {
                         fullAnswer += evt.data;
                         if (typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
                             answerEl.innerHTML = DOMPurify.sanitize(marked.parse(fullAnswer));
