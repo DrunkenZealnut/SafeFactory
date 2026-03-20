@@ -323,8 +323,8 @@
         padding: 0 24px 40px;
     }
     .roadmap-card {
-        background: #0a0a0f;
-        border: 1px solid rgba(120, 120, 160, 0.12);
+        background: var(--sf-graph-bg);
+        border: 1px solid var(--sf-graph-border);
         border-radius: 16px;
         padding: 20px 16px 14px;
         position: relative;
@@ -336,7 +336,7 @@
         margin-bottom: 8px; position: relative; z-index: 2;
     }
     .roadmap-title {
-        font-size: 16px; font-weight: 700; color: rgba(220,220,240,0.9);
+        font-size: 16px; font-weight: 700; color: var(--sf-graph-text);
         display: flex; align-items: center; gap: 8px;
     }
     .roadmap-badge {
@@ -345,7 +345,7 @@
         padding: 3px 10px; border-radius: 20px; letter-spacing: 0.8px;
     }
     .roadmap-subtitle {
-        font-size: 12px; color: rgba(140,140,170,0.6);
+        font-size: 12px; color: var(--sf-graph-text-muted);
     }
     .roadmap-canvas-wrap {
         position: relative; z-index: 2; width: 100%;
@@ -356,8 +356,8 @@
     /* Tooltip */
     .rm-tooltip {
         position: absolute; pointer-events: none; z-index: 10;
-        background: rgba(12,12,20,0.96); border: 1px solid rgba(140,120,255,0.25);
-        color: rgba(220,220,240,0.9); font-size: 12px; padding: 10px 14px;
+        background: var(--sf-graph-tooltip-bg); border: 1px solid var(--sf-graph-tooltip-border);
+        color: var(--sf-graph-text); font-size: 12px; padding: 10px 14px;
         border-radius: 10px; backdrop-filter: blur(12px);
         box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 20px rgba(120,100,220,0.1);
         opacity: 0; transition: opacity 0.2s;
@@ -365,21 +365,37 @@
     }
     .rm-tooltip.visible { opacity: 1; }
     .rm-tooltip-title { font-weight: 700; font-size: 13px; margin-bottom: 3px; color: #fff; }
-    .rm-tooltip-info { color: rgba(160,160,190,0.8); font-size: 11px; }
+    .rm-tooltip-info { color: var(--sf-graph-text-dim); font-size: 11px; }
     /* Legend */
     .roadmap-legend {
         display: flex; flex-wrap: wrap; gap: 8px 14px;
-        padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.04);
+        padding-top: 12px; border-top: 1px solid var(--sf-graph-divider);
         position: relative; z-index: 2;
     }
     .rm-legend-item {
         display: flex; align-items: center; gap: 5px;
-        font-size: 11px; color: rgba(160,160,190,0.5);
+        font-size: 11px; color: var(--sf-graph-text-dim);
         cursor: pointer; transition: color 0.2s; text-decoration: none;
     }
-    .rm-legend-item:hover { color: rgba(220,220,240,0.9); }
+    .rm-legend-item:hover { color: var(--sf-graph-text); }
     .rm-legend-dot {
         width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    }
+    /* Accessible node list (sr-only visual, keyboard navigable) */
+    .graph-a11y-list {
+        position: relative; z-index: 2;
+        display: flex; flex-wrap: wrap; gap: 6px 10px;
+        padding-top: 8px;
+    }
+    .graph-a11y-list a {
+        font-size: 10px; color: var(--sf-graph-text-dim);
+        text-decoration: none; padding: 2px 6px;
+        border: 1px solid var(--sf-graph-divider);
+        border-radius: 4px; transition: all 0.2s;
+    }
+    .graph-a11y-list a:hover, .graph-a11y-list a:focus {
+        color: var(--sf-graph-text); border-color: var(--sf-graph-border);
+        outline: 1px solid var(--sf-graph-tooltip-border);
     }
 
     /* ===== Bottom Row ===== */
@@ -649,6 +665,7 @@
             </div>
         </div>
         <div class="roadmap-legend" id="roadmapLegend"></div>
+        <div class="graph-a11y-list" id="graphA11yList" role="navigation" aria-label="공정 노드 바로가기"></div>
     </div>
 </section>
 
@@ -885,6 +902,7 @@ function initRoadmapGraph() {
     var dpr = window.devicePixelRatio || 1;
     var W, H, nodes = [], edges = [], hoverNode = null, time = 0;
     var isVisible = true, animId = null;
+    var lastMouseX = -1, lastMouseY = -1; // track cursor for hover revalidation
 
     // Visibility API — pause when hidden
     document.addEventListener('visibilitychange', function() {
@@ -1097,6 +1115,16 @@ function initRoadmapGraph() {
             }
         }
 
+        // Revalidate hover against moved nodes
+        if (lastMouseX >= 0) {
+            var newHover = hitTest(lastMouseX, lastMouseY);
+            if (newHover !== hoverNode) {
+                hoverNode = newHover;
+                canvas.style.cursor = newHover ? 'pointer' : 'default';
+                if (!newHover) tooltip.classList.remove('visible');
+            }
+        }
+
         animId = isVisible ? requestAnimationFrame(draw) : null;
     }
 
@@ -1113,6 +1141,7 @@ function initRoadmapGraph() {
         var rect = canvas.getBoundingClientRect();
         var mx = (e.clientX - rect.left) * (W / rect.width);
         var my = (e.clientY - rect.top) * (H / rect.height);
+        lastMouseX = mx; lastMouseY = my;
         var nd = hitTest(mx, my);
         hoverNode = nd;
         canvas.style.cursor = nd ? 'pointer' : 'default';
@@ -1128,7 +1157,7 @@ function initRoadmapGraph() {
             tooltip.classList.add('visible');
         } else { tooltip.classList.remove('visible'); }
     });
-    canvas.addEventListener('mouseleave', function() { hoverNode = null; tooltip.classList.remove('visible'); });
+    canvas.addEventListener('mouseleave', function() { hoverNode = null; lastMouseX = lastMouseY = -1; tooltip.classList.remove('visible'); });
 
     canvas.addEventListener('click', function(e) {
         var rect = canvas.getBoundingClientRect();
@@ -1163,6 +1192,17 @@ function initRoadmapGraph() {
         return '<a class="rm-legend-item" href="/learn?q=' + encodeURIComponent(p.name + ' 공정') + '">' +
             '<span class="rm-legend-dot" style="background:' + p.color + '"></span>' + p.name + '</a>';
     }).join('');
+
+    // Keyboard-accessible node list (all clickable nodes as links)
+    var a11yEl = document.getElementById('graphA11yList');
+    var a11yHtml = '<a href="/learn?q=' + encodeURIComponent('반도체 8대 공정') + '">반도체 8대 공정</a>';
+    ROADMAP.processes.forEach(function(p) {
+        a11yHtml += '<a href="/learn?q=' + encodeURIComponent(p.name) + '">' + p.name + '</a>';
+        p.children.forEach(function(kid) {
+            a11yHtml += '<a href="/learn?q=' + encodeURIComponent(kid.name) + '">' + kid.name + '</a>';
+        });
+    });
+    a11yEl.innerHTML = a11yHtml;
 
     function resize() {
         var rect = wrap.getBoundingClientRect();
