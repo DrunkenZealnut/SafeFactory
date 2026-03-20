@@ -20,6 +20,8 @@ jobs:
             git pull origin main
             source venv/bin/activate
             pip install -r requirements.txt
+            python3 -c "from web_app import app; from models import db; app.app_context().__enter__(); db.create_all(); print('DB migrated')"
+            python3 scripts/seed_graph.py
             pids=$(pgrep gunicorn) && kill $pids || true
             sleep 2
             nohup venv/bin/gunicorn web_app:app --bind 127.0.0.1:5001 --workers 2 --timeout 180 > app.log 2>&1 &
