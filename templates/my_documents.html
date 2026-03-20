@@ -364,10 +364,35 @@
         color: #ccc;
         flex: 1;
     }
-    .ncs-module-go {
-        font-size: 0.75rem;
-        color: #555;
+    .ncs-module-check {
         flex-shrink: 0;
+        width: 18px;
+        height: 18px;
+        accent-color: #00d4ff;
+        cursor: pointer;
+    }
+    .ncs-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+        align-items: center;
+    }
+    .btn-ncs-add {
+        padding: 8px 18px;
+        border-radius: 8px;
+        border: 1px solid rgba(0, 212, 255, 0.3);
+        background: rgba(0, 212, 255, 0.1);
+        color: #00d4ff;
+        font-size: 0.85rem;
+        font: inherit;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .btn-ncs-add:hover { background: rgba(0, 212, 255, 0.2); }
+    .btn-ncs-add:disabled { opacity: 0.4; cursor: default; }
+    .ncs-selected-count {
+        font-size: 0.8rem;
+        color: #888;
     }
 
     /* PDF Modal */
@@ -504,6 +529,10 @@
             </div>
             <div class="ncs-tabs" id="ncsTabs"></div>
             <div class="ncs-modules" id="ncsModules"></div>
+            <div class="ncs-actions">
+                <button class="btn-ncs-add" id="btnNcsAdd" onclick="addSelectedModules()" disabled>선택 추가</button>
+                <span class="ncs-selected-count" id="ncsSelectedCount"></span>
+            </div>
         </div>
     </div>
 
@@ -835,21 +864,70 @@ async function loadNcsCategories() {
     } catch (e) { console.error('NCS load failed:', e); }
 }
 
+var _currentCatIdx = 0;
+
 function renderNcsModules(catIdx) {
+    _currentCatIdx = catIdx;
     var cat = _ncsData[catIdx];
     var el = document.getElementById('ncsModules');
-    el.innerHTML = cat.modules.map(function(m) {
+    el.innerHTML = cat.modules.map(function(m, i) {
         var t = escapeHtml(m.title);
-        return '<div class="ncs-module" onclick="selectNcsModule(\'' + t.replace(/'/g, "\\'") + '\')">' +
+        var sf = 'documents/semiconductor/ncs/data/' + escapeAttr(cat.name) + '/' + escapeAttr(m.dirname);
+        return '<div class="ncs-module">' +
+            '<input type="checkbox" class="ncs-module-check" data-title="' + escapeAttr(m.title) + '" data-sf="' + sf + '" onchange="updateNcsCount()" onclick="event.stopPropagation()">' +
             '<span class="ncs-module-code">' + escapeHtml(m.code || '') + '</span>' +
-            '<span class="ncs-module-title">' + t + '</span>' +
-            '<span class="ncs-module-go">검색 →</span></div>';
+            '<span class="ncs-module-title" onclick="previewNcsModule(\'' + escapeAttr(m.dirname).replace(/'/g, "\\'") + '\',\'' + escapeAttr(cat.name).replace(/'/g, "\\'") + '\',\'' + t.replace(/'/g, "\\'") + '\')" style="cursor:pointer;">' + t + '</span>' +
+            '</div>';
     }).join('');
+    updateNcsCount();
 }
 
-function selectNcsModule(title) {
-    document.getElementById('searchAddInput').value = title;
-    searchAndAdd();
+function updateNcsCount() {
+    var checks = document.querySelectorAll('.ncs-module-check:checked');
+    var btn = document.getElementById('btnNcsAdd');
+    var label = document.getElementById('ncsSelectedCount');
+    btn.disabled = checks.length === 0;
+    label.textContent = checks.length > 0 ? checks.length + '개 선택됨' : '';
+}
+
+async function addSelectedModules() {
+    var checks = document.querySelectorAll('.ncs-module-check:checked');
+    if (!checks.length) return;
+    var btn = document.getElementById('btnNcsAdd');
+    btn.disabled = true;
+    btn.textContent = '추가 중...';
+    var added = 0;
+    for (var i = 0; i < checks.length; i++) {
+        var cb = checks[i];
+        try {
+            var res = await fetch('/api/v1/bookmarks', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    source_file: cb.dataset.sf,
+                    title: cb.dataset.title,
+                    namespace: 'semiconductor-v2'
+                })
+            });
+            var json = await res.json();
+            if (json.success) added++;
+            cb.checked = false;
+        } catch (e) {}
+    }
+    btn.textContent = '선택 추가';
+    btn.disabled = true;
+    updateNcsCount();
+    if (added > 0) {
+        alert(added + '개 자료가 추가되었습니다.');
+        loadBookmarks(currentPage);
+    }
+}
+
+function previewNcsModule(dirname, catName, title) {
+    // Try to find PDF in the module directory
+    var basePath = 'documents/semiconductor/ncs/pdfs/' + catName + '/';
+    // Use the PDF modal with a search fallback
+    openPdfFromBookmark(basePath + dirname, title, 'semiconductor-v2');
 }
 
 document.addEventListener('DOMContentLoaded', function() {
