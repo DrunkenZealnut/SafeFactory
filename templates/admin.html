@@ -2070,6 +2070,8 @@ async function saveSettings() {
 // ---------------------------------------------------------------------------
 // Graph Management
 // ---------------------------------------------------------------------------
+var graphDetailNs = null; // currently viewed graph namespace
+
 async function loadGraphStats() {
     // Load saved graph list
     try {
@@ -2078,38 +2080,70 @@ async function loadGraphStats() {
         if (!data.graphs.length) {
             tb.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--sf-text-3);">저장된 그래프가 없습니다.</td></tr>';
         } else {
-            tb.innerHTML = data.graphs.map(g => `<tr>
-                <td>${escHtml(g.namespace)}</td>
+            tb.innerHTML = data.graphs.map(g => {
+                const isSel = graphDetailNs ? g.namespace === graphDetailNs : g.active;
+                return `<tr style="cursor:pointer;${isSel ? 'background:var(--sf-surface);' : ''}" onclick="viewGraphDetail('${escHtml(g.namespace)}')">
+                <td>
+                    <span id="gname-${escHtml(g.namespace)}" style="font-weight:${g.active ? '600' : '400'}">${escHtml(g.name)}</span>
+                    <button class="admin-btn admin-btn-sm" style="margin-left:6px;font-size:11px;" onclick="event.stopPropagation();renameGraph('${escHtml(g.namespace)}','${escHtml(g.name)}')">✏️</button>
+                </td>
                 <td>${fmtNumber(g.nodes)}</td>
                 <td>${fmtNumber(g.edges)}</td>
-                <td>${g.active ? '<span style="color:#4caf50;font-weight:600;">활성</span>' : '<span style="color:var(--sf-text-3);">비활성</span>'}</td>
+                <td>${g.active ? '<span style="color:#4caf50;font-weight:600;">● 활성</span>' : '<span style="color:var(--sf-text-3);">○</span>'}</td>
                 <td>
-                    ${g.active ? '' : '<button class="admin-btn admin-btn-sm admin-btn-primary" onclick="activateGraph(\'' + escHtml(g.namespace) + '\')">활성화</button> '}
-                    <button class="admin-btn admin-btn-sm" style="color:var(--sf-red);" onclick="deleteGraph('${escHtml(g.namespace)}')">삭제</button>
+                    ${g.active ? '' : '<button class="admin-btn admin-btn-sm admin-btn-primary" onclick="event.stopPropagation();activateGraph(\'' + escHtml(g.namespace) + '\')">활성화</button> '}
+                    <button class="admin-btn admin-btn-sm" style="color:var(--sf-red);" onclick="event.stopPropagation();deleteGraph('${escHtml(g.namespace)}')">삭제</button>
                 </td>
-            </tr>`).join('');
+            </tr>`;
+            }).join('');
         }
+        // Auto-select: if no detail selected, show active graph
+        if (!graphDetailNs && data.active) graphDetailNs = data.active;
     } catch (e) { console.error('Graph list failed:', e); }
 
-    // Load active graph details
+    // Load detail for selected graph
+    await loadGraphDetail(graphDetailNs);
+}
+
+async function loadGraphDetail(ns) {
+    if (!ns) ns = 'default';
     try {
-        const res = await fetch('/api/v1/graph/data');
-        const { data } = await res.json();
+        const res = await fetch('/api/v1/graph/data?namespace=' + encodeURIComponent(ns));
+        const resp = await res.json();
+        const data = resp.data;
         if (!data || data.empty) {
             document.getElementById('graph-node-count').textContent = '0';
             document.getElementById('graph-edge-count').textContent = '0';
-            document.getElementById('graph-node-table').innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--sf-text-3);">활성 그래프가 없습니다.</td></tr>';
+            document.getElementById('graph-node-table').innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--sf-text-3);">그래프 데이터가 없습니다.</td></tr>';
             return;
         }
         document.getElementById('graph-node-count').textContent = data.nodes.length;
         document.getElementById('graph-edge-count').textContent = data.edges.length;
-        const typeLabel = { m: '주요 공정', s: '세부 공정', d: '상세 기술', sh: '공유 기술' };
+        const typeLabel = { m: '주요', s: '세부', d: '상세', sh: '공유' };
         document.getElementById('graph-node-table').innerHTML = data.nodes.map(n =>
             `<tr><td>${escHtml(n.id)}</td><td>${escHtml(n.l)}</td><td>${typeLabel[n.t] || n.t}</td><td>${escHtml(n.d || '-')}</td><td>${escHtml(n.p || '-')}</td></tr>`
         ).join('');
     } catch (e) {
-        console.error('Graph stats load failed:', e);
+        console.error('Graph detail load failed:', e);
     }
+}
+
+function viewGraphDetail(ns) {
+    graphDetailNs = ns;
+    loadGraphStats();
+}
+
+async function renameGraph(ns, currentName) {
+    const newName = prompt('그래프 이름 변경:', currentName);
+    if (!newName || newName === currentName) return;
+    try {
+        const { message } = await apiFetch('/graph/rename', {
+            method: 'POST',
+            body: JSON.stringify({ namespace: ns, name: newName }),
+        });
+        showToast(message);
+        loadGraphStats();
+    } catch (e) { showToast('이름 변경 실패: ' + e.message, true); }
 }
 
 async function activateGraph(ns) {
@@ -2124,13 +2158,14 @@ async function activateGraph(ns) {
 }
 
 async function deleteGraph(ns) {
-    if (!confirm('"' + ns + '" 그래프를 삭제하시겠습니까?')) return;
+    if (!confirm('이 그래프를 삭제하시겠습니까?')) return;
     try {
         const { message } = await apiFetch('/graph/clear', {
             method: 'POST',
             body: JSON.stringify({ namespace: ns }),
         });
         showToast(message);
+        if (graphDetailNs === ns) graphDetailNs = null;
         loadGraphStats();
     } catch (e) { showToast('삭제 실패: ' + e.message, true); }
 }

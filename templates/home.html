@@ -616,6 +616,7 @@
     <div class="graph-container" id="graphContainer">
         <canvas id="gc"></canvas>
         <div class="graph-tooltip" id="graphTooltip"></div>
+        <div id="graphTitle" style="position:absolute;bottom:12px;right:12px;font-size:13px;font-weight:600;color:rgba(205,214,244,0.5);pointer-events:none;"></div>
         <div class="graph-legend">
             <span><span style="width:10px;height:10px;border-radius:50%;background:#cba6f7;display:inline-block"></span>8대 공정</span>
             <span><span style="width:7px;height:7px;border-radius:50%;background:#89b4fa;display:inline-block"></span>세부 공정</span>
@@ -836,6 +837,9 @@ fetch('/api/v1/graph/data').then(function(r){return r.json();}).then(function(re
   });
   graphLoaded=true;
   buildFilterButtons();
+  // Show graph name
+  var titleEl=document.getElementById('graphTitle');
+  if(data.name && titleEl) titleEl.textContent='🧠 '+data.name;
 }).catch(function(e){console.error('Graph data fetch failed:',e);});
 
 function buildFilterButtons(){

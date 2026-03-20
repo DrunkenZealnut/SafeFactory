@@ -27,7 +27,12 @@ def api_graph_data():
     if not nodes:
         return success_response(data={'nodes': [], 'edges': [], 'empty': True})
 
+    name_setting = SystemSetting.query.filter_by(key=f'graph_name:{ns}').first()
+    graph_name = name_setting.value if name_setting else ns
+
     return success_response(data={
+        'name': graph_name,
+        'namespace': ns,
         'nodes': [
             {
                 'id': n.node_id, 'l': n.label, 'd': n.description,
@@ -169,8 +174,16 @@ JSON만 출력하세요. 설명이나 마크다운 없이 순수 JSON만."""
         logging.exception('Graph save failed')
         return error_response('그래프 저장 실패', 500)
 
-    # Auto-activate the newly generated graph
+    # Save display name from seed
     from models import SystemSetting
+    name_key = f'graph_name:{ns}'
+    name_setting = SystemSetting.query.filter_by(key=name_key).first()
+    if name_setting:
+        name_setting.value = seed
+    else:
+        db.session.add(SystemSetting(key=name_key, value=seed))
+
+    # Auto-activate the newly generated graph
     setting = SystemSetting.query.filter_by(key='active_graph_namespace').first()
     if setting:
         setting.value = ns
@@ -227,11 +240,18 @@ def api_graph_list():
     active_ns = SystemSetting.query.filter_by(key='active_graph_namespace').first()
     active = active_ns.value if active_ns else 'default'
 
+    # Load display names
+    name_settings = SystemSetting.query.filter(
+        SystemSetting.key.like('graph_name:%'),
+    ).all()
+    name_map = {s.key.split(':', 1)[1]: s.value for s in name_settings}
+
     graphs = []
     for r in rows:
         edge_count = GraphEdge.query.filter_by(namespace=r.namespace).count()
         graphs.append({
             'namespace': r.namespace,
+            'name': name_map.get(r.namespace, r.namespace),
             'nodes': r.node_count,
             'edges': edge_count,
             'active': r.namespace == active,
@@ -269,3 +289,35 @@ def api_graph_activate():
         return error_response('설정 저장 실패', 500)
 
     return success_response(message=f'"{ns}" 그래프가 활성화되었습니다.')
+
+
+@v1_bp.route('/admin/graph/rename', methods=['POST'])
+def api_graph_rename():
+    """Rename a graph (set display name)."""
+    err = _admin_required_check()
+    if err:
+        return err
+
+    from models import SystemSetting
+
+    body = request.get_json(silent=True) or {}
+    ns = body.get('namespace', '').strip()
+    name = body.get('name', '').strip()
+
+    if not ns or not name:
+        return error_response('네임스페이스와 이름을 입력해주세요.', 400)
+
+    key = f'graph_name:{ns}'
+    setting = SystemSetting.query.filter_by(key=key).first()
+    if setting:
+        setting.value = name
+    else:
+        db.session.add(SystemSetting(key=key, value=name))
+
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        return error_response('이름 변경 실패', 500)
+
+    return success_response(message=f'그래프 이름이 "{name}"(으)로 변경되었습니다.')
