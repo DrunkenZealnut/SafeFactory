@@ -1,0 +1,17 @@
+name: Add Deploy Key
+on: workflow_dispatch
+jobs:
+  add-key:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add SSH key to server
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          script: |
+            mkdir -p ~/.ssh && chmod 700 ~/.ssh
+            echo "${{ secrets.DEPLOY_PUBKEY }}" >> ~/.ssh/authorized_keys
+            chmod 600 ~/.ssh/authorized_keys
+            echo "Deploy key added successfully"
