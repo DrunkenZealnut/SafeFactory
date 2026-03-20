@@ -887,7 +887,11 @@ function syncFilterUI(){
 function getConn(node){var s=new Set();edges.forEach(function(e){if(e.s===node.id)s.add(e.t);if(e.t===node.id)s.add(e.s);});return s;}
 function getTree(rootId){
   var s=new Set([rootId]);var changed=true;
+  // Include child tree (non-flow edges)
   while(changed){changed=false;edges.forEach(function(e){if(!e.flow&&s.has(e.s)&&!s.has(e.t)){s.add(e.t);changed=true;}});}
+  // Include all main process nodes (flow-connected) so prev/next are visible
+  nodes.forEach(function(n){if(n.t==='m')s.add(n.id);});
+  // Include shared tech connected to the tree
   nodes.filter(function(n){return n.t==='sh';}).forEach(function(n){edges.forEach(function(e){if((e.s===n.id&&s.has(e.t))||(e.t===n.id&&s.has(e.s)))s.add(n.id);});});
   return s;
 }
