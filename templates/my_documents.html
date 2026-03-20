@@ -1024,13 +1024,12 @@ function previewNcsModule(dirname, catName, title) {
 }
 
 // AI Chat with my documents
-var _mySourceFiles = [];
+var _myBookmarkTitles = [];
+var _myBookmarkCount = 0;
 
 async function updateChatSection() {
     var section = document.getElementById('chatSection');
-    // Fetch ALL bookmarks (not just current page) to get complete source_files list
     try {
-        // UserBookmark.MAX_PER_USER is 200, fetch all pages
         var allItems = [], page = 1;
         while (true) {
             var res = await fetch('/api/v1/bookmarks?page=' + page + '&per_page=50');
@@ -1040,13 +1039,15 @@ async function updateChatSection() {
             if (page >= j.data.pages) break;
             page++;
         }
-        _mySourceFiles = allItems.map(function(b) { return b.source_file; }).filter(Boolean);
-    } catch (e) { _mySourceFiles = []; }
+        // Extract NCS document titles from bookmark titles
+        _myBookmarkTitles = allItems.map(function(b) { return b.title; }).filter(Boolean);
+        _myBookmarkCount = allItems.length;
+    } catch (e) { _myBookmarkTitles = []; _myBookmarkCount = 0; }
 
-    if (_mySourceFiles.length > 0) {
+    if (_myBookmarkCount > 0) {
         section.style.display = '';
         document.getElementById('chatInfo').textContent =
-            '저장된 자료 ' + _mySourceFiles.length + '개를 기반으로 AI가 답변합니다.';
+            '저장된 자료 ' + _myBookmarkCount + '개를 기반으로 AI가 답변합니다.';
     } else {
         section.style.display = 'none';
     }
@@ -1054,7 +1055,7 @@ async function updateChatSection() {
 
 async function askMyDocs() {
     var query = document.getElementById('chatInput').value.trim();
-    if (!query || !_mySourceFiles.length) return;
+    if (!query || !_myBookmarkCount) return;
     var btn = document.getElementById('chatBtn');
     var answerEl = document.getElementById('chatAnswer');
     var sourcesEl = document.getElementById('chatSources');
@@ -1069,7 +1070,7 @@ async function askMyDocs() {
             body: JSON.stringify({
                 query: query,
                 namespace: document.getElementById('filterNamespace').value || 'all',
-                source_files: _mySourceFiles,
+                bookmark_titles: _myBookmarkTitles,
                 top_k: 20,
             })
         });
