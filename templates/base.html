@@ -26,6 +26,7 @@
             top: 0;
             z-index: 100;
             background: rgba(255, 255, 255, 0.95);
+            background: color-mix(in srgb, var(--sf-nav-bg) 95%, transparent);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border-bottom: 1px solid var(--sf-border);
@@ -100,7 +101,7 @@
             color: var(--sf-purple);
             font-weight: 600;
             border-bottom-color: var(--sf-amber, #f59e0b);
-            background: rgba(245, 158, 11, 0.04);
+            background: color-mix(in srgb, var(--sf-amber) 4%, transparent);
         }
 
         /* Right Actions */
@@ -114,7 +115,7 @@
         .sf-nav-login-btn {
             font-size: 13px;
             font-weight: 600;
-            color: #fff;
+            color: var(--sf-card-bg);
             background: var(--sf-purple);
             padding: 8px 18px;
             border-radius: 8px;
@@ -175,7 +176,7 @@
             left: 50%;
             transform: translateX(-50%);
             background: var(--sf-purple-dark, #0f172a);
-            color: #fff;
+            color: var(--sf-card-bg);
             font-size: 11px;
             padding: 4px 8px;
             border-radius: 5px;
@@ -192,12 +193,12 @@
             text-decoration: none;
             padding: 4px 8px;
             border-radius: 5px;
-            background: rgba(245, 158, 11, 0.1);
+            background: color-mix(in srgb, var(--sf-amber) 10%, transparent);
             font-weight: 700;
             transition: all 0.2s;
             line-height: 1;
         }
-        .sf-nav-admin-badge:hover { background: rgba(245, 158, 11, 0.18); }
+        .sf-nav-admin-badge:hover { background: color-mix(in srgb, var(--sf-amber) 18%, transparent); }
 
         .logout-form {
             display: inline;
@@ -220,8 +221,8 @@
             transition: all 0.2s;
         }
         .sf-nav-logout-btn:hover {
-            color: var(--sf-red, #ef4444);
-            background: rgba(239, 68, 68, 0.06);
+            color: var(--sf-red);
+            background: color-mix(in srgb, var(--sf-red) 6%, transparent);
         }
 
         .sf-nav-divider {

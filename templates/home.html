@@ -366,16 +366,16 @@
         margin-bottom: 8px; position: relative; z-index: 2;
     }
     .roadmap-title {
-        font-size: 17px; font-weight: 700; color: #fff;
+        font-size: 17px; font-weight: 700; color: var(--sf-card-bg);
         display: flex; align-items: center; gap: 8px;
     }
     .roadmap-badge {
-        font-size: 10px; font-weight: 700; color: #fbbf24;
-        background: rgba(251,191,36,0.12); padding: 3px 10px;
+        font-size: 10px; font-weight: 700; color: var(--sf-amber-light);
+        background: color-mix(in srgb, var(--sf-amber-light) 12%, transparent); padding: 3px 10px;
         border-radius: 20px; letter-spacing: 0.8px;
     }
     .roadmap-subtitle {
-        font-size: 12px; color: rgba(148,163,184,0.7);
+        font-size: 12px; color: var(--sf-text-3);
     }
     .roadmap-canvas-wrap {
         position: relative; z-index: 2; width: 100%;
@@ -386,8 +386,8 @@
     /* Tooltip */
     .rm-tooltip {
         position: absolute; pointer-events: none; z-index: 10;
-        background: rgba(15,23,42,0.95); border: 1px solid rgba(96,165,250,0.3);
-        color: #e2e8f0; font-size: 12px; padding: 8px 12px;
+        background: color-mix(in srgb, var(--sf-purple-dark) 95%, transparent); border: 1px solid color-mix(in srgb, var(--sf-blue) 30%, transparent);
+        color: var(--sf-text-4); font-size: 12px; padding: 8px 12px;
         border-radius: 8px; backdrop-filter: blur(8px);
         box-shadow: 0 4px 20px rgba(0,0,0,0.4);
         opacity: 0; transition: opacity 0.15s;
@@ -395,19 +395,19 @@
     }
     .rm-tooltip.visible { opacity: 1; }
     .rm-tooltip-title { font-weight: 700; font-size: 13px; margin-bottom: 2px; }
-    .rm-tooltip-info { color: rgba(148,163,184,0.8); font-size: 11px; }
+    .rm-tooltip-info { color: var(--sf-text-3); font-size: 11px; }
     /* Legend */
     .roadmap-legend {
         display: flex; flex-wrap: wrap; gap: 8px 14px;
-        padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.05);
+        padding-top: 12px; border-top: 1px solid color-mix(in srgb, var(--sf-card-bg) 5%, transparent);
         position: relative; z-index: 2;
     }
     .rm-legend-item {
         display: flex; align-items: center; gap: 5px;
-        font-size: 11px; color: rgba(148,163,184,0.6);
-        cursor: pointer; transition: color 0.2s;
+        font-size: 11px; color: var(--sf-text-3);
+        cursor: pointer; transition: color 0.2s; text-decoration: none;
     }
-    .rm-legend-item:hover { color: rgba(148,163,184,1); }
+    .rm-legend-item:hover { color: var(--sf-text-4); }
     .rm-legend-dot {
         width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
     }
@@ -926,6 +926,7 @@ function initRoadmapGraph() {
             data.data.keywords.forEach(function(k) {
                 var text = (k.text || k[0] || '').replace(/은$|는$|의$|을$|를$/, '');
                 var w = k.weight || k[1] || 0;
+                if (!text) return;
                 heatMap[text] = (heatMap[text] || 0) + w;
             });
             document.getElementById('roadmapMeta').textContent =
@@ -1149,47 +1150,48 @@ function initRoadmapGraph() {
         }
     });
 
-    // Touch support
+    // Touch support — distinguish tap from scroll
+    var touchStart = null;
     canvas.addEventListener('touchstart', function(e) {
         var t = e.touches[0];
+        touchStart = { x: t.clientX, y: t.clientY };
+    }, { passive: true });
+    canvas.addEventListener('touchend', function(e) {
+        if (!touchStart) return;
+        var t = e.changedTouches[0];
+        var dx = t.clientX - touchStart.x, dy = t.clientY - touchStart.y;
+        touchStart = null;
+        if (Math.abs(dx) > 10 || Math.abs(dy) > 10) return; // was a scroll
         var rect = canvas.getBoundingClientRect();
         var nd = hitTest(t.clientX - rect.left, t.clientY - rect.top);
         if (nd) {
-            e.preventDefault();
             var q = nd.name.replace('\n', ' ');
             if (nd.level === 0) q = '반도체 8대 공정';
             window.location.href = '/learn?q=' + encodeURIComponent(q);
         }
-    }, { passive: false });
+    });
 
-    // Build legend
+    // Build legend with accessible links
     var legendEl = document.getElementById('roadmapLegend');
     legendEl.innerHTML = ROADMAP.processes.map(function(p, i) {
-        return '<span class="rm-legend-item" data-idx="' + i + '">' +
+        var href = '/learn?q=' + encodeURIComponent(p.name + ' 공정');
+        return '<a class="rm-legend-item" href="' + href + '">' +
             '<span class="rm-legend-dot" style="background:' + p.color + '"></span>' +
-            p.name + '</span>';
+            p.name + '</a>';
     }).join('');
-    legendEl.addEventListener('click', function(e) {
-        var item = e.target.closest('.rm-legend-item');
-        if (item) {
-            var idx = +item.dataset.idx;
-            var proc = ROADMAP.processes[idx];
-            window.location.href = '/learn?q=' + encodeURIComponent(proc.name + ' 공정');
-        }
-    });
 
     window.addEventListener('resize', function() { resize(); });
     resize();
     draw();
 }
 
-function loadWordCloud() { initRoadmapGraph(); }
+function loadRoadmapGraph() { initRoadmapGraph(); }
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     loadCommunityPreview();
     loadNewsPreview();
-    loadWordCloud();
+    loadRoadmapGraph();
 });
 </script>
 {% endblock %}
