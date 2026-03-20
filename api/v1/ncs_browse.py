@@ -1,5 +1,6 @@
-"""NCS category browser API — list categories and modules from filesystem."""
+"""NCS category browser API — list categories and modules."""
 
+import json
 import os
 import re
 import time
@@ -13,10 +14,9 @@ from api.v1 import v1_bp
 _cache = {'data': None, 'ts': 0}
 _CACHE_TTL = 300  # 5 minutes
 
-NCS_DATA_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-    'documents', 'semiconductor', 'ncs', 'data',
-)
+_BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+NCS_DATA_DIR = os.path.join(_BASE_DIR, 'documents', 'semiconductor', 'ncs', 'data')
+NCS_JSON_FALLBACK = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ncs_modules.json')
 
 NCS_CATEGORIES = ['반도체개발', '반도체장비', '반도체재료', '반도체제조']
 
@@ -49,39 +49,59 @@ def _parse_module_name(dirname):
 
 
 def _scan_categories():
-    """Scan NCS data directory and build category/module tree."""
+    """Scan NCS data directory or load from JSON fallback."""
     now = time.time()
     if _cache['data'] and now - _cache['ts'] < _CACHE_TTL:
         return _cache['data']
 
     categories = []
-    for cat_name in NCS_CATEGORIES:
-        cat_path = os.path.join(NCS_DATA_DIR, cat_name)
-        if not os.path.isdir(cat_path):
-            continue
 
-        meta = CATEGORY_META.get(cat_name, {})
-        modules = []
+    # Try filesystem first
+    if os.path.isdir(NCS_DATA_DIR):
+        for cat_name in NCS_CATEGORIES:
+            cat_path = os.path.join(NCS_DATA_DIR, cat_name)
+            if not os.path.isdir(cat_path):
+                continue
+
+            meta = CATEGORY_META.get(cat_name, {})
+            modules = []
+            try:
+                for entry in sorted(os.listdir(cat_path)):
+                    entry_path = os.path.join(cat_path, entry)
+                    if os.path.isdir(entry_path):
+                        code, title = _parse_module_name(entry)
+                        modules.append({
+                            'code': code,
+                            'title': title,
+                            'dirname': entry,
+                        })
+            except OSError:
+                pass
+
+            categories.append({
+                'name': cat_name,
+                'icon': meta.get('icon', '📁'),
+                'desc': meta.get('desc', ''),
+                'module_count': len(modules),
+                'modules': modules,
+            })
+
+    # Fallback: load from bundled JSON
+    if not categories and os.path.isfile(NCS_JSON_FALLBACK):
         try:
-            for entry in sorted(os.listdir(cat_path)):
-                entry_path = os.path.join(cat_path, entry)
-                if os.path.isdir(entry_path):
-                    code, title = _parse_module_name(entry)
-                    modules.append({
-                        'code': code,
-                        'title': title,
-                        'dirname': entry,
-                    })
-        except OSError:
+            with open(NCS_JSON_FALLBACK, encoding='utf-8') as f:
+                raw = json.load(f)
+            for cat in raw:
+                meta = CATEGORY_META.get(cat['name'], {})
+                categories.append({
+                    'name': cat['name'],
+                    'icon': meta.get('icon', '📁'),
+                    'desc': meta.get('desc', ''),
+                    'module_count': len(cat.get('modules', [])),
+                    'modules': cat.get('modules', []),
+                })
+        except Exception:
             pass
-
-        categories.append({
-            'name': cat_name,
-            'icon': meta.get('icon', '📁'),
-            'desc': meta.get('desc', ''),
-            'module_count': len(modules),
-            'modules': modules,
-        })
 
     _cache['data'] = categories
     _cache['ts'] = now
