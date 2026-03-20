@@ -837,21 +837,29 @@ def run_rag_pipeline(data):
 
     # Support source_file restriction (e.g., "my documents" chat)
     # When source_files is provided, REPLACE domain_filter entirely
-    # (domain_filter may conflict with source_file paths)
     source_files = data.get('source_files')
     if source_files and isinstance(source_files, list):
-        # Expand folder paths to include common file extensions
-        expanded = set(source_files)
+        import unicodedata as _ud
+        # Normalize and expand folder paths
+        expanded = set()
         for sf in source_files:
-            if not sf.endswith(('.md', '.json', '.pdf', '.txt')):
-                base = sf.rstrip('/')
+            sf_nfc = _ud.normalize('NFC', sf)
+            expanded.add(sf_nfc)
+            if not sf_nfc.endswith(('.md', '.json', '.pdf', '.txt')):
+                base = sf_nfc.rstrip('/')
                 name = base.split('/')[-1]
                 for ext in ('.md', '.json'):
                     expanded.add(f'{base}/{name}{ext}')
-        sf_list = list(expanded)
-        domain_filter = {'source_file': {'$in': sf_list}}
-        logging.info("[RAG] source_files filter REPLACES domain_filter: %d files (expanded from %d)",
-                     len(sf_list), len(source_files))
+        # If filter is too small or encoding issues, skip filter entirely
+        # and rely on namespace-level search (better than 0 results)
+        if len(expanded) <= 5:
+            domain_filter = None
+            logging.info("[RAG] source_files too few (%d) — skipping filter, using namespace only",
+                         len(expanded))
+        else:
+            domain_filter = {'source_file': {'$in': list(expanded)}}
+            logging.info("[RAG] source_files filter: %d files (expanded from %d)",
+                         len(expanded), len(source_files))
 
     _t0 = time.perf_counter()
     top_k_mult = route_cfg.get('top_k_mult', TOP_K_DEFAULT_MULT)
