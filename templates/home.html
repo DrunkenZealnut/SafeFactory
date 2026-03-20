@@ -316,66 +316,36 @@
     .search-section { animation-delay: 0.12s; }
     .roadmap-section { animation-delay: 0.24s; }
 
-    /* ===== Roadmap Graph Section ===== */
+    /* ===== Obsidian-Style Graph Section ===== */
     .roadmap-section {
         max-width: 960px;
         margin: 0 auto;
         padding: 0 24px 40px;
     }
     .roadmap-card {
-        background: linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #1e3a5f 100%);
-        border: 1px solid rgba(59, 130, 246, 0.15);
-        border-radius: 20px;
-        padding: 24px 20px 16px;
+        background: #0a0a0f;
+        border: 1px solid rgba(120, 120, 160, 0.12);
+        border-radius: 16px;
+        padding: 20px 16px 14px;
         position: relative;
         overflow: hidden;
-        box-shadow: 0 8px 32px rgba(15, 23, 42, 0.12);
-    }
-    .roadmap-card::before {
-        content: '';
-        position: absolute;
-        top: -80px; right: -80px;
-        width: 240px; height: 240px;
-        background: radial-gradient(circle, rgba(59,130,246,0.1) 0%, transparent 70%);
-        border-radius: 50%;
-        animation: rm-glow 8s ease-in-out infinite;
-    }
-    .roadmap-card::after {
-        content: '';
-        position: absolute;
-        bottom: -60px; left: -60px;
-        width: 200px; height: 200px;
-        background: radial-gradient(circle, rgba(139,92,246,0.08) 0%, transparent 70%);
-        border-radius: 50%;
-        animation: rm-glow 10s ease-in-out infinite reverse;
-    }
-    @keyframes rm-glow {
-        0%, 100% { transform: translate(0,0) scale(1); opacity: 0.6; }
-        50% { transform: translate(15px,-10px) scale(1.15); opacity: 1; }
-    }
-    .roadmap-grid {
-        position: absolute; inset: 0; z-index: 0;
-        background-image:
-            radial-gradient(circle at 50% 55%, rgba(59,130,246,0.06) 0%, transparent 60%),
-            linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
-        background-size: 100% 100%, 48px 48px, 48px 48px;
+        box-shadow: 0 0 60px rgba(100, 80, 200, 0.06), 0 8px 32px rgba(0,0,0,0.3);
     }
     .roadmap-header {
         display: flex; justify-content: space-between; align-items: center;
         margin-bottom: 8px; position: relative; z-index: 2;
     }
     .roadmap-title {
-        font-size: 17px; font-weight: 700; color: var(--sf-card-bg);
+        font-size: 16px; font-weight: 700; color: rgba(220,220,240,0.9);
         display: flex; align-items: center; gap: 8px;
     }
     .roadmap-badge {
         font-size: 10px; font-weight: 700; color: var(--sf-amber-light);
-        background: color-mix(in srgb, var(--sf-amber-light) 12%, transparent); padding: 3px 10px;
-        border-radius: 20px; letter-spacing: 0.8px;
+        background: color-mix(in srgb, var(--sf-amber-light) 12%, transparent);
+        padding: 3px 10px; border-radius: 20px; letter-spacing: 0.8px;
     }
     .roadmap-subtitle {
-        font-size: 12px; color: var(--sf-text-3);
+        font-size: 12px; color: rgba(140,140,170,0.6);
     }
     .roadmap-canvas-wrap {
         position: relative; z-index: 2; width: 100%;
@@ -386,28 +356,28 @@
     /* Tooltip */
     .rm-tooltip {
         position: absolute; pointer-events: none; z-index: 10;
-        background: color-mix(in srgb, var(--sf-purple-dark) 95%, transparent); border: 1px solid color-mix(in srgb, var(--sf-blue) 30%, transparent);
-        color: var(--sf-text-4); font-size: 12px; padding: 8px 12px;
-        border-radius: 8px; backdrop-filter: blur(8px);
-        box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-        opacity: 0; transition: opacity 0.15s;
+        background: rgba(12,12,20,0.96); border: 1px solid rgba(140,120,255,0.25);
+        color: rgba(220,220,240,0.9); font-size: 12px; padding: 10px 14px;
+        border-radius: 10px; backdrop-filter: blur(12px);
+        box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 20px rgba(120,100,220,0.1);
+        opacity: 0; transition: opacity 0.2s;
         white-space: nowrap;
     }
     .rm-tooltip.visible { opacity: 1; }
-    .rm-tooltip-title { font-weight: 700; font-size: 13px; margin-bottom: 2px; }
-    .rm-tooltip-info { color: var(--sf-text-3); font-size: 11px; }
+    .rm-tooltip-title { font-weight: 700; font-size: 13px; margin-bottom: 3px; color: #fff; }
+    .rm-tooltip-info { color: rgba(160,160,190,0.8); font-size: 11px; }
     /* Legend */
     .roadmap-legend {
         display: flex; flex-wrap: wrap; gap: 8px 14px;
-        padding-top: 12px; border-top: 1px solid color-mix(in srgb, var(--sf-card-bg) 5%, transparent);
+        padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.04);
         position: relative; z-index: 2;
     }
     .rm-legend-item {
         display: flex; align-items: center; gap: 5px;
-        font-size: 11px; color: var(--sf-text-3);
+        font-size: 11px; color: rgba(160,160,190,0.5);
         cursor: pointer; transition: color 0.2s; text-decoration: none;
     }
-    .rm-legend-item:hover { color: var(--sf-text-4); }
+    .rm-legend-item:hover { color: rgba(220,220,240,0.9); }
     .rm-legend-dot {
         width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
     }
@@ -562,9 +532,7 @@
         .carousel-arrows { display: none; }
         .search-section { padding: 0 16px 8px; }
         .roadmap-section { padding: 0 16px 32px; }
-        .roadmap-card { padding: 16px 8px 12px; }
-        .roadmap-canvas-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        #roadmapCanvas { min-width: 700px; }
+        .roadmap-card { padding: 14px 8px 12px; }
         .bottom-row { padding: 0 16px 40px; }
         .bottom-card { padding: 20px 16px; }
         .comm-meta, .news-meta { display: none; }
@@ -663,19 +631,18 @@
     </div>
 </section>
 
-<!-- Semiconductor Roadmap Graph -->
+<!-- Obsidian-Style Knowledge Graph -->
 <section class="roadmap-section">
     <div class="roadmap-card">
-        <div class="roadmap-grid"></div>
         <div class="roadmap-header">
             <div class="roadmap-title">
-                🔬 반도체 8대 공정 로드맵
+                🧠 반도체 공정 지식 그래프
                 <span class="roadmap-badge">LIVE</span>
             </div>
             <span class="roadmap-subtitle" id="roadmapMeta">학습 질문 기반 인기도 반영</span>
         </div>
         <div class="roadmap-canvas-wrap">
-            <canvas id="roadmapCanvas" height="460"></canvas>
+            <canvas id="roadmapCanvas" height="520"></canvas>
             <div class="rm-tooltip" id="rmTooltip">
                 <div class="rm-tooltip-title" id="rmTooltipTitle"></div>
                 <div class="rm-tooltip-info" id="rmTooltipInfo"></div>
@@ -853,7 +820,7 @@ async function loadCommunityPreview() {
     }
 }
 
-// ===== Semiconductor 8-Process Roadmap Graph =====
+// ===== Obsidian-Style Force-Directed Knowledge Graph =====
 var ROADMAP = {
     center: '반도체\n8대 공정',
     processes: [
@@ -916,8 +883,14 @@ function initRoadmapGraph() {
     var tipTitle = document.getElementById('rmTooltipTitle');
     var tipInfo = document.getElementById('rmTooltipInfo');
     var dpr = window.devicePixelRatio || 1;
-    var W, H, cx, cy, nodes, hoverNode = null, time = 0;
-    var R1, R2, R3; // radii for 3 levels
+    var W, H, nodes = [], edges = [], hoverNode = null, time = 0;
+    var isVisible = true, animId = null;
+
+    // Visibility API — pause when hidden
+    document.addEventListener('visibilitychange', function() {
+        isVisible = !document.hidden;
+        if (isVisible && !animId) animId = requestAnimationFrame(draw);
+    });
 
     // Fetch live keyword heat data
     var heatMap = {};
@@ -937,110 +910,141 @@ function initRoadmapGraph() {
     function getHeat(name) {
         if (heatMap[name]) return heatMap[name];
         for (var key in heatMap) {
+            if (!key) continue;
             if (name.indexOf(key) >= 0 || key.indexOf(name) >= 0) return heatMap[key];
         }
         return 0;
     }
 
-    function resize() {
-        var rect = wrap.getBoundingClientRect();
-        W = Math.max(rect.width, 700);
-        H = 460;
-        canvas.width = W * dpr;
-        canvas.height = H * dpr;
-        canvas.style.width = W + 'px';
-        canvas.style.height = H + 'px';
-        cx = W / 2; cy = H / 2;
-        R1 = Math.min(W * 0.16, 130);
-        R2 = Math.min(W * 0.32, 250);
-        R3 = Math.min(W * 0.46, 370);
-        buildNodes();
-        // Auto-scroll to center on mobile
-        if (rect.width < 700) {
-            wrap.scrollLeft = (W - rect.width) / 2;
-        }
+    function hexToRgb(hex) {
+        return [parseInt(hex.slice(1,3),16), parseInt(hex.slice(3,5),16), parseInt(hex.slice(5,7),16)];
     }
 
-    function buildNodes() {
-        nodes = [];
-        // Center node
-        nodes.push({ x: cx, y: cy, r: 28, name: '반도체\n8대 공정', level: 0,
-                      color: '#fbbf24', parent: -1, processIdx: -1, desc: '' });
-        var procs = ROADMAP.processes;
-        var n = procs.length;
+    function buildGraph() {
+        nodes = []; edges = [];
+        var cx = W / 2, cy = H / 2;
+        // Center
+        nodes.push({ x: cx, y: cy, vx: 0, vy: 0, r: 22, name: '반도체\n8대 공정',
+            level: 0, color: '#a78bfa', parent: -1, processIdx: -1, desc: '', fixed: true });
+        var procs = ROADMAP.processes, n = procs.length;
         for (var i = 0; i < n; i++) {
-            var angle = (i / n) * Math.PI * 2 - Math.PI / 2;
-            var px = cx + R1 * Math.cos(angle);
-            var py = cy + R1 * Math.sin(angle);
+            var a = (i / n) * Math.PI * 2 - Math.PI / 2;
+            var dist = Math.min(W, H) * 0.22;
             var pIdx = nodes.length;
-            nodes.push({ x: px, y: py, r: 20, name: procs[i].name, level: 1,
-                          color: procs[i].color, parent: 0, processIdx: i,
-                          desc: procs[i].desc, angle: angle });
-
+            nodes.push({ x: cx + dist * Math.cos(a) + (Math.random()-0.5)*20,
+                y: cy + dist * Math.sin(a) + (Math.random()-0.5)*20,
+                vx: 0, vy: 0, r: 14, name: procs[i].name, level: 1,
+                color: procs[i].color, parent: 0, processIdx: i, desc: procs[i].desc, fixed: false });
+            edges.push({ from: 0, to: pIdx });
             var kids = procs[i].children;
-            var spread2 = (Math.PI * 2 / n) * 0.7;
             for (var j = 0; j < kids.length; j++) {
-                var a2 = angle + (j - 1) * (spread2 / 2.5);
-                var kx = cx + R2 * Math.cos(a2);
-                var ky = cy + R2 * Math.sin(a2);
+                var a2 = a + (j - 1) * 0.35;
+                var dist2 = dist * 1.7;
                 var kIdx = nodes.length;
-                nodes.push({ x: kx, y: ky, r: 12, name: kids[j].name, level: 2,
-                              color: procs[i].color, parent: pIdx, processIdx: i,
-                              desc: procs[i].name + ' > ' + kids[j].name, angle: a2 });
-
+                nodes.push({ x: cx + dist2 * Math.cos(a2) + (Math.random()-0.5)*30,
+                    y: cy + dist2 * Math.sin(a2) + (Math.random()-0.5)*30,
+                    vx: 0, vy: 0, r: 8, name: kids[j].name, level: 2,
+                    color: procs[i].color, parent: pIdx, processIdx: i,
+                    desc: procs[i].name + ' › ' + kids[j].name, fixed: false });
+                edges.push({ from: pIdx, to: kIdx });
                 var leafs = kids[j].children;
-                var spread3 = spread2 / 3.5;
                 for (var k = 0; k < leafs.length; k++) {
-                    var a3 = a2 + (k - 1) * (spread3 / 2);
-                    var lx = cx + R3 * Math.cos(a3);
-                    var ly = cy + R3 * Math.sin(a3);
-                    nodes.push({ x: lx, y: ly, r: 6, name: leafs[k], level: 3,
-                                  color: procs[i].color, parent: kIdx, processIdx: i,
-                                  desc: procs[i].name + ' > ' + kids[j].name + ' > ' + leafs[k], angle: a3 });
+                    var a3 = a2 + (k - 1) * 0.18;
+                    var dist3 = dist * 2.4;
+                    var lIdx = nodes.length;
+                    nodes.push({ x: cx + dist3 * Math.cos(a3) + (Math.random()-0.5)*40,
+                        y: cy + dist3 * Math.sin(a3) + (Math.random()-0.5)*40,
+                        vx: 0, vy: 0, r: 3.5, name: leafs[k], level: 3,
+                        color: procs[i].color, parent: kIdx, processIdx: i,
+                        desc: procs[i].name + ' › ' + kids[j].name + ' › ' + leafs[k], fixed: false });
+                    edges.push({ from: kIdx, to: lIdx });
                 }
             }
         }
     }
 
-    function hexToRgb(hex) {
-        var r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
-        return [r, g, b];
+    // Force simulation
+    function simulate() {
+        var cx = W/2, cy = H/2, damping = 0.92, pad = 20;
+        for (var i = 0; i < nodes.length; i++) {
+            var nd = nodes[i];
+            if (nd.fixed) continue;
+            // Gravity to center
+            var dx = cx - nd.x, dy = cy - nd.y;
+            var grav = 0.0003 * (nd.level === 1 ? 1.5 : nd.level === 2 ? 1 : 0.6);
+            nd.vx += dx * grav; nd.vy += dy * grav;
+        }
+        // Edge springs
+        for (var e = 0; e < edges.length; e++) {
+            var a = nodes[edges[e].from], b = nodes[edges[e].to];
+            var dx = b.x - a.x, dy = b.y - a.y;
+            var dist = Math.sqrt(dx*dx + dy*dy) || 1;
+            var target = b.level === 1 ? W*0.18 : b.level === 2 ? W*0.12 : W*0.08;
+            var force = (dist - target) * 0.003;
+            var fx = (dx / dist) * force, fy = (dy / dist) * force;
+            if (!b.fixed) { b.vx -= fx; b.vy -= fy; }
+            if (!a.fixed) { a.vx += fx; a.vy += fy; }
+        }
+        // Repulsion between same-level nearby nodes
+        for (var i = 0; i < nodes.length; i++) {
+            for (var j = i + 1; j < nodes.length; j++) {
+                var a = nodes[i], b = nodes[j];
+                if (a.level !== b.level) continue;
+                var dx = b.x - a.x, dy = b.y - a.y;
+                var dist = Math.sqrt(dx*dx + dy*dy) || 1;
+                var minDist = (a.r + b.r) * 4;
+                if (dist < minDist) {
+                    var force = (minDist - dist) * 0.01 / dist;
+                    var fx = dx * force, fy = dy * force;
+                    if (!a.fixed) { a.vx -= fx; a.vy -= fy; }
+                    if (!b.fixed) { b.vx += fx; b.vy += fy; }
+                }
+            }
+        }
+        // Integrate + gentle organic drift
+        for (var i = 0; i < nodes.length; i++) {
+            var nd = nodes[i];
+            if (nd.fixed) continue;
+            nd.vx += Math.sin(time * 0.7 + i * 1.3) * 0.015;
+            nd.vy += Math.cos(time * 0.5 + i * 0.9) * 0.015;
+            nd.vx *= damping; nd.vy *= damping;
+            nd.x += nd.vx; nd.y += nd.vy;
+            nd.x = Math.max(pad + nd.r, Math.min(W - pad - nd.r, nd.x));
+            nd.y = Math.max(pad + nd.r, Math.min(H - pad - nd.r, nd.y));
+        }
     }
 
     function draw() {
-        time += 0.012;
+        time += 0.016;
+        simulate();
         var ctx = canvas.getContext('2d');
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         ctx.clearRect(0, 0, W, H);
-
-        // Determine highlighted process
         var hlProc = hoverNode ? hoverNode.processIdx : -1;
 
-        // Draw orbit rings
-        ctx.strokeStyle = 'rgba(59,130,246,0.06)';
-        ctx.lineWidth = 1;
-        [R1, R2, R3].forEach(function(r) {
-            ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.stroke();
-        });
-
-        // Draw connections
-        for (var i = 1; i < nodes.length; i++) {
-            var nd = nodes[i], par = nodes[nd.parent];
-            var isHl = hlProc >= 0 && nd.processIdx === hlProc;
-            var alpha = hlProc >= 0 ? (isHl ? 0.5 : 0.04) : 0.12;
-            var rgb = hexToRgb(nd.color);
+        // Draw edges
+        for (var e = 0; e < edges.length; e++) {
+            var a = nodes[edges[e].from], b = nodes[edges[e].to];
+            var isHl = hlProc >= 0 && b.processIdx === hlProc;
+            var dimmed = hlProc >= 0 && !isHl;
+            var rgb = hexToRgb(b.color);
+            var alpha = dimmed ? 0.03 : isHl ? 0.5 : 0.1;
+            var lw = dimmed ? 0.3 : isHl ? (b.level <= 2 ? 1.8 : 1) : (b.level <= 2 ? 0.7 : 0.4);
             ctx.beginPath();
-            ctx.moveTo(par.x, par.y);
-            // Curved lines
-            var mx = (par.x + nd.x) / 2 + (nd.y - par.y) * 0.08;
-            var my = (par.y + nd.y) / 2 - (nd.x - par.x) * 0.08;
-            ctx.quadraticCurveTo(mx, my, nd.x, nd.y);
-            ctx.strokeStyle = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + alpha + ')';
-            ctx.lineWidth = isHl ? (nd.level === 1 ? 2.5 : nd.level === 2 ? 1.8 : 1) : (nd.level === 1 ? 1.5 : 0.8);
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.strokeStyle = 'rgba(' + rgb.join(',') + ',' + alpha + ')';
+            ctx.lineWidth = lw;
             ctx.stroke();
+            // Glow on highlighted edges
+            if (isHl && b.level <= 2) {
+                ctx.strokeStyle = 'rgba(' + rgb.join(',') + ',0.08)';
+                ctx.lineWidth = lw + 4;
+                ctx.stroke();
+            }
         }
 
-        // Draw nodes
+        // Draw nodes (back to front)
         for (var i = nodes.length - 1; i >= 0; i--) {
             var nd = nodes[i];
             var isHl = hlProc >= 0 && (nd.processIdx === hlProc || nd.level === 0);
@@ -1048,141 +1052,128 @@ function initRoadmapGraph() {
             var isHovered = hoverNode === nd;
             var heat = getHeat(nd.name.replace('\n', ''));
             var rgb = hexToRgb(nd.color);
-            var pulse = Math.sin(time * 2 + i * 0.3) * 0.15 + 0.85;
-            var baseAlpha = dimmed ? 0.08 : (nd.level === 0 ? 1 : nd.level === 1 ? 0.9 : nd.level === 2 ? 0.7 : 0.5);
-            var nodeR = nd.r * (isHovered ? 1.3 : 1) + (heat > 0 ? Math.min(heat/30, 4) : 0);
+            var pulse = Math.sin(time * 1.5 + i * 0.4) * 0.12 + 0.88;
+            var nodeR = nd.r * (isHovered ? 1.4 : 1) + (heat > 0 ? Math.min(heat / 25, 5) : 0);
 
-            // Glow for hot nodes
-            if (heat > 10 && !dimmed) {
-                var grd = ctx.createRadialGradient(nd.x, nd.y, nodeR, nd.x, nd.y, nodeR * 3);
-                grd.addColorStop(0, 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + (0.2 * pulse) + ')');
-                grd.addColorStop(1, 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',0)');
+            // Outer glow (always for level 0-1, for hot nodes)
+            if (!dimmed && (nd.level <= 1 || heat > 5 || isHovered)) {
+                var glowR = nodeR * (nd.level === 0 ? 4 : nd.level === 1 ? 3.5 : 3);
+                var glowAlpha = (nd.level === 0 ? 0.12 : nd.level === 1 ? 0.08 : 0.06) * pulse;
+                if (isHovered) glowAlpha *= 2;
+                var grd = ctx.createRadialGradient(nd.x, nd.y, nodeR * 0.5, nd.x, nd.y, glowR);
+                grd.addColorStop(0, 'rgba(' + rgb.join(',') + ',' + glowAlpha + ')');
+                grd.addColorStop(1, 'rgba(' + rgb.join(',') + ',0)');
                 ctx.fillStyle = grd;
-                ctx.beginPath(); ctx.arc(nd.x, nd.y, nodeR * 3, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(nd.x, nd.y, glowR, 0, Math.PI * 2); ctx.fill();
             }
 
-            // Node circle
+            // Node body
+            var bodyAlpha = dimmed ? 0.06 : (nd.level === 0 ? 0.95 : nd.level === 1 ? 0.85 : nd.level === 2 ? 0.65 : 0.45);
             ctx.beginPath();
             ctx.arc(nd.x, nd.y, nodeR, 0, Math.PI * 2);
-            if (nd.level === 0) {
-                var grd = ctx.createRadialGradient(nd.x - 4, nd.y - 4, 0, nd.x, nd.y, nodeR);
-                grd.addColorStop(0, '#fde047');
-                grd.addColorStop(1, '#f59e0b');
-                ctx.fillStyle = grd;
-            } else {
-                ctx.fillStyle = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + baseAlpha + ')';
-            }
+            ctx.fillStyle = 'rgba(' + rgb.join(',') + ',' + bodyAlpha * pulse + ')';
             ctx.fill();
 
-            // Border
-            if (nd.level <= 2 && !dimmed) {
-                ctx.strokeStyle = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + (isHovered ? 0.9 : 0.3) + ')';
-                ctx.lineWidth = isHovered ? 2 : 1;
+            // Bright rim
+            if (!dimmed && nd.level <= 2) {
+                ctx.strokeStyle = 'rgba(' + rgb.join(',') + ',' + (isHovered ? 0.9 : 0.35) + ')';
+                ctx.lineWidth = isHovered ? 2 : 0.8;
                 ctx.stroke();
             }
 
-            // Text
+            // Label
             if (dimmed && nd.level >= 3) continue;
-            var fontSize = nd.level === 0 ? 11 : nd.level === 1 ? 11 : nd.level === 2 ? 9.5 : 8;
-            ctx.font = (nd.level <= 1 ? '700 ' : '500 ') + fontSize + 'px "Noto Sans KR", sans-serif';
+            var fontSize = nd.level === 0 ? 10.5 : nd.level === 1 ? 10.5 : nd.level === 2 ? 9 : 7.5;
+            ctx.font = (nd.level <= 1 ? '700 ' : '400 ') + fontSize + 'px "Noto Sans KR",sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillStyle = dimmed ? 'rgba(148,163,184,0.15)' :
-                            nd.level === 0 ? '#0f172a' :
-                            'rgba(255,255,255,' + (nd.level === 1 ? 0.95 : nd.level === 2 ? 0.8 : 0.6) + ')';
-
+            var textAlpha = dimmed ? 0.08 : (nd.level === 0 ? 0.95 : nd.level === 1 ? 0.9 : nd.level === 2 ? 0.7 : 0.45);
+            ctx.fillStyle = 'rgba(230,230,245,' + textAlpha + ')';
             if (nd.level === 0) {
                 var lines = nd.name.split('\n');
-                ctx.fillText(lines[0], nd.x, nd.y - 4);
+                ctx.fillText(lines[0], nd.x, nd.y - 3);
                 ctx.fillText(lines[1], nd.x, nd.y + 10);
-            } else if (nd.level <= 2) {
+            } else {
                 ctx.fillText(nd.name, nd.x, nd.y + nodeR + fontSize + 2);
-            } else if (!dimmed && (isHl || hlProc < 0)) {
-                ctx.fillText(nd.name, nd.x, nd.y + nodeR + fontSize);
             }
         }
 
-        requestAnimationFrame(draw);
+        animId = isVisible ? requestAnimationFrame(draw) : null;
     }
 
-    // Hit test
     function hitTest(mx, my) {
         for (var i = 0; i < nodes.length; i++) {
-            var nd = nodes[i];
-            var dx = mx - nd.x, dy = my - nd.y;
-            var hitR = Math.max(nd.r + 6, 14);
-            if (dx * dx + dy * dy < hitR * hitR) return nd;
+            var nd = nodes[i], dx = mx - nd.x, dy = my - nd.y;
+            var hitR = Math.max(nd.r + 8, 16);
+            if (dx*dx + dy*dy < hitR*hitR) return nd;
         }
         return null;
     }
 
     canvas.addEventListener('mousemove', function(e) {
         var rect = canvas.getBoundingClientRect();
-        var mx = e.clientX - rect.left, my = e.clientY - rect.top;
+        var mx = (e.clientX - rect.left) * (W / rect.width);
+        var my = (e.clientY - rect.top) * (H / rect.height);
         var nd = hitTest(mx, my);
         hoverNode = nd;
         canvas.style.cursor = nd ? 'pointer' : 'default';
         if (nd) {
             tipTitle.textContent = nd.name.replace('\n', ' ');
             var heat = getHeat(nd.name.replace('\n', ''));
-            tipInfo.textContent = nd.desc ? nd.desc : '';
-            if (heat > 0) tipInfo.textContent += (tipInfo.textContent ? ' · ' : '') + '질문 인기도: ' + heat;
+            tipInfo.textContent = nd.desc || '';
+            if (heat > 0) tipInfo.textContent += (tipInfo.textContent ? ' · ' : '') + '인기도 ' + heat;
             if (nd.level === 0) tipInfo.textContent = '클릭하여 전체 학습';
-            tooltip.style.left = Math.min(mx + 12, W - 180) + 'px';
-            tooltip.style.top = (my - 40) + 'px';
+            var tx = e.clientX - rect.left, ty = e.clientY - rect.top;
+            tooltip.style.left = Math.min(tx + 14, rect.width - 190) + 'px';
+            tooltip.style.top = (ty - 44) + 'px';
             tooltip.classList.add('visible');
-        } else {
-            tooltip.classList.remove('visible');
-        }
+        } else { tooltip.classList.remove('visible'); }
     });
-
-    canvas.addEventListener('mouseleave', function() {
-        hoverNode = null;
-        tooltip.classList.remove('visible');
-    });
+    canvas.addEventListener('mouseleave', function() { hoverNode = null; tooltip.classList.remove('visible'); });
 
     canvas.addEventListener('click', function(e) {
         var rect = canvas.getBoundingClientRect();
-        var nd = hitTest(e.clientX - rect.left, e.clientY - rect.top);
+        var nd = hitTest((e.clientX-rect.left)*(W/rect.width), (e.clientY-rect.top)*(H/rect.height));
         if (nd) {
-            var q = nd.name.replace('\n', ' ');
+            var q = nd.name.replace('\n',' ');
             if (nd.level === 0) q = '반도체 8대 공정';
             window.location.href = '/learn?q=' + encodeURIComponent(q);
         }
     });
 
-    // Touch support — distinguish tap from scroll
+    // Touch — tap vs scroll
     var touchStart = null;
-    canvas.addEventListener('touchstart', function(e) {
-        var t = e.touches[0];
-        touchStart = { x: t.clientX, y: t.clientY };
-    }, { passive: true });
+    canvas.addEventListener('touchstart', function(e) { var t=e.touches[0]; touchStart={x:t.clientX,y:t.clientY}; }, {passive:true});
     canvas.addEventListener('touchend', function(e) {
         if (!touchStart) return;
-        var t = e.changedTouches[0];
-        var dx = t.clientX - touchStart.x, dy = t.clientY - touchStart.y;
+        var t = e.changedTouches[0], dx = t.clientX-touchStart.x, dy = t.clientY-touchStart.y;
         touchStart = null;
-        if (Math.abs(dx) > 10 || Math.abs(dy) > 10) return; // was a scroll
+        if (Math.abs(dx)>10 || Math.abs(dy)>10) return;
         var rect = canvas.getBoundingClientRect();
-        var nd = hitTest(t.clientX - rect.left, t.clientY - rect.top);
+        var nd = hitTest((t.clientX-rect.left)*(W/rect.width), (t.clientY-rect.top)*(H/rect.height));
         if (nd) {
-            var q = nd.name.replace('\n', ' ');
+            var q = nd.name.replace('\n',' ');
             if (nd.level === 0) q = '반도체 8대 공정';
             window.location.href = '/learn?q=' + encodeURIComponent(q);
         }
     });
 
-    // Build legend with accessible links
+    // Accessible legend
     var legendEl = document.getElementById('roadmapLegend');
-    legendEl.innerHTML = ROADMAP.processes.map(function(p, i) {
-        var href = '/learn?q=' + encodeURIComponent(p.name + ' 공정');
-        return '<a class="rm-legend-item" href="' + href + '">' +
-            '<span class="rm-legend-dot" style="background:' + p.color + '"></span>' +
-            p.name + '</a>';
+    legendEl.innerHTML = ROADMAP.processes.map(function(p) {
+        return '<a class="rm-legend-item" href="/learn?q=' + encodeURIComponent(p.name + ' 공정') + '">' +
+            '<span class="rm-legend-dot" style="background:' + p.color + '"></span>' + p.name + '</a>';
     }).join('');
 
+    function resize() {
+        var rect = wrap.getBoundingClientRect();
+        W = rect.width; H = 520;
+        canvas.width = W * dpr; canvas.height = H * dpr;
+        canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+        buildGraph();
+    }
     window.addEventListener('resize', function() { resize(); });
     resize();
-    draw();
+    animId = requestAnimationFrame(draw);
 }
 
 function loadRoadmapGraph() { initRoadmapGraph(); }
