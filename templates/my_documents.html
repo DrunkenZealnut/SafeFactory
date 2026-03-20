@@ -637,7 +637,7 @@ function decodeHTMLEntities(str) {
 async function searchAndAdd() {
     const query = document.getElementById('searchAddInput').value.trim();
     if (!query) return;
-    const ns = document.getElementById('filterNamespace').value || 'semiconductor-v2';
+    const ns = document.getElementById('filterNamespace').value || '';
     const results = document.getElementById('searchResults');
     results.innerHTML = '<div class="loading" style="padding:12px;">검색 중...</div>';
 
@@ -712,10 +712,12 @@ async function addFromSearch(btn) {
         } else {
             btn.textContent = '+ 추가';
             btn.disabled = false;
+            alert('추가 실패: ' + (json.error || '알 수 없는 오류'));
         }
     } catch (e) {
         btn.textContent = '+ 추가';
         btn.disabled = false;
+        alert('추가 실패: 네트워크 오류');
     }
 }
 
