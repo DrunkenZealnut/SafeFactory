@@ -907,7 +907,7 @@ function initRoadmapGraph() {
     var tipTitle = document.getElementById('rmTooltipTitle');
     var tipInfo = document.getElementById('rmTooltipInfo');
     var dpr = window.devicePixelRatio || 1;
-    var W, H, nodes = [], edges = [], hoverNode = null, time = 0;
+    var W, H, nodes = [], edges = [], hoverNode = null, selectedNode = null, time = 0;
     var isVisible = true, animId = null;
     var lastMouseX = -1, lastMouseY = -1; // track cursor for hover revalidation
 
@@ -1045,7 +1045,8 @@ function initRoadmapGraph() {
         var ctx = canvas.getContext('2d');
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         ctx.clearRect(0, 0, W, H);
-        var hlProc = hoverNode ? hoverNode.processIdx : -1;
+        var focusNode = hoverNode || selectedNode;
+        var hlProc = focusNode ? focusNode.processIdx : -1;
 
         // Draw edges
         for (var e = 0; e < edges.length; e++) {
@@ -1170,9 +1171,10 @@ function initRoadmapGraph() {
         var rect = canvas.getBoundingClientRect();
         var nd = hitTest((e.clientX-rect.left)*(W/rect.width), (e.clientY-rect.top)*(H/rect.height));
         if (nd) {
-            var q = nd.name.replace('\n',' ');
-            if (nd.level === 0) q = '반도체 8대 공정';
-            window.location.href = '/learn?q=' + encodeURIComponent(q);
+            // Toggle selection: click same node deselects, click different selects
+            selectedNode = (selectedNode === nd) ? null : nd;
+        } else {
+            selectedNode = null;
         }
     });
 
@@ -1187,9 +1189,9 @@ function initRoadmapGraph() {
         var rect = canvas.getBoundingClientRect();
         var nd = hitTest((t.clientX-rect.left)*(W/rect.width), (t.clientY-rect.top)*(H/rect.height));
         if (nd) {
-            var q = nd.name.replace('\n',' ');
-            if (nd.level === 0) q = '반도체 8대 공정';
-            window.location.href = '/learn?q=' + encodeURIComponent(q);
+            selectedNode = (selectedNode === nd) ? null : nd;
+        } else {
+            selectedNode = null;
         }
     });
 
