@@ -1,0 +1,18 @@
+# .codereview.yml — Example configuration file
+# Place this in your project root to customize code review behavior.
+#
+# language: ko              # Output language (default: match user's language)
+# severity_threshold: warning  # Only show findings at this level or above
+#                              # Options: critical, warning, suggestion, nitpick
+# focus:                     # Priority review areas (others still checked but with less emphasis)
+#   - security
+#   - performance
+# ignore:                    # Glob patterns for files to skip
+#   - "**/*.test.ts"
+#   - "**/*.spec.js"
+#   - "migrations/"
+#   - "*.generated.*"
+# custom_rules:              # Project-specific rules to enforce
+#   - "All API endpoints must have rate limiting"
+#   - "Database queries must use parameterized statements"
+#   - "React components must have TypeScript types"

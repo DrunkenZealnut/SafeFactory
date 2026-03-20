@@ -986,3 +986,45 @@ class KGCommunityMember(db.Model):
         nullable=False,
     )
     namespace = db.Column(db.String(100), nullable=False)
+
+
+# ── Knowledge Graph Visualization (AI-generated) ──
+
+
+class GraphNode(db.Model):
+    """Node in the AI-generated knowledge graph visualization."""
+
+    __tablename__ = 'graph_nodes'
+
+    id = db.Column(db.Integer, primary_key=True)
+    node_id = db.Column(db.String(50), nullable=False)
+    label = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.String(500), default='')
+    node_type = db.Column(db.String(10), nullable=False)  # m, s, d, sh
+    color = db.Column(db.String(10), default='#89b4fa')
+    radius = db.Column(db.Integer, default=14)
+    order_num = db.Column(db.Integer)
+    parent_node_id = db.Column(db.String(50))
+    namespace = db.Column(db.String(50), default='default', index=True)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc),
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint('node_id', 'namespace', name='uq_graph_node_ns'),
+    )
+
+
+class GraphEdge(db.Model):
+    """Edge in the AI-generated knowledge graph visualization."""
+
+    __tablename__ = 'graph_edges'
+
+    id = db.Column(db.Integer, primary_key=True)
+    source_id = db.Column(db.String(50), nullable=False)
+    target_id = db.Column(db.String(50), nullable=False)
+    is_flow = db.Column(db.Boolean, default=False)
+    namespace = db.Column(db.String(50), default='default', index=True)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc),
+    )

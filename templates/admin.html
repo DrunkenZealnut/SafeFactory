@@ -456,6 +456,9 @@
             <div class="admin-sidebar-item" data-section="logs">
                 <span class="admin-sidebar-icon">📋</span> 활동로그
             </div>
+            <div class="admin-sidebar-item" data-section="graph">
+                <span class="admin-sidebar-icon">🧠</span> 지식그래프
+            </div>
             <div class="admin-sidebar-item" data-section="settings">
                 <span class="admin-sidebar-icon">⚙️</span> 설정
             </div>
@@ -652,6 +655,49 @@
                     </table>
                 </div>
                 <div class="admin-pagination" id="user-pagination"></div>
+            </div>
+
+            <!-- ===== Graph ===== -->
+            <div id="section-graph" class="admin-section">
+                <h2 class="admin-section-title">지식 그래프 관리</h2>
+
+                <div style="background:var(--sf-surface);border:1px solid var(--sf-border);border-radius:12px;padding:20px;margin-bottom:20px;">
+                    <h3 style="color:var(--sf-text-1);margin:0 0 12px;">AI 그래프 생성</h3>
+                    <p style="font-size:13px;color:var(--sf-text-3);margin:0 0 12px;">시드 단어를 입력하면 Gemini AI가 관련 용어·계층·연결 관계를 자동 생성합니다.</p>
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                        <input type="text" id="graph-seed" placeholder="예: 반도체 8대 공정, 자동차 제조, 웹 개발..." style="flex:1;min-width:250px;padding:10px 14px;border:1px solid var(--sf-border);border-radius:8px;font-size:14px;background:var(--sf-card-bg);color:var(--sf-text-1);">
+                        <button class="admin-btn admin-btn-primary" id="graph-gen-btn" onclick="generateGraph()">🧠 AI 생성</button>
+                        <button class="admin-btn" onclick="clearGraph()" style="color:var(--sf-red);">🗑️ 초기화</button>
+                    </div>
+                    <div id="graph-gen-status" style="margin-top:10px;font-size:13px;color:var(--sf-text-3);"></div>
+                </div>
+
+                <h3 style="color:var(--sf-text-1);margin-bottom:12px;">저장된 그래프 목록</h3>
+                <div class="table-wrapper" style="margin-bottom:20px;">
+                    <table>
+                        <thead><tr><th>이름</th><th>노드</th><th>연결</th><th>상태</th><th>관리</th></tr></thead>
+                        <tbody id="graph-list-table"></tbody>
+                    </table>
+                </div>
+
+                <h3 style="color:var(--sf-text-1);margin-bottom:12px;">활성 그래프 노드 상세</h3>
+                <div style="display:flex;gap:16px;margin-bottom:16px;">
+                    <div style="background:var(--sf-surface);border:1px solid var(--sf-border);border-radius:8px;padding:14px 20px;text-align:center;">
+                        <div style="font-size:24px;font-weight:700;color:var(--sf-purple);" id="graph-node-count">-</div>
+                        <div style="font-size:12px;color:var(--sf-text-3);">노드</div>
+                    </div>
+                    <div style="background:var(--sf-surface);border:1px solid var(--sf-border);border-radius:8px;padding:14px 20px;text-align:center;">
+                        <div style="font-size:24px;font-weight:700;color:var(--sf-purple);" id="graph-edge-count">-</div>
+                        <div style="font-size:12px;color:var(--sf-text-3);">연결</div>
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th>ID</th><th>이름</th><th>유형</th><th>설명</th><th>상위</th></tr></thead>
+                        <tbody id="graph-node-table"></tbody>
+                    </table>
+                </div>
             </div>
 
             <!-- ===== Stats ===== -->
@@ -2022,6 +2068,148 @@ async function saveSettings() {
 }
 
 // ---------------------------------------------------------------------------
+// Graph Management
+// ---------------------------------------------------------------------------
+var graphDetailNs = null; // currently viewed graph namespace
+
+async function loadGraphStats() {
+    // Load saved graph list
+    try {
+        const { data } = await apiFetch('/graph/list');
+        const tb = document.getElementById('graph-list-table');
+        if (!data.graphs.length) {
+            tb.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--sf-text-3);">저장된 그래프가 없습니다.</td></tr>';
+        } else {
+            tb.innerHTML = data.graphs.map(g => {
+                const isSel = graphDetailNs ? g.namespace === graphDetailNs : g.active;
+                return `<tr style="cursor:pointer;${isSel ? 'background:var(--sf-surface);' : ''}" onclick="viewGraphDetail('${escHtml(g.namespace)}')">
+                <td>
+                    <span id="gname-${escHtml(g.namespace)}" style="font-weight:${g.active ? '600' : '400'}">${escHtml(g.name)}</span>
+                    <button class="admin-btn admin-btn-sm" style="margin-left:6px;font-size:11px;" onclick="event.stopPropagation();renameGraph('${escHtml(g.namespace)}','${escHtml(g.name)}')">✏️</button>
+                </td>
+                <td>${fmtNumber(g.nodes)}</td>
+                <td>${fmtNumber(g.edges)}</td>
+                <td>${g.active ? '<span style="color:#4caf50;font-weight:600;">● 활성</span>' : '<span style="color:var(--sf-text-3);">○</span>'}</td>
+                <td>
+                    ${g.active ? '' : '<button class="admin-btn admin-btn-sm admin-btn-primary" onclick="event.stopPropagation();activateGraph(\'' + escHtml(g.namespace) + '\')">활성화</button> '}
+                    <button class="admin-btn admin-btn-sm" style="color:var(--sf-red);" onclick="event.stopPropagation();deleteGraph('${escHtml(g.namespace)}')">삭제</button>
+                </td>
+            </tr>`;
+            }).join('');
+        }
+        // Auto-select: if no detail selected, show active graph
+        if (!graphDetailNs && data.active) graphDetailNs = data.active;
+    } catch (e) { console.error('Graph list failed:', e); }
+
+    // Load detail for selected graph
+    await loadGraphDetail(graphDetailNs);
+}
+
+async function loadGraphDetail(ns) {
+    if (!ns) ns = 'default';
+    try {
+        const res = await fetch('/api/v1/graph/data?namespace=' + encodeURIComponent(ns));
+        const resp = await res.json();
+        const data = resp.data;
+        if (!data || data.empty) {
+            document.getElementById('graph-node-count').textContent = '0';
+            document.getElementById('graph-edge-count').textContent = '0';
+            document.getElementById('graph-node-table').innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--sf-text-3);">그래프 데이터가 없습니다.</td></tr>';
+            return;
+        }
+        document.getElementById('graph-node-count').textContent = data.nodes.length;
+        document.getElementById('graph-edge-count').textContent = data.edges.length;
+        const typeLabel = { m: '주요', s: '세부', d: '상세', sh: '공유' };
+        document.getElementById('graph-node-table').innerHTML = data.nodes.map(n =>
+            `<tr><td>${escHtml(n.id)}</td><td>${escHtml(n.l)}</td><td>${typeLabel[n.t] || n.t}</td><td>${escHtml(n.d || '-')}</td><td>${escHtml(n.p || '-')}</td></tr>`
+        ).join('');
+    } catch (e) {
+        console.error('Graph detail load failed:', e);
+    }
+}
+
+function viewGraphDetail(ns) {
+    graphDetailNs = ns;
+    loadGraphStats();
+}
+
+async function renameGraph(ns, currentName) {
+    const newName = prompt('그래프 이름 변경:', currentName);
+    if (!newName || newName === currentName) return;
+    try {
+        const { message } = await apiFetch('/graph/rename', {
+            method: 'POST',
+            body: JSON.stringify({ namespace: ns, name: newName }),
+        });
+        showToast(message);
+        loadGraphStats();
+    } catch (e) { showToast('이름 변경 실패: ' + e.message, true); }
+}
+
+async function activateGraph(ns) {
+    try {
+        const { message } = await apiFetch('/graph/activate', {
+            method: 'POST',
+            body: JSON.stringify({ namespace: ns }),
+        });
+        showToast(message);
+        loadGraphStats();
+    } catch (e) { showToast('활성화 실패: ' + e.message, true); }
+}
+
+async function deleteGraph(ns) {
+    if (!confirm('이 그래프를 삭제하시겠습니까?')) return;
+    try {
+        const { message } = await apiFetch('/graph/clear', {
+            method: 'POST',
+            body: JSON.stringify({ namespace: ns }),
+        });
+        showToast(message);
+        if (graphDetailNs === ns) graphDetailNs = null;
+        loadGraphStats();
+    } catch (e) { showToast('삭제 실패: ' + e.message, true); }
+}
+
+async function generateGraph() {
+    const seed = document.getElementById('graph-seed').value.trim();
+    if (!seed) { showToast('시드 단어를 입력해주세요.', true); return; }
+    const btn = document.getElementById('graph-gen-btn');
+    const status = document.getElementById('graph-gen-status');
+    btn.disabled = true; btn.textContent = '⏳ AI 생성 중...';
+    status.textContent = 'Gemini AI가 지식 그래프를 생성하고 있습니다... (10~20초 소요)';
+    try {
+        const { data, message } = await apiFetch('/graph/generate', {
+            method: 'POST',
+            body: JSON.stringify({ seed: seed }),
+        });
+        showToast(message);
+        status.textContent = `생성 완료: ${data.nodes}개 노드, ${data.edges}개 엣지`;
+        status.style.color = '#4caf50';
+        loadGraphStats();
+    } catch (e) {
+        showToast('AI 생성 실패: ' + e.message, true);
+        status.textContent = '생성 실패: ' + e.message;
+        status.style.color = 'var(--sf-red)';
+    } finally {
+        btn.disabled = false; btn.textContent = '🧠 AI 생성';
+    }
+}
+
+async function clearGraph() {
+    if (!confirm('현재 그래프 데이터를 모두 삭제하시겠습니까?')) return;
+    try {
+        const { message } = await apiFetch('/graph/clear', {
+            method: 'POST',
+            body: JSON.stringify({ namespace: 'default' }),
+        });
+        showToast(message);
+        loadGraphStats();
+    } catch (e) {
+        showToast('삭제 실패: ' + e.message, true);
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Section loader map + init
 // ---------------------------------------------------------------------------
 const loaders = {
@@ -2029,6 +2217,7 @@ const loaders = {
     documents: () => { loadDocNamespaces(); loadFileTree(); },
     posts: () => { loadPostCategories(); loadPosts(); },
     users: loadUsers,
+    graph: loadGraphStats,
     stats: loadStats,
     logs: loadLogs,
     settings: loadSettings,
