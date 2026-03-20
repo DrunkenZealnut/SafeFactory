@@ -1021,6 +1021,13 @@ function draw(){
     ctx.globalAlpha=1;
   });
   ctx.restore();
+
+  // Update tooltip position to follow node
+  if(hovered && tooltip.style.display==='block'){
+    var sp=toScreen(hovered.x,hovered.y);
+    tooltip.style.left=Math.min(sp.x+hovered.r*zoom+10,W-230)+'px';
+    tooltip.style.top=Math.max(sp.y-30,4)+'px';
+  }
 }
 
 function loop(){simulate();draw();requestAnimationFrame(loop);}
@@ -1052,7 +1059,6 @@ canvas.addEventListener('mousemove',function(e){
       tooltip.innerHTML='<strong style="font-size:13px">'+n.l+'</strong><br><span style="color:#a6adc8;font-size:11px">'+tier+'</span><br><span style="color:#bac2de">'+n.d+'</span>';
     }else{canvas.style.cursor='grab';tooltip.style.display='none';}
   }
-  if(hovered){tooltip.style.left=Math.min(p.x+14,W-230)+'px';tooltip.style.top=(p.y-10)+'px';}
 });
 canvas.addEventListener('mouseup',function(){dragging=null;isPanning=false;container.style.cursor=hovered?'pointer':'grab';});
 canvas.addEventListener('mouseleave',function(){dragging=null;isPanning=false;hovered=null;tooltip.style.display='none';container.style.cursor='grab';});
