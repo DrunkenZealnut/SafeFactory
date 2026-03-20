@@ -1200,6 +1200,9 @@ function initRoadmapGraph() {
         a11yHtml += '<a href="/learn?q=' + encodeURIComponent(p.name) + '">' + p.name + '</a>';
         p.children.forEach(function(kid) {
             a11yHtml += '<a href="/learn?q=' + encodeURIComponent(kid.name) + '">' + kid.name + '</a>';
+            kid.children.forEach(function(leaf) {
+                a11yHtml += '<a href="/learn?q=' + encodeURIComponent(leaf) + '">' + leaf + '</a>';
+            });
         });
     });
     a11yEl.innerHTML = a11yHtml;
