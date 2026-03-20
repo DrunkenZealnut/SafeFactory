@@ -835,6 +835,16 @@ def run_rag_pipeline(data):
     # ========================================
     domain_filter = build_domain_filter(search_query, namespace)
 
+    # Support source_file restriction (e.g., "my documents" chat)
+    source_files = data.get('source_files')
+    if source_files and isinstance(source_files, list):
+        sf_filter = {'source_file': {'$in': source_files}}
+        if domain_filter:
+            domain_filter = {'$and': [domain_filter, sf_filter]}
+        else:
+            domain_filter = sf_filter
+        logging.info("[RAG] source_files filter: %d files", len(source_files))
+
     _t0 = time.perf_counter()
     top_k_mult = route_cfg.get('top_k_mult', TOP_K_DEFAULT_MULT)
     if skip_bm25:
