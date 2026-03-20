@@ -198,6 +198,99 @@
         color: #888;
     }
 
+    /* Search to Add */
+    .search-add {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 14px;
+        padding: 16px;
+        margin-bottom: 20px;
+    }
+    .search-add-bar {
+        display: flex;
+        gap: 8px;
+    }
+    .search-add-bar input {
+        flex: 1;
+        padding: 10px 14px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 10px;
+        color: #e0e0e0;
+        font-size: 0.9rem;
+        font: inherit;
+        outline: none;
+    }
+    .search-add-bar input:focus {
+        border-color: rgba(0, 212, 255, 0.4);
+    }
+    .search-add-bar button {
+        padding: 10px 18px;
+        background: rgba(0, 212, 255, 0.12);
+        border: 1px solid rgba(0, 212, 255, 0.3);
+        border-radius: 10px;
+        color: #00d4ff;
+        font-size: 0.85rem;
+        font: inherit;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: all 0.2s;
+    }
+    .search-add-bar button:hover {
+        background: rgba(0, 212, 255, 0.2);
+    }
+    .search-results {
+        margin-top: 12px;
+    }
+    .search-result-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 14px;
+        border-radius: 10px;
+        transition: background 0.15s;
+    }
+    .search-result-item:hover {
+        background: rgba(255, 255, 255, 0.04);
+    }
+    .search-result-info {
+        flex: 1;
+        min-width: 0;
+        margin-right: 12px;
+    }
+    .search-result-title {
+        font-size: 0.9rem;
+        color: #ccc;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .search-result-meta {
+        font-size: 0.75rem;
+        color: #666;
+        margin-top: 2px;
+    }
+    .btn-add {
+        padding: 6px 14px;
+        border-radius: 8px;
+        border: 1px solid rgba(0, 212, 255, 0.3);
+        background: rgba(0, 212, 255, 0.08);
+        color: #00d4ff;
+        font-size: 0.8rem;
+        font: inherit;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: all 0.2s;
+        flex-shrink: 0;
+    }
+    .btn-add:hover { background: rgba(0, 212, 255, 0.2); }
+    .btn-add.added {
+        border-color: rgba(74, 222, 128, 0.3);
+        background: rgba(74, 222, 128, 0.08);
+        color: #4ade80;
+        cursor: default;
+    }
+
     /* PDF Modal */
     .pdf-modal-overlay {
         display: none;
@@ -316,6 +409,14 @@
             <option value="newest">최신순</option>
             <option value="title">이름순</option>
         </select>
+    </div>
+
+    <div class="search-add">
+        <div class="search-add-bar">
+            <input type="text" id="searchAddInput" placeholder="학습자료 검색 후 추가..." onkeydown="if(event.key==='Enter')searchAndAdd()">
+            <button onclick="searchAndAdd()">🔍 검색</button>
+        </div>
+        <div class="search-results" id="searchResults"></div>
     </div>
 
     <div id="bookmarkContainer">
@@ -530,6 +631,92 @@ function decodeHTMLEntities(str) {
     const d = document.createElement('div');
     d.innerHTML = str;
     return d.textContent;
+}
+
+// Search and Add
+async function searchAndAdd() {
+    const query = document.getElementById('searchAddInput').value.trim();
+    if (!query) return;
+    const ns = document.getElementById('filterNamespace').value || 'semiconductor-v2';
+    const results = document.getElementById('searchResults');
+    results.innerHTML = '<div class="loading" style="padding:12px;">검색 중...</div>';
+
+    try {
+        const res = await fetch('/api/v1/search', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ query: query, namespace: ns, top_k: 10 })
+        });
+        const json = await res.json();
+        if (!json.success) throw new Error(json.error);
+
+        const items = json.data.results || json.data || [];
+        if (!items.length) {
+            results.innerHTML = '<div style="padding:12px;color:#666;font-size:0.85rem;">검색 결과가 없습니다.</div>';
+            return;
+        }
+
+        // Check which are already bookmarked
+        const sourceFiles = items.map(r => r.source_file).filter(Boolean);
+        let bookmarked = {};
+        if (sourceFiles.length) {
+            try {
+                const bRes = await fetch('/api/v1/bookmarks/check-batch', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ source_files: sourceFiles })
+                });
+                const bJson = await bRes.json();
+                if (bJson.success) bookmarked = bJson.data.bookmarked || {};
+            } catch (e) {}
+        }
+
+        results.innerHTML = items.map(function(r, i) {
+            const sf = escapeAttr(r.source_file || '');
+            const title = r.source_file ? r.source_file.split('/').pop() : ('결과 ' + (i+1));
+            const isAdded = !!bookmarked[r.source_file];
+            return '<div class="search-result-item">' +
+                '<div class="search-result-info">' +
+                '<div class="search-result-title">' + escapeHtml(title) + '</div>' +
+                '<div class="search-result-meta">' + escapeHtml(NAMESPACE_LABELS[ns] || ns) + ' · ' +
+                escapeHtml((r.content_preview || r.text || '').substring(0, 60)) + '</div>' +
+                '</div>' +
+                '<button class="btn-add' + (isAdded ? ' added' : '') + '" ' +
+                'data-sf="' + sf + '" data-title="' + escapeAttr(title) + '" data-ns="' + escapeAttr(ns) + '" ' +
+                (isAdded ? 'disabled' : 'onclick="addFromSearch(this)"') + '>' +
+                (isAdded ? '✓ 추가됨' : '+ 추가') + '</button>' +
+                '</div>';
+        }).join('');
+    } catch (e) {
+        results.innerHTML = '<div style="padding:12px;color:#ef4444;font-size:0.85rem;">검색 실패: ' + escapeHtml(e.message) + '</div>';
+    }
+}
+
+async function addFromSearch(btn) {
+    const sf = btn.dataset.sf;
+    const title = btn.dataset.title;
+    const ns = btn.dataset.ns;
+    btn.disabled = true;
+    btn.textContent = '...';
+    try {
+        const res = await fetch('/api/v1/bookmarks', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ source_file: sf, title: title, namespace: ns })
+        });
+        const json = await res.json();
+        if (json.success) {
+            btn.textContent = '✓ 추가됨';
+            btn.classList.add('added');
+            loadBookmarks(currentPage);
+        } else {
+            btn.textContent = '+ 추가';
+            btn.disabled = false;
+        }
+    } catch (e) {
+        btn.textContent = '+ 추가';
+        btn.disabled = false;
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => loadBookmarks(1));
