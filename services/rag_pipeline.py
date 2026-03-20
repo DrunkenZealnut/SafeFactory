@@ -835,31 +835,14 @@ def run_rag_pipeline(data):
     # ========================================
     domain_filter = build_domain_filter(search_query, namespace)
 
-    # Support source_file restriction (e.g., "my documents" chat)
-    # When source_files is provided, REPLACE domain_filter entirely
-    source_files = data.get('source_files')
-    if source_files and isinstance(source_files, list):
-        import unicodedata as _ud
-        # Normalize and expand folder paths
-        expanded = set()
-        for sf in source_files:
-            sf_nfc = _ud.normalize('NFC', sf)
-            expanded.add(sf_nfc)
-            if not sf_nfc.endswith(('.md', '.json', '.pdf', '.txt')):
-                base = sf_nfc.rstrip('/')
-                name = base.split('/')[-1]
-                for ext in ('.md', '.json'):
-                    expanded.add(f'{base}/{name}{ext}')
-        # If filter is too small or encoding issues, skip filter entirely
-        # and rely on namespace-level search (better than 0 results)
-        if len(expanded) <= 5:
-            domain_filter = None
-            logging.info("[RAG] source_files too few (%d) — skipping filter, using namespace only",
-                         len(expanded))
-        else:
-            domain_filter = {'source_file': {'$in': list(expanded)}}
-            logging.info("[RAG] source_files filter: %d files (expanded from %d)",
-                         len(expanded), len(source_files))
+    # Support bookmark-scoped search ("my documents" chat)
+    # Use ncs_document_title filter (avoids source_file encoding issues)
+    bookmark_titles = data.get('bookmark_titles')
+    if bookmark_titles and isinstance(bookmark_titles, list):
+        titles = [t for t in bookmark_titles if t]
+        if titles:
+            domain_filter = {'ncs_document_title': {'$in': titles}}
+            logging.info("[RAG] bookmark_titles filter: %d titles", len(titles))
 
     _t0 = time.perf_counter()
     top_k_mult = route_cfg.get('top_k_mult', TOP_K_DEFAULT_MULT)
