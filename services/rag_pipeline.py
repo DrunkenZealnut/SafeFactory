@@ -838,12 +838,22 @@ def run_rag_pipeline(data):
     # Support source_file restriction (e.g., "my documents" chat)
     source_files = data.get('source_files')
     if source_files and isinstance(source_files, list):
-        sf_filter = {'source_file': {'$in': source_files}}
+        # Expand folder paths to include common file extensions
+        expanded = set(source_files)
+        for sf in source_files:
+            if not sf.endswith(('.md', '.json', '.pdf', '.txt')):
+                base = sf.rstrip('/')
+                name = base.split('/')[-1]
+                for ext in ('.md', '.json'):
+                    expanded.add(f'{base}/{name}{ext}')
+        sf_list = list(expanded)
+        sf_filter = {'source_file': {'$in': sf_list}}
         if domain_filter:
             domain_filter = {'$and': [domain_filter, sf_filter]}
         else:
             domain_filter = sf_filter
-        logging.info("[RAG] source_files filter: %d files", len(source_files))
+        logging.info("[RAG] source_files filter: %d files (expanded from %d)",
+                     len(sf_list), len(source_files))
 
     _t0 = time.perf_counter()
     top_k_mult = route_cfg.get('top_k_mult', TOP_K_DEFAULT_MULT)

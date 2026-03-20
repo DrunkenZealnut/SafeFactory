@@ -693,7 +693,7 @@ async function loadBookmarks(page) {
         const json = await res.json();
         if (!json.success) throw new Error(json.error);
         renderBookmarks(json.data);
-        updateChatSection(json.data.items);
+        updateChatSection();
     } catch (e) {
         document.getElementById('bookmarkContainer').innerHTML =
             `<div class="empty-state"><div class="icon">&#x26A0;</div><div>${e.message || '불러오기 실패'}</div></div>`;
@@ -1025,9 +1025,17 @@ function previewNcsModule(dirname, catName, title) {
 // AI Chat with my documents
 var _mySourceFiles = [];
 
-function updateChatSection(bookmarkItems) {
+async function updateChatSection() {
     var section = document.getElementById('chatSection');
-    _mySourceFiles = (bookmarkItems || []).map(function(b) { return b.source_file; }).filter(Boolean);
+    // Fetch ALL bookmarks (not just current page) to get complete source_files list
+    try {
+        var res = await fetch('/api/v1/bookmarks?page=1&per_page=200');
+        var json = await res.json();
+        if (json.success && json.data.items) {
+            _mySourceFiles = json.data.items.map(function(b) { return b.source_file; }).filter(Boolean);
+        }
+    } catch (e) { _mySourceFiles = []; }
+
     if (_mySourceFiles.length > 0) {
         section.style.display = '';
         document.getElementById('chatInfo').textContent =
@@ -1055,9 +1063,16 @@ async function askMyDocs() {
                 query: query,
                 namespace: 'semiconductor-v2',
                 source_files: _mySourceFiles,
-                top_k: 10,
+                top_k: 20,
             })
         });
+
+        if (!res.ok) {
+            var errText = await res.text();
+            answerEl.textContent = '요청 실패 (' + res.status + '): 다시 시도해주세요.';
+            btn.disabled = false; btn.textContent = '🤖 질문';
+            return;
+        }
 
         var reader = res.body.getReader();
         var decoder = new TextDecoder();
