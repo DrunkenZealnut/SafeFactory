@@ -1029,11 +1029,17 @@ async function updateChatSection() {
     var section = document.getElementById('chatSection');
     // Fetch ALL bookmarks (not just current page) to get complete source_files list
     try {
-        var res = await fetch('/api/v1/bookmarks?page=1&per_page=200');
-        var json = await res.json();
-        if (json.success && json.data.items) {
-            _mySourceFiles = json.data.items.map(function(b) { return b.source_file; }).filter(Boolean);
+        // UserBookmark.MAX_PER_USER is 200, fetch all pages
+        var allItems = [], page = 1;
+        while (true) {
+            var res = await fetch('/api/v1/bookmarks?page=' + page + '&per_page=50');
+            var j = await res.json();
+            if (!j.success || !j.data.items.length) break;
+            allItems = allItems.concat(j.data.items);
+            if (page >= j.data.pages) break;
+            page++;
         }
+        _mySourceFiles = allItems.map(function(b) { return b.source_file; }).filter(Boolean);
     } catch (e) { _mySourceFiles = []; }
 
     if (_mySourceFiles.length > 0) {
@@ -1061,7 +1067,7 @@ async function askMyDocs() {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
                 query: query,
-                namespace: 'semiconductor-v2',
+                namespace: document.getElementById('filterNamespace').value || 'all',
                 source_files: _mySourceFiles,
                 top_k: 20,
             })
