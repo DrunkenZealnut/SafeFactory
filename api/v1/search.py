@@ -658,10 +658,11 @@ def api_ask_stream():
             # Save search history for logged-in users
             if current_user.is_authenticated:
                 full_answer = ''.join(answer_chunks)
+                _qt = 'my_docs' if data.get('bookmark_titles') else 'ask'
                 _save_search_history(
                     user_id=current_user.id,
                     query=query,
-                    query_type='ask',
+                    query_type=_qt,
                     namespace=namespace,
                     result_count=len(sources),
                     answer_preview=full_answer[:200] if full_answer else None,

@@ -421,6 +421,7 @@
             <option value="">전체</option>
             <option value="search">검색</option>
             <option value="ask">AI 질문</option>
+            <option value="my_docs">내 자료 질문</option>
         </select>
         <select id="filterNamespace" onchange="loadHistory()">
             <option value="">전체 도메인</option>
@@ -527,8 +528,8 @@ function renderHistory(data) {
 
     let html = '<div class="history-list">';
     for (const item of data.items) {
-        const icon = item.query_type === 'ask' ? '&#x1F4AC;' : '&#x1F50D;';
-        const typeLabel = item.query_type === 'ask' ? 'AI 질문' : '검색';
+        const icon = item.query_type === 'my_docs' ? '&#x1F4DA;' : item.query_type === 'ask' ? '&#x1F4AC;' : '&#x1F50D;';
+        const typeLabel = item.query_type === 'my_docs' ? '내 자료 질문' : item.query_type === 'ask' ? 'AI 질문' : '검색';
         const nsLabel = NAMESPACE_LABELS[item.namespace] || item.namespace || '전체';
         const path = NAMESPACE_PATHS[item.namespace] || '/search';
         const encodedQ = encodeURIComponent(item.query);
@@ -599,7 +600,7 @@ async function openAnswer(id) {
         if (!json.success) throw new Error(json.error);
 
         const item = json.data;
-        const typeLabel = item.query_type === 'ask' ? 'AI 질문' : '검색';
+        const typeLabel = item.query_type === 'my_docs' ? '내 자료 질문' : item.query_type === 'ask' ? 'AI 질문' : '검색';
         const nsLabel = NAMESPACE_LABELS[item.namespace] || item.namespace || '전체';
         const path = NAMESPACE_PATHS[item.namespace] || '/search';
 
