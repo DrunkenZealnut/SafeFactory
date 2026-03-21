@@ -534,14 +534,15 @@ function renderHistory(data) {
         const path = NAMESPACE_PATHS[item.namespace] || '/search';
         const encodedQ = encodeURIComponent(item.query);
 
-        // AI 질문 + 답변 있으면 팝업, 아니면 해당 페이지로 이동
-        const clickAction = (item.query_type === 'ask' && item.has_answer)
+        // AI 질문/내자료 질문 + 답변 있으면 팝업, 아니면 해당 페이지로 이동
+        const hasAnswer = (item.query_type === 'ask' || item.query_type === 'my_docs') && item.has_answer;
+        const clickAction = hasAnswer
             ? `openAnswer(${item.id})`
             : `window.location.href='${path}?q=${encodedQ}'`;
 
         html += `<div class="history-item" onclick="${clickAction}">`;
         html += `<div class="history-query"><span class="icon">${icon}</span>${escapeHtml(item.query)}`;
-        if (item.query_type === 'ask' && item.has_answer) {
+        if (hasAnswer) {
             html += ` <span style="font-size:0.75rem;color:#00d4ff;opacity:0.7;">&#x1F4CB;</span>`;
         }
         html += `</div>`;
@@ -552,7 +553,8 @@ function renderHistory(data) {
         html += `<span>${timeAgo(item.created_at)}</span>`;
         html += `</div>`;
         if (item.answer_preview) {
-            html += `<div class="history-preview">"${escapeHtml(item.answer_preview)}"</div>`;
+            var preview = item.answer_preview.replace(/[#*_`>\[\]]/g, '').replace(/\n+/g, ' ').trim();
+            html += `<div class="history-preview">"${escapeHtml(preview)}"</div>`;
         }
         html += `<button class="btn-delete-item" onclick="event.stopPropagation();deleteOne(${item.id})" title="삭제">&#x2715;</button>`;
         html += `</div>`;
@@ -606,7 +608,9 @@ async function openAnswer(id) {
 
         queryEl.textContent = item.query;
         metaEl.innerHTML = `<span>${typeLabel}</span><span>${nsLabel}</span><span>${item.result_count}건</span><span>${timeAgo(item.created_at)}</span>`;
-        reaskEl.href = `${path}?q=${encodeURIComponent(item.query)}`;
+        reaskEl.href = item.query_type === 'my_docs'
+            ? '/my-documents'
+            : `${path}?q=${encodeURIComponent(item.query)}`;
 
         if (item.answer_text) {
             const rendered = typeof marked !== 'undefined'
