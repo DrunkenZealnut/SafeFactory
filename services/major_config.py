@@ -12,7 +12,7 @@ MAJOR_CONFIG = {
     "semiconductor": {
         "name": "반도체과",
         "short_name": "반도체",
-        "icon": "cpu",
+        "icon": "💻",
         "color": "#6366f1",
         "gradient": "from-indigo-500 to-purple-600",
         "description": "반도체 제조공정, 장비운용, 품질관리 학습 및 안전",

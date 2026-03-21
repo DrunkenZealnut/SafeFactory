@@ -328,7 +328,7 @@
                      style="--major-color: {{ cfg.color }}"
                      {% if true %}onclick="selectMajor('{{ key }}')"{% endif %}>
                     <div class="major-card-icon">
-                        {% if cfg.icon == 'cpu' %}💻{% elif cfg.icon == 'zap' %}⚡{% elif cfg.icon == 'wrench' %}⚙️{% elif cfg.icon == 'flask' %}🧪{% else %}📚{% endif %}
+                        {{ cfg.icon }}
                     </div>
                     <div class="major-card-name">{{ cfg.name }}</div>
                     <div class="major-card-desc">{{ cfg.description }}</div>
