@@ -487,4 +487,4 @@ if __name__ == '__main__':
     print("=" * 40)
     print("\n\U0001f310 http://localhost:5001 에서 접속하세요\n")
 
-    app.run(debug=True, host='127.0.0.1', port=5001)
+    app.run(debug=True, host='127.0.0.1', port=int(os.getenv('PORT', 5001)))
