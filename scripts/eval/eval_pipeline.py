@@ -363,7 +363,17 @@ if __name__ == '__main__':
     parser.add_argument('--output', type=str, default=None, help='Output JSON path')
     parser.add_argument('--eval-answer', action='store_true',
                         help='Also generate LLM answers and check expected_answer_contains (slower, costs API tokens)')
+    parser.add_argument('--embedding', type=str, default=None,
+                        help='Override embedding model (e.g. text-embedding-3-small). '
+                             'Useful when default Gemini key is unavailable.')
     args = parser.parse_args()
+
+    # Override embedding model if specified (patches settings cache)
+    if args.embedding:
+        from services.settings import _cache, _cache_lock
+        with _cache_lock:
+            _cache['embedding_model'] = args.embedding
+        logger.info("Embedding model override: %s", args.embedding)
 
     report = run_evaluation(top_k=args.top_k, dataset_path=args.dataset, eval_answer=args.eval_answer)
     print_report(report)
