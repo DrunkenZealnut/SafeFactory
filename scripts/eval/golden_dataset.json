@@ -1,6 +1,6 @@
 {
-  "version": "2.0",
-  "description": "Golden dataset for RAG pipeline evaluation — 4 active domains, v2 schema with answer quality fields",
+  "version": "2.1",
+  "description": "Golden dataset for RAG pipeline evaluation — aligned to actual Pinecone content. MSDS replaced with chemical-safety (vector search via kosha/semi namespaces). External MSDS API eval is separate.",
   "updated": "2026-04-02",
   "schema_notes": {
     "expected_keywords": "Keywords that MUST appear in retrieved context (retrieval quality)",
@@ -195,11 +195,11 @@
       },
       {
         "id": "ft-006",
-        "query": "현장실습생 건강관리 방법은 무엇인가요?",
-        "expected_keywords": ["건강관리", "현장실습", "건강검진"],
-        "expected_answer_contains": ["건강검진", "유해인자", "보호구"],
+        "query": "반도체 사업장 현장실습생이 노출되는 유해인자는?",
+        "expected_keywords": ["반도체", "유해", "노출"],
+        "expected_answer_contains": ["가스", "화학물질", "클린룸"],
         "namespace": "field-training",
-        "difficulty": "easy",
+        "difficulty": "medium",
         "query_type": "factual"
       },
       {
@@ -222,40 +222,39 @@
       },
       {
         "id": "ft-009",
-        "query": "식품제조 작업이랑 세척제 취급 작업 보호구가 다른가요?",
-        "expected_keywords": ["식품제조", "세척제", "보호구"],
-        "expected_answer_contains": ["장갑", "마스크", "보안경"],
+        "query": "식품제조용 혼합기 작업 전 안전수칙은?",
+        "expected_keywords": ["혼합기", "식품", "안전"],
+        "expected_answer_contains": ["방호장치", "점검", "정비"],
         "namespace": "field-training",
         "difficulty": "medium",
-        "query_type": "comparison"
+        "query_type": "procedural"
       },
       {
         "id": "ft-010",
-        "query": "실습 중에 다쳤는데 어떻게 해야 해요?",
-        "expected_keywords": ["다쳤", "실습", "사고"],
-        "expected_answer_contains": ["담당 교사", "119", "산재보험", "보고"],
+        "query": "밀링기계 작업할 때 뭘 조심해야 해요?",
+        "expected_keywords": ["밀링", "기계", "안전"],
+        "expected_answer_contains": ["끼임", "절삭", "보호구"],
         "namespace": "field-training",
         "difficulty": "easy",
         "query_type": "colloquial"
       },
       {
         "id": "ft-011",
-        "query": "금속성형기계 작업의 위험요인과 안전대책은?",
-        "expected_keywords": ["금속성형", "위험", "안전"],
-        "expected_answer_contains": ["프레스", "끼임", "방호장치", "양수조작"],
+        "query": "반도체 사업장에서 인터록 해제 시 주의사항은?",
+        "expected_keywords": ["인터록", "반도체", "주의"],
+        "expected_answer_contains": ["안전", "해제", "장비"],
         "namespace": "field-training",
         "difficulty": "medium",
         "query_type": "factual"
       },
       {
         "id": "ft-012",
-        "query": "현장실습 산업안전보건법에서 실습생 보호 규정은?",
-        "expected_keywords": ["산업안전보건법", "실습생", "보호"],
-        "expected_answer_contains": ["안전교육", "건강검진", "보호구 지급"],
+        "query": "세척제 취급 작업에서 보호구 착용 방법은?",
+        "expected_keywords": ["세척제", "보호구", "착용"],
+        "expected_answer_contains": ["장갑", "마스크", "환기"],
         "namespace": "field-training",
-        "difficulty": "hard",
-        "query_type": "factual",
-        "tags": ["needs_hyde"]
+        "difficulty": "medium",
+        "query_type": "procedural"
       },
       {
         "id": "ft-013",
@@ -298,9 +297,9 @@
       },
       {
         "id": "kosha-002",
-        "query": "포토 공정 설비 정비 시 안전수칙은?",
-        "expected_keywords": ["포토", "정비", "안전"],
-        "expected_answer_contains": ["전원차단", "잠금장치", "LOTO", "환기"],
+        "query": "전자산업 포토 공정 설비 정비 작업 안전보건 가이드 내용은?",
+        "expected_keywords": ["포토", "정비", "안전보건"],
+        "expected_answer_contains": ["설비", "정비", "작업"],
         "namespace": "kosha",
         "difficulty": "medium",
         "query_type": "procedural"
@@ -316,12 +315,12 @@
       },
       {
         "id": "kosha-004",
-        "query": "크린룸 공정 지원 설비 정비작업 안전보건 가이드의 주요 내용은?",
-        "expected_keywords": ["크린룸", "정비", "안전보건"],
-        "expected_answer_contains": ["설비", "정비", "위험요인", "보호구"],
+        "query": "전자산업 크린룸 세정 공정 작업 시 안전수칙은?",
+        "expected_keywords": ["크린룸", "세정", "안전"],
+        "expected_answer_contains": ["세정", "화학물질", "보호"],
         "namespace": "kosha",
         "difficulty": "medium",
-        "query_type": "overview"
+        "query_type": "factual"
       },
       {
         "id": "kosha-005",
@@ -361,114 +360,71 @@
       },
       {
         "id": "kosha-009",
-        "query": "화학물질 취급할 때 주의사항 알려주세요",
-        "expected_keywords": ["화학물질", "취급", "주의"],
-        "expected_answer_contains": ["MSDS", "보호구", "환기", "저장"],
+        "query": "전자산업 정비 작업자 건강위험 평가 방법은?",
+        "expected_keywords": ["건강위험", "평가", "정비"],
+        "expected_answer_contains": ["노출", "평가", "위험"],
         "namespace": "kosha",
-        "difficulty": "easy",
-        "query_type": "colloquial"
+        "difficulty": "medium",
+        "query_type": "procedural"
       },
       {
         "id": "kosha-010",
-        "query": "안전보건공단 반도체 안전 가이드 전체 내용을 요약해주세요",
-        "expected_keywords": ["안전보건공단", "반도체", "가이드"],
-        "expected_answer_contains": ["공정별", "위험요인", "안전수칙", "보호구"],
+        "query": "전자산업 산화 공정 설비 정비 시 위험요인은?",
+        "expected_keywords": ["산화", "공정", "정비", "위험"],
+        "expected_answer_contains": ["고온", "설비", "안전"],
         "namespace": "kosha",
-        "difficulty": "hard",
-        "query_type": "overview",
-        "tags": ["needs_graphrag"]
+        "difficulty": "medium",
+        "query_type": "factual"
       }
     ],
-    "msds": [
+    "chemical-safety": [
       {
-        "id": "msds-001",
-        "query": "아세톤의 유해성과 취급 시 주의사항은?",
-        "expected_keywords": ["아세톤", "유해성", "취급"],
-        "expected_answer_contains": ["인화성", "증기", "환기"],
-        "namespace": "msds",
-        "difficulty": "easy",
-        "query_type": "factual"
+        "id": "chem-001",
+        "query": "반도체 세정 공정에서 불산 사용 시 위험성은?",
+        "expected_keywords": ["불산", "세정", "위험"],
+        "expected_answer_contains": ["부식", "피부", "보호구"],
+        "namespace": "kosha",
+        "difficulty": "medium",
+        "query_type": "factual",
+        "tags": ["cross_search_msds"]
       },
       {
-        "id": "msds-002",
-        "query": "불산(HF)의 위험성과 응급조치는?",
-        "expected_keywords": ["불산", "HF", "위험"],
-        "expected_answer_contains": ["피부침투", "칼슘", "119", "세척"],
-        "namespace": "msds",
+        "id": "chem-002",
+        "query": "반도체 공정에서 사용하는 유해 화학물질의 종류는?",
+        "expected_keywords": ["화학물질", "반도체", "유해"],
+        "expected_answer_contains": ["가스", "약품", "용제"],
+        "namespace": "semiconductor-v2",
+        "difficulty": "medium",
+        "query_type": "overview",
+        "tags": ["cross_search_msds"]
+      },
+      {
+        "id": "chem-003",
+        "query": "CVD 공정에서 사용하는 실란 가스가 왜 위험해요?",
+        "expected_keywords": ["실란", "CVD", "위험"],
+        "expected_answer_contains": ["가스", "폭발", "환기"],
+        "namespace": "semiconductor-v2",
+        "difficulty": "medium",
+        "query_type": "colloquial",
+        "tags": ["cross_search_msds"]
+      },
+      {
+        "id": "chem-004",
+        "query": "전자산업 화학물질 건강 위험성평가 가이드의 평가 방법은?",
+        "expected_keywords": ["위험성평가", "화학물질", "건강"],
+        "expected_answer_contains": ["노출", "평가", "측정"],
+        "namespace": "kosha",
         "difficulty": "hard",
         "query_type": "procedural"
       },
       {
-        "id": "msds-003",
-        "query": "황산이랑 염산 뭐가 더 위험해요?",
-        "expected_keywords": ["황산", "염산", "위험"],
-        "expected_answer_contains": ["부식성", "GHS", "보호구"],
-        "namespace": "msds",
-        "difficulty": "medium",
-        "query_type": "colloquial"
-      },
-      {
-        "id": "msds-004",
-        "query": "MSDS에서 노출기준 TWA 값은 무엇을 의미하나요?",
-        "expected_keywords": ["MSDS", "TWA", "노출기준"],
-        "expected_answer_contains": ["시간가중평균", "8시간", "농도"],
-        "namespace": "msds",
-        "difficulty": "medium",
-        "query_type": "factual"
-      },
-      {
-        "id": "msds-005",
-        "query": "톨루엔의 안전 정보를 알려주세요",
-        "expected_keywords": ["톨루엔", "안전"],
-        "expected_answer_contains": ["유기용제", "흡입", "환기", "보호구"],
-        "namespace": "msds",
-        "difficulty": "easy",
-        "query_type": "factual"
-      },
-      {
-        "id": "msds-006",
-        "query": "GHS 분류에서 인화성 액체와 가연성 액체의 차이는?",
-        "expected_keywords": ["GHS", "인화성", "가연성"],
-        "expected_answer_contains": ["인화점", "구분", "등급"],
-        "namespace": "msds",
-        "difficulty": "medium",
-        "query_type": "comparison"
-      },
-      {
-        "id": "msds-007",
-        "query": "실란(SiH4) 가스의 위험성과 취급 주의사항은?",
-        "expected_keywords": ["실란", "SiH4", "가스"],
-        "expected_answer_contains": ["자연발화", "폭발", "환기", "누출"],
-        "namespace": "msds",
-        "difficulty": "hard",
-        "query_type": "factual"
-      },
-      {
-        "id": "msds-008",
-        "query": "반도체 공장에서 쓰는 위험한 화학물질 종류를 정리해주세요",
-        "expected_keywords": ["반도체", "화학물질", "종류"],
-        "expected_answer_contains": ["불산", "황산", "실란", "포토레지스트"],
-        "namespace": "msds",
-        "difficulty": "medium",
-        "query_type": "overview"
-      },
-      {
-        "id": "msds-009",
+        "id": "chem-005",
         "query": "약품 냄새가 심한데 괜찮은 건가요?",
         "expected_keywords": ["냄새", "약품"],
-        "expected_answer_contains": ["환기", "마스크", "노출", "대피"],
-        "namespace": "msds",
+        "expected_answer_contains": ["환기", "노출"],
+        "namespace": "kosha",
         "difficulty": "easy",
         "query_type": "colloquial"
-      },
-      {
-        "id": "msds-010",
-        "query": "PGMEA의 유해성 정보와 보호구는?",
-        "expected_keywords": ["PGMEA", "유해", "보호구"],
-        "expected_answer_contains": ["유기용제", "호흡보호구", "환기"],
-        "namespace": "msds",
-        "difficulty": "medium",
-        "query_type": "factual"
       }
     ]
   }
