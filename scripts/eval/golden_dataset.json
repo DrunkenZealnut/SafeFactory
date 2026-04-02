@@ -4,7 +4,7 @@
   "updated": "2026-04-02",
   "schema_notes": {
     "expected_keywords": "Keywords that MUST appear in retrieved context (retrieval quality)",
-    "expected_answer_contains": "Key facts/phrases the generated answer SHOULD include (answer quality)",
+    "expected_answer_contains": "Key facts/phrases the generated answer SHOULD include (answer quality). Matching is fuzzy (ignores spaces). Use specific terms that the LLM should use.",
     "query_type": "factual | procedural | comparison | overview | colloquial",
     "difficulty": "easy | medium | hard",
     "tags": "Optional ablation testing tags (e.g. 'needs_graphrag', 'needs_hyde')"

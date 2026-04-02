@@ -52,14 +52,24 @@ def answer_contains_rate(expected: List[str], answer: str) -> float:
 
     Unlike keyword_hit_rate (which checks retrieved context), this checks
     the final LLM-generated answer for expected content.
+    Uses fuzzy matching: ignores spaces and checks for partial matches.
     Returns -1.0 if expected list is empty (no ground truth).
     """
     if not expected:
         return -1.0
     if not answer:
         return 0.0
+    # Normalize: remove spaces for Korean compound word matching
+    # e.g. "에어 샤워" matches "에어샤워", "보호 장비" matches "보호장비"
     answer_lower = answer.lower()
-    hits = sum(1 for fact in expected if fact.lower() in answer_lower)
+    answer_nospace = answer_lower.replace(' ', '')
+
+    def _matches(fact: str) -> bool:
+        fact_lower = fact.lower()
+        fact_nospace = fact_lower.replace(' ', '')
+        return fact_lower in answer_lower or fact_nospace in answer_nospace
+
+    hits = sum(1 for fact in expected if _matches(fact))
     return hits / len(expected)
 
 
