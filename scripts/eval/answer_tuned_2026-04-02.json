@@ -1,0 +1,1404 @@
+{
+  "top_k": 20,
+  "timestamp": "2026-04-02T20:00:32",
+  "overall": {
+    "total_queries": 41,
+    "avg_keyword_hit": 0.9106,
+    "avg_recall_at_k": 0.9106,
+    "avg_mrr": 0.9106,
+    "avg_ndcg_at_k": 0.9106,
+    "avg_wall_ms": 9571,
+    "retrieval_failure_rate": 0.0894,
+    "avg_answer_hit": 0.665
+  },
+  "domain_metrics": {
+    "semiconductor-v2": {
+      "count": 15,
+      "avg_keyword_hit": 0.9778,
+      "avg_recall_at_k": 0.9778,
+      "avg_mrr": 0.9778,
+      "avg_ndcg_at_k": 0.9778,
+      "avg_wall_ms": 9762,
+      "avg_answer_hit": 0.7122
+    },
+    "field-training": {
+      "count": 15,
+      "avg_keyword_hit": 0.8222,
+      "avg_recall_at_k": 0.8222,
+      "avg_mrr": 0.8222,
+      "avg_ndcg_at_k": 0.8222,
+      "avg_wall_ms": 9616,
+      "avg_answer_hit": 0.5667
+    },
+    "kosha": {
+      "count": 8,
+      "avg_keyword_hit": 0.9167,
+      "avg_recall_at_k": 0.9167,
+      "avg_mrr": 0.9167,
+      "avg_ndcg_at_k": 0.9167,
+      "avg_wall_ms": 9020,
+      "avg_answer_hit": 0.7188
+    },
+    "chemical-safety": {
+      "count": 3,
+      "avg_keyword_hit": 1.0,
+      "avg_recall_at_k": 1.0,
+      "avg_mrr": 1.0,
+      "avg_ndcg_at_k": 1.0,
+      "avg_wall_ms": 9855,
+      "avg_answer_hit": 0.7778
+    }
+  },
+  "latency_stats": {
+    "phase1_enhancement_ms": {
+      "avg_ms": 5164,
+      "max_ms": 8425,
+      "min_ms": 1323,
+      "p50_ms": 5069
+    },
+    "phase2_search_ms": {
+      "avg_ms": 2420,
+      "max_ms": 5140,
+      "min_ms": 1567,
+      "p50_ms": 2379
+    },
+    "phase3_graph_ms": {
+      "avg_ms": 0,
+      "max_ms": 1,
+      "min_ms": 0,
+      "p50_ms": 0
+    },
+    "phase3_5_global_ms": {
+      "avg_ms": 0,
+      "max_ms": 2,
+      "min_ms": 0,
+      "p50_ms": 0
+    },
+    "phase4_hybrid_ms": {
+      "avg_ms": 30,
+      "max_ms": 80,
+      "min_ms": 0,
+      "p50_ms": 32
+    },
+    "phase5_rerank_ms": {
+      "avg_ms": 531,
+      "max_ms": 913,
+      "min_ms": 0,
+      "p50_ms": 551
+    },
+    "phase6_optimize_ms": {
+      "avg_ms": 683,
+      "max_ms": 8918,
+      "min_ms": 1,
+      "p50_ms": 178
+    },
+    "phase7_context_ms": {
+      "avg_ms": 0,
+      "max_ms": 0,
+      "min_ms": 0,
+      "p50_ms": 0
+    },
+    "total_pipeline_ms": {
+      "avg_ms": 8830,
+      "max_ms": 20190,
+      "min_ms": 3592,
+      "p50_ms": 8700
+    }
+  },
+  "results": [
+    {
+      "id": "semi-001",
+      "query": "CVD 공정에서 사용되는 가스 종류는?",
+      "namespace": "semiconductor-v2",
+      "query_type": "factual",
+      "source_count": 40,
+      "keyword_hit": 1.0,
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_k": 1.0,
+      "answer_hit": 0.3333,
+      "wall_ms": 15587,
+      "latencies": {
+        "phase1_enhancement_ms": 5686,
+        "phase2_search_ms": 5140,
+        "phase3_graph_ms": 1,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 32,
+        "phase5_rerank_ms": 659,
+        "phase6_optimize_ms": 403,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 11921
+      },
+      "retrieved_files": [
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060418_23v3_반도체용_박막_공정_가스_제조/LM1903060418_23v3_반도체용_박막_공정_가스_제조.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060418_23v3_반도체용_박막_공정_가스_제조/LM1903060418_23v3_반도체용_박막_공정_가스_제조.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060408_23v3_반도체_재료_개발/LM1903060408_23v3_반도체_재료_개발.md",
+        "documents/semiconductor/ncs/data/반도체제조/LM1903060215_19v4_반도체_유틸리티_운영/LM1903060215_19v4_반도체_유틸리티_운영.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060418_23v3_반도체용_박막_공정_가스_제조/LM1903060418_23v3_반도체용_박막_공정_가스_제조.md"
+      ]
+    },
+    {
+      "id": "semi-002",
+      "query": "포토리소그래피 공정 순서를 설명해주세요",
+      "namespace": "semiconductor-v2",
+      "query_type": "procedural",
+      "source_count": 40,
+      "keyword_hit": 1.0,
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_k": 1.0,
+      "answer_hit": 0.75,
+      "wall_ms": 10259,
+      "latencies": {
+        "phase1_enhancement_ms": 6248,
+        "phase2_search_ms": 2543,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 68,
+        "phase5_rerank_ms": 472,
+        "phase6_optimize_ms": 278,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 9609
+      },
+      "retrieved_files": [
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060414_20v1_반도체용_플립칩_재료_제조/LM1903060414_20v1_반도체용_플립칩_재료_제조.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060412_20v1_반도체용_마스크_재료_제조/LM1903060412_20v1_반도체용_마스크_재료_제조.md",
+        "documents/semiconductor/ncs/data/반도체재료/반도체_재료_02._반도체용_리소그래피_재료_제조_LM1903060402_14v1_/반도체_재료_02._반도체용_리소그래피_재료_제조_LM1903060402_14v1_.md",
+        "documents/semiconductor/ncs/data/반도체개발/LM1903060116_23v7_시스템_반도체_제조_공정_개발/LM1903060116_23v7_시스템_반도체_제조_공정_개발.md",
+        "documents/semiconductor/ncs/data/반도체재료/반도체_재료_02._반도체용_리소그래피_재료_제조_LM1903060402_14v1_/반도체_재료_02._반도체용_리소그래피_재료_제조_LM1903060402_14v1_.md"
+      ]
+    },
+    {
+      "id": "semi-003",
+      "query": "습식 에칭과 건식 에칭의 차이점은?",
+      "namespace": "semiconductor-v2",
+      "query_type": "comparison",
+      "source_count": 40,
+      "keyword_hit": 1.0,
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_k": 1.0,
+      "answer_hit": 0.6667,
+      "wall_ms": 9663,
+      "latencies": {
+        "phase1_enhancement_ms": 4844,
+        "phase2_search_ms": 2942,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 80,
+        "phase5_rerank_ms": 760,
+        "phase6_optimize_ms": 281,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 8907
+      },
+      "retrieved_files": [
+        "documents/semiconductor/ncs/data/반도체제조/LM1903060215_19v4_반도체_유틸리티_운영/LM1903060215_19v4_반도체_유틸리티_운영.md",
+        "documents/semiconductor/ncs/data/반도체개발/LM1903060123_23v4_웨이퍼_레벨_패키지_개발/LM1903060123_23v4_웨이퍼_레벨_패키지_개발.md",
+        "documents/semiconductor/ncs/data/반도체개발/LM1903060123_23v4_웨이퍼_레벨_패키지_개발/LM1903060123_23v4_웨이퍼_레벨_패키지_개발.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060425_23v3_반도체용_세정_공정_재료_제조/LM1903060425_23v3_반도체용_세정_공정_재료_제조.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060423_23v3_반도체용_SOD_공정_재료_제조/LM1903060423_23v3_반도체용_SOD_공정_재료_제조.md"
+      ]
+    },
+    {
+      "id": "semi-004",
+      "query": "반도체 8대 공정을 순서대로 설명해주세요",
+      "namespace": "semiconductor-v2",
+      "query_type": "procedural",
+      "source_count": 40,
+      "keyword_hit": 1.0,
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_k": 1.0,
+      "answer_hit": 0.6,
+      "wall_ms": 12258,
+      "latencies": {
+        "phase1_enhancement_ms": 6681,
+        "phase2_search_ms": 2341,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 59,
+        "phase5_rerank_ms": 890,
+        "phase6_optimize_ms": 304,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 10275
+      },
+      "retrieved_files": [
+        "documents/semiconductor/ncs/data/반도체재료/반도체_재료_03._반도체용_가스_재료_제조_LM1903060403_14v1_/반도체_재료_03._반도체용_가스_재료_제조_LM1903060403_14v1_.md",
+        "documents/semiconductor/ncs/data/반도체장비/LM1903060323_19v3_반도체_장비_기구_조립_검증/LM1903060323_19v3_반도체_장비_기구_조립_검증.md",
+        "documents/semiconductor/ncs/data/report/반도체개발_report/반도체개발_report.md",
+        "documents/semiconductor/ncs/data/반도체개발/LM1903060117_23v7_반도체_제조_단위_공정_공정_개발/LM1903060117_23v7_반도체_제조_단위_공정_공정_개발.md",
+        "documents/semiconductor/ncs/data/반도체개발/LM1903060116_23v7_시스템_반도체_제조_공정_개발/LM1903060116_23v7_시스템_반도체_제조_공정_개발.md"
+      ]
+    },
+    {
+      "id": "semi-005",
+      "query": "CMP 공정이 뭐예요?",
+      "namespace": "semiconductor-v2",
+      "query_type": "factual",
+      "source_count": 40,
+      "keyword_hit": 1.0,
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_k": 1.0,
+      "answer_hit": 1.0,
+      "wall_ms": 8509,
+      "latencies": {
+        "phase1_enhancement_ms": 4412,
+        "phase2_search_ms": 2414,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 46,
+        "phase5_rerank_ms": 581,
+        "phase6_optimize_ms": 306,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 7759
+      },
+      "retrieved_files": [
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060415_20v1_반도체용_CMP_재료_제조/LM1903060415_20v1_반도체용_CMP_재료_제조.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060415_20v1_반도체용_CMP_재료_제조/LM1903060415_20v1_반도체용_CMP_재료_제조.md",
+        "documents/semiconductor/ncs/data/반도체개발/LM1903060106_반도체_제조_공정_개발/LM1903060106_반도체_제조_공정_개발.md",
+        "documents/semiconductor/ncs/data/반도체제조/LM1903060204_14v3_C_C_장비_운영/LM1903060204_14v3_C_C_장비_운영.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060415_20v1_반도체용_CMP_재료_제조/LM1903060415_20v1_반도체용_CMP_재료_제조.md"
+      ]
+    },
+    {
+      "id": "semi-006",
+      "query": "이온주입 공정의 목적과 원리는 무엇인가요?",
+      "namespace": "semiconductor-v2",
+      "query_type": "factual",
+      "source_count": 40,
+      "keyword_hit": 1.0,
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_k": 1.0,
+      "answer_hit": 1.0,
+      "wall_ms": 8565,
+      "latencies": {
+        "phase1_enhancement_ms": 3723,
+        "phase2_search_ms": 2861,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 43,
+        "phase5_rerank_ms": 754,
+        "phase6_optimize_ms": 304,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 7685
+      },
+      "retrieved_files": [
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060419_23v3_반도체용_이온_주입_공정_가스_제조/LM1903060419_23v3_반도체용_이온_주입_공정_가스_제조.md",
+        "documents/semiconductor/ncs/data/report/반도체제조_report/반도체제조_report.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060419_23v3_반도체용_이온_주입_공정_가스_제조/LM1903060419_23v3_반도체용_이온_주입_공정_가스_제조.md",
+        "documents/semiconductor/ncs/data/반도체재료/반도체_재료_03._반도체용_가스_재료_제조_LM1903060403_14v1_/반도체_재료_03._반도체용_가스_재료_제조_LM1903060403_14v1_.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060423_23v3_반도체용_SOD_공정_재료_제조/LM1903060423_23v3_반도체용_SOD_공정_재료_제조.md"
+      ]
+    },
+    {
+      "id": "semi-007",
+      "query": "웨이퍼 세정 공정에서 SC-1과 SC-2의 차이는?",
+      "namespace": "semiconductor-v2",
+      "query_type": "comparison",
+      "source_count": 23,
+      "keyword_hit": 1.0,
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_k": 1.0,
+      "answer_hit": 1.0,
+      "wall_ms": 10318,
+      "latencies": {
+        "phase1_enhancement_ms": 5448,
+        "phase2_search_ms": 3004,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 64,
+        "phase5_rerank_ms": 781,
+        "phase6_optimize_ms": 114,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 9411
+      },
+      "retrieved_files": [
+        "documents/semiconductor/ncs/data/반도체개발/LM1903060106_반도체_제조_공정_개발/LM1903060106_반도체_제조_공정_개발.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060423_23v3_반도체용_SOD_공정_재료_제조/LM1903060423_23v3_반도체용_SOD_공정_재료_제조.md",
+        "documents/semiconductor/ncs/data/반도체개발/LM1903060117_23v7_반도체_제조_단위_공정_공정_개발/LM1903060117_23v7_반도체_제조_단위_공정_공정_개발.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060425_23v3_반도체용_세정_공정_재료_제조/LM1903060425_23v3_반도체용_세정_공정_재료_제조.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060425_23v3_반도체용_세정_공정_재료_제조/LM1903060425_23v3_반도체용_세정_공정_재료_제조.md"
+      ]
+    },
+    {
+      "id": "semi-008",
+      "query": "PECVD랑 LPCVD 뭐가 달라요?",
+      "namespace": "semiconductor-v2",
+      "query_type": "factual",
+      "source_count": 20,
+      "keyword_hit": 1.0,
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_k": 1.0,
+      "answer_hit": 1.0,
+      "wall_ms": 4853,
+      "latencies": {
+        "phase1_enhancement_ms": 1323,
+        "phase2_search_ms": 2160,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 24,
+        "phase5_rerank_ms": 530,
+        "phase6_optimize_ms": 86,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 4123
+      },
+      "retrieved_files": [
+        "documents/semiconductor/ncs/data/반도체장비/LM1903060327_19v1_반도체_진공_플라스마_장비_유지보수/LM1903060327_19v1_반도체_진공_플라스마_장비_유지보수.md",
+        "documents/semiconductor/ncs/data/반도체장비/LM1903060327_19v1_반도체_진공_플라스마_장비_유지보수/LM1903060327_19v1_반도체_진공_플라스마_장비_유지보수.md",
+        "documents/semiconductor/ncs/data/반도체장비/LM1903060316_18v2_LM1903060317_18v2_반도체_장비_유틸리티_소프트웨어_개발/LM1903060316_18v2_LM1903060317_18v2_반도체_장비_유틸리티_소프트웨어_개발.md",
+        "documents/semiconductor/ncs/data/반도체장비/LM1903060328_19v1_반도체_케미컬_가스_장비_유지보수/LM1903060328_19v1_반도체_케미컬_가스_장비_유지보수.md",
+        "documents/semiconductor/ncs/data/반도체재료/반도체_재료_03._반도체용_가스_재료_제조_LM1903060403_14v1_/반도체_재료_03._반도체용_가스_재료_제조_LM1903060403_14v1_.md"
+      ]
+    },
+    {
+      "id": "semi-009",
+      "query": "반도체 패키징 공정의 종류와 특징은?",
+      "namespace": "semiconductor-v2",
+      "query_type": "factual",
+      "source_count": 30,
+      "keyword_hit": 1.0,
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_k": 1.0,
+      "answer_hit": 1.0,
+      "wall_ms": 7300,
+      "latencies": {
+        "phase1_enhancement_ms": 3462,
+        "phase2_search_ms": 2345,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 41,
+        "phase5_rerank_ms": 514,
+        "phase6_optimize_ms": 170,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 6532
+      },
+      "retrieved_files": [
+        "documents/semiconductor/ncs/data/반도체개발/LM1903060107_패키지_제품설계/LM1903060107_패키지_제품설계.md",
+        "documents/semiconductor/ncs/data/반도체장비/LM1903060322_19v3_반도체_장비_기구_조립/LM1903060322_19v3_반도체_장비_기구_조립.md",
+        "documents/semiconductor/ncs/data/반도체개발/LM1903060121_23v4_와이어_본딩_패키지_개발/LM1903060121_23v4_와이어_본딩_패키지_개발.md",
+        "documents/semiconductor/ncs/data/반도체장비/LM1903060322_19v3_반도체_장비_기구_조립/LM1903060322_19v3_반도체_장비_기구_조립.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060406_20v2_반도체_패키지_재료_제조/LM1903060406_20v2_반도체_패키지_재료_제조.md"
+      ]
+    },
+    {
+      "id": "semi-010",
+      "query": "산화 공정에서 열산화와 화학기상증착 산화의 차이점은?",
+      "namespace": "semiconductor-v2",
+      "query_type": "comparison",
+      "source_count": 6,
+      "keyword_hit": 1.0,
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_k": 1.0,
+      "answer_hit": 0.6667,
+      "wall_ms": 9676,
+      "latencies": {
+        "phase1_enhancement_ms": 5273,
+        "phase2_search_ms": 2712,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 59,
+        "phase5_rerank_ms": 721,
+        "phase6_optimize_ms": 14,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 8779
+      },
+      "retrieved_files": [
+        "documents/semiconductor/ncs/data/반도체제조/LM1903060210_14v3_반도체_생산성_향상/LM1903060210_14v3_반도체_생산성_향상.md",
+        "documents/semiconductor/ncs/data/반도체제조/LM1903060203_14v3_박막확산_장비운영/LM1903060203_14v3_박막확산_장비운영.md",
+        "documents/semiconductor/ncs/data/report/반도체제조_report/반도체제조_report.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060419_23v3_반도체용_이온_주입_공정_가스_제조/LM1903060419_23v3_반도체용_이온_주입_공정_가스_제조.md",
+        "documents/semiconductor/ncs/data/반도체개발/LM1903060116_23v7_시스템_반도체_제조_공정_개발/LM1903060116_23v7_시스템_반도체_제조_공정_개발.md"
+      ]
+    },
+    {
+      "id": "semi-011",
+      "query": "Photo 장비 운영 시 주의사항은 무엇인가요?",
+      "namespace": "semiconductor-v2",
+      "query_type": "factual",
+      "source_count": 22,
+      "keyword_hit": 0.6667,
+      "recall_at_k": 0.6667,
+      "mrr": 0.6667,
+      "ndcg_at_k": 0.6667,
+      "answer_hit": 0.0,
+      "wall_ms": 13858,
+      "latencies": {
+        "phase1_enhancement_ms": 3842,
+        "phase2_search_ms": 1683,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 5,
+        "phase5_rerank_ms": 637,
+        "phase6_optimize_ms": 6873,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 13040
+      },
+      "retrieved_files": [
+        "documents/semiconductor/ncs/data/반도체장비/LM1903060313_18v2_반도체_장비_고객_지원/LM1903060313_18v2_반도체_장비_고객_지원.md",
+        "documents/semiconductor/ncs/data/반도체장비/LM1903060320_18v2_LM1903060321_18v2_반도체_장비_품질관리/LM1903060320_18v2_LM1903060321_18v2_반도체_장비_품질관리.md",
+        "documents/semiconductor/ncs/data/반도체장비/LM1903060320_18v2_LM1903060321_18v2_반도체_장비_품질관리/LM1903060320_18v2_LM1903060321_18v2_반도체_장비_품질관리.md",
+        "documents/semiconductor/ncs/data/반도체장비/LM1903060328_19v1_반도체_케미컬_가스_장비_유지보수/LM1903060328_19v1_반도체_케미컬_가스_장비_유지보수.md",
+        "documents/semiconductor/ncs/data/반도체장비/LM1903060328_19v1_반도체_케미컬_가스_장비_유지보수/LM1903060328_19v1_반도체_케미컬_가스_장비_유지보수.md"
+      ]
+    },
+    {
+      "id": "semi-012",
+      "query": "반도체 수율이 뭐예요? 왜 중요해요?",
+      "namespace": "semiconductor-v2",
+      "query_type": "factual",
+      "source_count": 40,
+      "keyword_hit": 1.0,
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_k": 1.0,
+      "answer_hit": 0.6667,
+      "wall_ms": 9851,
+      "latencies": {
+        "phase1_enhancement_ms": 5050,
+        "phase2_search_ms": 2877,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 44,
+        "phase5_rerank_ms": 806,
+        "phase6_optimize_ms": 298,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 9075
+      },
+      "retrieved_files": [
+        "documents/semiconductor/ncs/data/반도체개발/LM1903060101_23v6_반도체_제품_기획/LM1903060101_23v6_반도체_제품_기획_hires_raw.json",
+        "documents/semiconductor/ncs/data/반도체개발/LM1903060101_23v6_반도체_제품_기획/LM1903060101_23v6_반도체_제품_기획_unstructured.md",
+        "documents/semiconductor/ncs/data/반도체개발/LM1903060101_23v6_반도체_제품_기획/LM1903060101_23v6_반도체_제품_기획_hires.md",
+        "documents/semiconductor/ncs/data/반도체제조/LM1903060210_14v3_반도체_생산성_향상/LM1903060210_14v3_반도체_생산성_향상.md",
+        "documents/semiconductor/ncs/data/반도체제조/LM1903060210_14v3_반도체_생산성_향상/LM1903060210_14v3_반도체_생산성_향상.md"
+      ]
+    },
+    {
+      "id": "semi-013",
+      "query": "스퍼터링 증착의 원리를 설명해주세요",
+      "namespace": "semiconductor-v2",
+      "query_type": "factual",
+      "source_count": 18,
+      "keyword_hit": 1.0,
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_k": 1.0,
+      "answer_hit": 1.0,
+      "wall_ms": 7930,
+      "latencies": {
+        "phase1_enhancement_ms": 4197,
+        "phase2_search_ms": 2201,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 44,
+        "phase5_rerank_ms": 646,
+        "phase6_optimize_ms": 75,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 7163
+      },
+      "retrieved_files": [
+        "documents/semiconductor/ncs/data/반도체제조/LM1903060203_14v3_박막확산_장비운영/LM1903060203_14v3_박막확산_장비운영.md",
+        "documents/semiconductor/ncs/data/반도체제조/LM1903060214_19v4_반도체_패키징_후공정장비_운영/LM1903060214_19v4_반도체_패키징_후공정장비_운영.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060404_23v3_반도체용_금속_Target_재료_제조/LM1903060404_23v3_반도체용_금속_Target_재료_제조.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060424_23v3_반도체용_박막_도금_공정_재료_제조/LM1903060424_23v3_반도체용_박막_도금_공정_재료_제조.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060424_23v3_반도체용_박막_도금_공정_재료_제조/LM1903060424_23v3_반도체용_박막_도금_공정_재료_제조.md"
+      ]
+    },
+    {
+      "id": "semi-014",
+      "query": "반도체 재료 품질관리 방법에는 어떤 것이 있나요?",
+      "namespace": "semiconductor-v2",
+      "query_type": "procedural",
+      "source_count": 40,
+      "keyword_hit": 1.0,
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_k": 1.0,
+      "answer_hit": 0.0,
+      "wall_ms": 9680,
+      "latencies": {
+        "phase1_enhancement_ms": 5964,
+        "phase2_search_ms": 1842,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 42,
+        "phase5_rerank_ms": 706,
+        "phase6_optimize_ms": 257,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 8811
+      },
+      "retrieved_files": [
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060410_23v3_반도체_재료_품질관리/LM1903060410_23v3_반도체_재료_품질관리.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060410_23v3_반도체_재료_품질관리/LM1903060410_23v3_반도체_재료_품질관리.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060423_23v3_반도체용_SOD_공정_재료_제조/LM1903060423_23v3_반도체용_SOD_공정_재료_제조.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060410_23v3_반도체_재료_품질관리/LM1903060410_23v3_반도체_재료_품질관리.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060409_23v3_반도체_재료_생산관리/LM1903060409_23v3_반도체_재료_생산관리.md"
+      ]
+    },
+    {
+      "id": "semi-015",
+      "query": "확산 공정이 뭔가요? 쉽게 설명해주세요",
+      "namespace": "semiconductor-v2",
+      "query_type": "factual",
+      "source_count": 36,
+      "keyword_hit": 1.0,
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_k": 1.0,
+      "answer_hit": 1.0,
+      "wall_ms": 8122,
+      "latencies": {
+        "phase1_enhancement_ms": 3556,
+        "phase2_search_ms": 2768,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 55,
+        "phase5_rerank_ms": 704,
+        "phase6_optimize_ms": 251,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 7334
+      },
+      "retrieved_files": [
+        "documents/semiconductor/ncs/data/반도체제조/LM1903060203_14v3_박막확산_장비운영/LM1903060203_14v3_박막확산_장비운영.md",
+        "documents/semiconductor/ncs/data/반도체장비/LM1903060329_19v1_반도체_장비_안전관리/LM1903060329_19v1_반도체_장비_안전관리.md",
+        "documents/semiconductor/ncs/data/반도체장비/LM1903060329_19v1_반도체_장비_안전관리/LM1903060329_19v1_반도체_장비_안전관리.md",
+        "documents/semiconductor/ncs/data/반도체개발/LM1903060106_반도체_제조_공정_개발/LM1903060106_반도체_제조_공정_개발.md",
+        "documents/semiconductor/ncs/data/반도체제조/LM1903060203_14v3_박막확산_장비운영/LM1903060203_14v3_박막확산_장비운영.md"
+      ]
+    },
+    {
+      "id": "ft-001",
+      "query": "밀폐공간 작업 시 안전수칙은?",
+      "namespace": "field-training",
+      "query_type": "factual",
+      "source_count": 11,
+      "keyword_hit": 0.3333,
+      "recall_at_k": 0.3333,
+      "mrr": 0.3333,
+      "ndcg_at_k": 0.3333,
+      "answer_hit": 0.5,
+      "wall_ms": 10994,
+      "latencies": {
+        "phase1_enhancement_ms": 7621,
+        "phase2_search_ms": 2619,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 5,
+        "phase5_rerank_ms": 289,
+        "phase6_optimize_ms": 18,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 10552
+      },
+      "retrieved_files": [
+        "documents/semiconductor/현장실습/직업계고_카드북4_금속절삭기계_웹용/직업계고_카드북4_금속절삭기계_웹용.md",
+        "documents/semiconductor/현장실습/직업계고_카드북4_금속절삭기계_웹용/직업계고_카드북4_금속절삭기계_웹용.md",
+        "documents/semiconductor/현장실습/직업계고_카드북4_금속절삭기계_웹용/직업계고_카드북4_금속절삭기계_웹용.md",
+        "documents/semiconductor/현장실습/직업계고_카드북5_식품제조작업_웹용/직업계고_카드북5_식품제조작업_웹용.md",
+        "documents/semiconductor/현장실습/직업계고_카드북5_식품제조작업_웹용/직업계고_카드북5_식품제조작업_웹용.md"
+      ]
+    },
+    {
+      "id": "ft-002",
+      "query": "금속절삭기계 작업 시 재해유형을 알려주세요",
+      "namespace": "field-training",
+      "query_type": "factual",
+      "source_count": 3,
+      "keyword_hit": 0.6667,
+      "recall_at_k": 0.6667,
+      "mrr": 0.6667,
+      "ndcg_at_k": 0.6667,
+      "answer_hit": 0.25,
+      "wall_ms": 7713,
+      "latencies": {
+        "phase1_enhancement_ms": 5590,
+        "phase2_search_ms": 2119,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 0,
+        "phase5_rerank_ms": 0,
+        "phase6_optimize_ms": 3,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 7712
+      },
+      "retrieved_files": [
+        "documents/semiconductor/현장실습/직업계고_카드북4_금속절삭기계_웹용/직업계고_카드북4_금속절삭기계_웹용.md",
+        "documents/semiconductor/현장실습/직업계고_카드북4_금속절삭기계_웹용/직업계고_카드북4_금속절삭기계_웹용.md",
+        "documents/semiconductor/현장실습/직업계고_카드북4_금속절삭기계_웹용/직업계고_카드북4_금속절삭기계_웹용.md"
+      ]
+    },
+    {
+      "id": "ft-003",
+      "query": "연삭기 작업 안전수칙과 보호구는?",
+      "namespace": "field-training",
+      "query_type": "factual",
+      "source_count": 5,
+      "keyword_hit": 0.3333,
+      "recall_at_k": 0.3333,
+      "mrr": 0.3333,
+      "ndcg_at_k": 0.3333,
+      "answer_hit": 0.6667,
+      "wall_ms": 11291,
+      "latencies": {
+        "phase1_enhancement_ms": 8123,
+        "phase2_search_ms": 2474,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 2,
+        "phase5_rerank_ms": 263,
+        "phase6_optimize_ms": 8,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 10870
+      },
+      "retrieved_files": [
+        "documents/semiconductor/현장실습/직업계고_카드북4_금속절삭기계_웹용/직업계고_카드북4_금속절삭기계_웹용.md",
+        "documents/semiconductor/현장실습/직업계고_카드북4_금속절삭기계_웹용/직업계고_카드북4_금속절삭기계_웹용.md",
+        "documents/semiconductor/현장실습/직업계고_카드북4_금속절삭기계_웹용/직업계고_카드북4_금속절삭기계_웹용.md",
+        "documents/semiconductor/현장실습/직업계고_카드북4_금속절삭기계_웹용/직업계고_카드북4_금속절삭기계_웹용.md",
+        "documents/semiconductor/현장실습/직업계고_카드북4_금속절삭기계_웹용/직업계고_카드북4_금속절삭기계_웹용.md"
+      ]
+    },
+    {
+      "id": "ft-004",
+      "query": "현장실습생이 화학물질에 노출되면 어떻게 해야 하나요?",
+      "namespace": "field-training",
+      "query_type": "procedural",
+      "source_count": 2,
+      "keyword_hit": 1.0,
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_k": 1.0,
+      "answer_hit": 0.25,
+      "wall_ms": 7945,
+      "latencies": {
+        "phase1_enhancement_ms": 4666,
+        "phase2_search_ms": 2858,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 0,
+        "phase5_rerank_ms": 0,
+        "phase6_optimize_ms": 1,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 7525
+      },
+      "retrieved_files": [
+        "documents/semiconductor/현장실습/직업계고_반도체사업장_현장실습생_건강관리_길잡이/직업계고_반도체사업장_현장실습생_건강관리_길잡이.md",
+        "documents/semiconductor/현장실습/직업계고_반도체사업장_현장실습생_건강관리_길잡이/직업계고_반도체사업장_현장실습생_건강관리_길잡이.md"
+      ]
+    },
+    {
+      "id": "ft-005",
+      "query": "차량계 건설기계 작업할 때 뭘 조심해야 해요?",
+      "namespace": "field-training",
+      "query_type": "procedural",
+      "source_count": 6,
+      "keyword_hit": 1.0,
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_k": 1.0,
+      "answer_hit": 0.5,
+      "wall_ms": 6658,
+      "latencies": {
+        "phase1_enhancement_ms": 4393,
+        "phase2_search_ms": 1956,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 3,
+        "phase5_rerank_ms": 295,
+        "phase6_optimize_ms": 10,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 6657
+      },
+      "retrieved_files": [
+        "documents/semiconductor/현장실습/직업계고_카드북1_차량계_건설기계작업_웹용/직업계고_카드북1_차량계_건설기계작업_웹용.md",
+        "documents/semiconductor/현장실습/직업계고_카드북1_차량계_건설기계작업_웹용/직업계고_카드북1_차량계_건설기계작업_웹용.md",
+        "documents/semiconductor/현장실습/직업계고_카드북1_차량계_건설기계작업_웹용/직업계고_카드북1_차량계_건설기계작업_웹용.md",
+        "documents/semiconductor/현장실습/직업계고_카드북1_차량계_건설기계작업_웹용/직업계고_카드북1_차량계_건설기계작업_웹용.md",
+        "documents/semiconductor/현장실습/직업계고_카드북1_차량계_건설기계작업_웹용/직업계고_카드북1_차량계_건설기계작업_웹용.md"
+      ]
+    },
+    {
+      "id": "ft-006",
+      "query": "반도체 사업장 현장실습생이 노출되는 유해인자는?",
+      "namespace": "field-training",
+      "query_type": "factual",
+      "source_count": 3,
+      "keyword_hit": 1.0,
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_k": 1.0,
+      "answer_hit": 0.3333,
+      "wall_ms": 3988,
+      "latencies": {
+        "phase1_enhancement_ms": 1674,
+        "phase2_search_ms": 1916,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 0,
+        "phase5_rerank_ms": 0,
+        "phase6_optimize_ms": 2,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 3592
+      },
+      "retrieved_files": [
+        "documents/semiconductor/현장실습/직업계고_반도체사업장_현장실습생_건강관리_길잡이/직업계고_반도체사업장_현장실습생_건강관리_길잡이.md",
+        "documents/semiconductor/현장실습/직업계고_반도체사업장_현장실습생_건강관리_길잡이/직업계고_반도체사업장_현장실습생_건강관리_길잡이.md",
+        "documents/semiconductor/현장실습/직업계고_반도체사업장_현장실습생_건강관리_길잡이/직업계고_반도체사업장_현장실습생_건강관리_길잡이.md"
+      ]
+    },
+    {
+      "id": "ft-007",
+      "query": "중량물 운반 작업 시 안전한 방법은?",
+      "namespace": "field-training",
+      "query_type": "procedural",
+      "source_count": 6,
+      "keyword_hit": 1.0,
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_k": 1.0,
+      "answer_hit": 0.25,
+      "wall_ms": 7288,
+      "latencies": {
+        "phase1_enhancement_ms": 4343,
+        "phase2_search_ms": 2379,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 2,
+        "phase5_rerank_ms": 264,
+        "phase6_optimize_ms": 7,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 6995
+      },
+      "retrieved_files": [
+        "documents/semiconductor/현장실습/직업계고_카드북2_중량물운반_웹용/직업계고_카드북2_중량물운반_웹용.md",
+        "documents/semiconductor/현장실습/직업계고_카드북2_중량물운반_웹용/직업계고_카드북2_중량물운반_웹용.md",
+        "documents/semiconductor/현장실습/직업계고_카드북2_중량물운반_웹용/직업계고_카드북2_중량물운반_웹용.md",
+        "documents/semiconductor/현장실습/직업계고_카드북2_중량물운반_웹용/직업계고_카드북2_중량물운반_웹용.md",
+        "documents/semiconductor/현장실습/직업계고_카드북2_중량물운반_웹용/직업계고_카드북2_중량물운반_웹용.md"
+      ]
+    },
+    {
+      "id": "ft-008",
+      "query": "반도체 공장 포토공정에서 유해요인은?",
+      "namespace": "field-training",
+      "query_type": "factual",
+      "source_count": 30,
+      "keyword_hit": 1.0,
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_k": 1.0,
+      "answer_hit": 1.0,
+      "wall_ms": 8750,
+      "latencies": {
+        "phase1_enhancement_ms": 5103,
+        "phase2_search_ms": 2177,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 43,
+        "phase5_rerank_ms": 528,
+        "phase6_optimize_ms": 148,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 7999
+      },
+      "retrieved_files": [
+        "documents/semiconductor/ncs/data/반도체장비/LM1903060329_19v1_반도체_장비_안전관리/LM1903060329_19v1_반도체_장비_안전관리.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060411_23v3_반도체_재료_안전관리/LM1903060411_23v3_반도체_재료_안전관리.md",
+        "documents/semiconductor/ncs/data/반도체장비/LM1903060329_19v1_반도체_장비_안전관리/LM1903060329_19v1_반도체_장비_안전관리.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060411_23v3_반도체_재료_안전관리/LM1903060411_23v3_반도체_재료_안전관리.md",
+        "documents/semiconductor/ncs/data/반도체장비/LM1903060329_19v1_반도체_장비_안전관리/LM1903060329_19v1_반도체_장비_안전관리.md"
+      ]
+    },
+    {
+      "id": "ft-009",
+      "query": "식품제조용 혼합기 작업 전 안전수칙은?",
+      "namespace": "field-training",
+      "query_type": "factual",
+      "source_count": 4,
+      "keyword_hit": 1.0,
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_k": 1.0,
+      "answer_hit": 0.6667,
+      "wall_ms": 8879,
+      "latencies": {
+        "phase1_enhancement_ms": 6053,
+        "phase2_search_ms": 2544,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 6,
+        "phase5_rerank_ms": 269,
+        "phase6_optimize_ms": 6,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 8878
+      },
+      "retrieved_files": [
+        "documents/semiconductor/현장실습/직업계고_카드북5_식품제조작업_웹용/직업계고_카드북5_식품제조작업_웹용.md",
+        "documents/semiconductor/현장실습/직업계고_카드북5_식품제조작업_웹용/직업계고_카드북5_식품제조작업_웹용.md",
+        "documents/semiconductor/현장실습/직업계고_카드북5_식품제조작업_웹용/직업계고_카드북5_식품제조작업_웹용.md",
+        "documents/semiconductor/현장실습/직업계고_카드북5_식품제조작업_웹용/직업계고_카드북5_식품제조작업_웹용.md"
+      ]
+    },
+    {
+      "id": "ft-010",
+      "query": "밀링기계 작업할 때 뭘 조심해야 해요?",
+      "namespace": "field-training",
+      "query_type": "procedural",
+      "source_count": 10,
+      "keyword_hit": 1.0,
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_k": 1.0,
+      "answer_hit": 0.3333,
+      "wall_ms": 8293,
+      "latencies": {
+        "phase1_enhancement_ms": 4733,
+        "phase2_search_ms": 2526,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 3,
+        "phase5_rerank_ms": 516,
+        "phase6_optimize_ms": 26,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 7804
+      },
+      "retrieved_files": [
+        "documents/semiconductor/현장실습/직업계고_카드북4_금속절삭기계_웹용/직업계고_카드북4_금속절삭기계_웹용.md",
+        "documents/semiconductor/현장실습/직업계고_카드북4_금속절삭기계_웹용/직업계고_카드북4_금속절삭기계_웹용.md",
+        "documents/semiconductor/현장실습/직업계고_카드북4_금속절삭기계_웹용/직업계고_카드북4_금속절삭기계_웹용.md",
+        "documents/semiconductor/현장실습/직업계고_카드북4_금속절삭기계_웹용/직업계고_카드북4_금속절삭기계_웹용.md",
+        "documents/semiconductor/현장실습/직업계고_카드북4_금속절삭기계_웹용/직업계고_카드북4_금속절삭기계_웹용.md"
+      ]
+    },
+    {
+      "id": "ft-011",
+      "query": "반도체 사업장에서 인터록 해제 시 주의사항은?",
+      "namespace": "field-training",
+      "query_type": "factual",
+      "source_count": 14,
+      "keyword_hit": 0.6667,
+      "recall_at_k": 0.6667,
+      "mrr": 0.6667,
+      "ndcg_at_k": 0.6667,
+      "answer_hit": 1.0,
+      "wall_ms": 11824,
+      "latencies": {
+        "phase1_enhancement_ms": 8037,
+        "phase2_search_ms": 2074,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 23,
+        "phase5_rerank_ms": 884,
+        "phase6_optimize_ms": 49,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 11067
+      },
+      "retrieved_files": [
+        "documents/semiconductor/ncs/data/반도체제조/LM1903060204_14v3_C_C_장비_운영/LM1903060204_14v3_C_C_장비_운영.md",
+        "documents/semiconductor/ncs/data/반도체개발/LM1903060124_23v4_어드밴스드_팬_아웃_패키지_개발/LM1903060124_23v4_어드밴스드_팬_아웃_패키지_개발.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060426_23v3_반도체용_CMP_슬러리_재료_제조/LM1903060426_23v3_반도체용_CMP_슬러리_재료_제조.md",
+        "documents/semiconductor/ncs/data/반도체장비/LM1903060313_18v2_반도체_장비_고객_지원/LM1903060313_18v2_반도체_장비_고객_지원.md",
+        "documents/semiconductor/ncs/data/반도체제조/LM1903060202_14v3_Etch_장비_운영/LM1903060202_14v3_Etch_장비_운영.md"
+      ]
+    },
+    {
+      "id": "ft-012",
+      "query": "세척제 취급 작업에서 보호구 착용 방법은?",
+      "namespace": "field-training",
+      "query_type": "procedural",
+      "source_count": 1,
+      "keyword_hit": 1.0,
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_k": 1.0,
+      "answer_hit": 1.0,
+      "wall_ms": 20729,
+      "latencies": {
+        "phase1_enhancement_ms": 8425,
+        "phase2_search_ms": 2847,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 0,
+        "phase5_rerank_ms": 0,
+        "phase6_optimize_ms": 8918,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 20190
+      },
+      "retrieved_files": [
+        "documents/semiconductor/현장실습/직업계고_카드북6_세척제취급작업_웹용/직업계고_카드북6_세척제취급작업_웹용.md"
+      ]
+    },
+    {
+      "id": "ft-013",
+      "query": "전기작업과 용접작업의 보호구 차이는?",
+      "namespace": "field-training",
+      "query_type": "comparison",
+      "source_count": 4,
+      "keyword_hit": 0.3333,
+      "recall_at_k": 0.3333,
+      "mrr": 0.3333,
+      "ndcg_at_k": 0.3333,
+      "answer_hit": 0.3333,
+      "wall_ms": 13576,
+      "latencies": {
+        "phase1_enhancement_ms": 4680,
+        "phase2_search_ms": 2292,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 6,
+        "phase5_rerank_ms": 255,
+        "phase6_optimize_ms": 6014,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 13247
+      },
+      "retrieved_files": [
+        "documents/semiconductor/현장실습/직업계고_반도체사업장_현장실습생_건강관리_길잡이/직업계고_반도체사업장_현장실습생_건강관리_길잡이.md",
+        "documents/semiconductor/현장실습/직업계고_반도체사업장_현장실습생_건강관리_길잡이/직업계고_반도체사업장_현장실습생_건강관리_길잡이.md",
+        "documents/semiconductor/현장실습/직업계고_반도체사업장_현장실습생_건강관리_길잡이/직업계고_반도체사업장_현장실습생_건강관리_길잡이.md",
+        "documents/semiconductor/현장실습/직업계고_카드북6_세척제취급작업_웹용/직업계고_카드북6_세척제취급작업_웹용.md"
+      ]
+    },
+    {
+      "id": "ft-014",
+      "query": "클린룸에서 일할 때 뭘 주의해야 해요?",
+      "namespace": "field-training",
+      "query_type": "procedural",
+      "source_count": 40,
+      "keyword_hit": 1.0,
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_k": 1.0,
+      "answer_hit": 0.6667,
+      "wall_ms": 7118,
+      "latencies": {
+        "phase1_enhancement_ms": 3403,
+        "phase2_search_ms": 2072,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 48,
+        "phase5_rerank_ms": 533,
+        "phase6_optimize_ms": 293,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 6349
+      },
+      "retrieved_files": [
+        "documents/semiconductor/ncs/data/반도체제조/LM1903060216_19v4_반도체_클린룸_시설_운영/LM1903060216_19v4_반도체_클린룸_시설_운영.md",
+        "documents/semiconductor/ncs/data/반도체제조/LM1903060216_19v4_반도체_클린룸_시설_운영/LM1903060216_19v4_반도체_클린룸_시설_운영.md",
+        "documents/semiconductor/ncs/data/반도체제조/LM1903060216_19v4_반도체_클린룸_시설_운영/LM1903060216_19v4_반도체_클린룸_시설_운영.md",
+        "documents/semiconductor/ncs/data/반도체제조/LM1903060216_19v4_반도체_클린룸_시설_운영/LM1903060216_19v4_반도체_클린룸_시설_운영.md",
+        "documents/semiconductor/ncs/data/반도체제조/LM1903060216_19v4_반도체_클린룸_시설_운영/LM1903060216_19v4_반도체_클린룸_시설_운영.md"
+      ]
+    },
+    {
+      "id": "ft-015",
+      "query": "현장실습 안전교육 전체 내용을 정리해주세요",
+      "namespace": "field-training",
+      "query_type": "overview",
+      "source_count": 36,
+      "keyword_hit": 1.0,
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_k": 1.0,
+      "answer_hit": 0.75,
+      "wall_ms": 9201,
+      "latencies": {
+        "phase1_enhancement_ms": 6475,
+        "phase2_search_ms": 1567,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 2,
+        "phase4_hybrid_ms": 20,
+        "phase5_rerank_ms": 486,
+        "phase6_optimize_ms": 251,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 8801
+      },
+      "retrieved_files": [
+        "documents/semiconductor/현장실습/직업계고_반도체사업장_현장실습생_건강관리_길잡이/직업계고_반도체사업장_현장실습생_건강관리_길잡이.md",
+        "documents/semiconductor/현장실습/직업계고_반도체사업장_현장실습생_건강관리_길잡이/직업계고_반도체사업장_현장실습생_건강관리_길잡이.md",
+        "documents/semiconductor/현장실습/직업계고_반도체사업장_현장실습생_건강관리_길잡이/직업계고_반도체사업장_현장실습생_건강관리_길잡이.md",
+        "documents/semiconductor/현장실습/직업계고_반도체사업장_현장실습생_건강관리_길잡이/직업계고_반도체사업장_현장실습생_건강관리_길잡이.md",
+        "documents/semiconductor/현장실습/직업계고_반도체사업장_현장실습생_건강관리_길잡이/직업계고_반도체사업장_현장실습생_건강관리_길잡이.md"
+      ]
+    },
+    {
+      "id": "kosha-001",
+      "query": "반도체 세정 공정에서 사용하는 화학물질의 위험성은?",
+      "namespace": "kosha",
+      "query_type": "factual",
+      "source_count": 30,
+      "keyword_hit": 1.0,
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_k": 1.0,
+      "answer_hit": 1.0,
+      "wall_ms": 9401,
+      "latencies": {
+        "phase1_enhancement_ms": 6213,
+        "phase2_search_ms": 1668,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 35,
+        "phase5_rerank_ms": 544,
+        "phase6_optimize_ms": 178,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 8638
+      },
+      "retrieved_files": [
+        "documents/semiconductor/ncs/data/반도체장비/LM1903060329_19v1_반도체_장비_안전관리/LM1903060329_19v1_반도체_장비_안전관리.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060411_23v3_반도체_재료_안전관리/LM1903060411_23v3_반도체_재료_안전관리.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060417_23v3_반도체용_세정_공정_가스_제조/LM1903060417_23v3_반도체용_세정_공정_가스_제조.md",
+        "documents/semiconductor/ncs/data/반도체장비/LM1903060329_19v1_반도체_장비_안전관리/LM1903060329_19v1_반도체_장비_안전관리.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060425_23v3_반도체용_세정_공정_재료_제조/LM1903060425_23v3_반도체용_세정_공정_재료_제조.md"
+      ]
+    },
+    {
+      "id": "kosha-002",
+      "early_response": true,
+      "keyword_hit": 0.0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "ndcg": 0.0,
+      "wall_ms": 10424
+    },
+    {
+      "id": "kosha-003",
+      "query": "화학물질 건강 위험성평가 절차를 설명해주세요",
+      "namespace": "kosha",
+      "query_type": "procedural",
+      "source_count": 40,
+      "keyword_hit": 1.0,
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_k": 1.0,
+      "answer_hit": 0.75,
+      "wall_ms": 7891,
+      "latencies": {
+        "phase1_enhancement_ms": 4640,
+        "phase2_search_ms": 1952,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 27,
+        "phase5_rerank_ms": 551,
+        "phase6_optimize_ms": 403,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 7573
+      },
+      "retrieved_files": [
+        "documents/semiconductor/안전보건공단/전자제품 제조공정의 정비 작업자를 위한 화학물질 건강 위험성평가/전자제품 제조공정의 정비 작업자를 위한 화학물질 건강 위험성평가.md",
+        "documents/semiconductor/안전보건공단/전자제품 제조공정의 정비 작업자를 위한 화학물질 건강 위험성평가/전자제품 제조공정의 정비 작업자를 위한 화학물질 건강 위험성평가.md",
+        "documents/semiconductor/안전보건공단/전자제품 제조공정의 정비 작업자를 위한 화학물질 건강 위험성평가/전자제품 제조공정의 정비 작업자를 위한 화학물질 건강 위험성평가.md",
+        "documents/semiconductor/안전보건공단/전자제품 제조공정의 정비 작업자를 위한 화학물질 건강 위험성평가/전자제품 제조공정의 정비 작업자를 위한 화학물질 건강 위험성평가.md",
+        "documents/semiconductor/안전보건공단/전자제품 제조공정의 정비 작업자를 위한 화학물질 건강 위험성평가/전자제품 제조공정의 정비 작업자를 위한 화학물질 건강 위험성평가.md"
+      ]
+    },
+    {
+      "id": "kosha-004",
+      "query": "전자산업 크린룸 세정 공정 작업 시 안전수칙은?",
+      "namespace": "kosha",
+      "query_type": "factual",
+      "source_count": 14,
+      "keyword_hit": 0.6667,
+      "recall_at_k": 0.6667,
+      "mrr": 0.6667,
+      "ndcg_at_k": 0.6667,
+      "answer_hit": 1.0,
+      "wall_ms": 8290,
+      "latencies": {
+        "phase1_enhancement_ms": 4762,
+        "phase2_search_ms": 2011,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 28,
+        "phase5_rerank_ms": 567,
+        "phase6_optimize_ms": 47,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 7415
+      },
+      "retrieved_files": [
+        "documents/semiconductor/ncs/data/반도체장비/LM1903060329_19v1_반도체_장비_안전관리/LM1903060329_19v1_반도체_장비_안전관리.md",
+        "documents/semiconductor/ncs/data/반도체제조/LM1903060204_14v3_C_C_장비_운영/LM1903060204_14v3_C_C_장비_운영.md",
+        "documents/semiconductor/ncs/data/반도체제조/LM1903060215_19v4_반도체_유틸리티_운영/LM1903060215_19v4_반도체_유틸리티_운영.md",
+        "documents/semiconductor/ncs/data/반도체제조/LM1903060202_14v3_Etch_장비_운영/LM1903060202_14v3_Etch_장비_운영.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060415_20v1_반도체용_CMP_재료_제조/LM1903060415_20v1_반도체용_CMP_재료_제조.md"
+      ]
+    },
+    {
+      "id": "kosha-005",
+      "query": "확산 공정 설비 정비할 때 뭐가 위험해요?",
+      "namespace": "kosha",
+      "query_type": "factual",
+      "source_count": 30,
+      "keyword_hit": 1.0,
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_k": 1.0,
+      "answer_hit": 0.75,
+      "wall_ms": 9352,
+      "latencies": {
+        "phase1_enhancement_ms": 5053,
+        "phase2_search_ms": 2602,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 40,
+        "phase5_rerank_ms": 608,
+        "phase6_optimize_ms": 186,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 8489
+      },
+      "retrieved_files": [
+        "documents/semiconductor/ncs/data/반도체제조/LM1903060203_14v3_박막확산_장비운영/LM1903060203_14v3_박막확산_장비운영.md",
+        "documents/semiconductor/ncs/data/반도체장비/LM1903060329_19v1_반도체_장비_안전관리/LM1903060329_19v1_반도체_장비_안전관리.md",
+        "documents/semiconductor/ncs/data/반도체장비/LM1903060329_19v1_반도체_장비_안전관리/LM1903060329_19v1_반도체_장비_안전관리.md",
+        "documents/semiconductor/ncs/data/반도체제조/LM1903060203_14v3_박막확산_장비운영/LM1903060203_14v3_박막확산_장비운영.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060419_23v3_반도체용_이온_주입_공정_가스_제조/LM1903060419_23v3_반도체용_이온_주입_공정_가스_제조.md"
+      ]
+    },
+    {
+      "id": "kosha-006",
+      "query": "산화 공정과 확산 공정의 안전 위험요인 비교",
+      "namespace": "kosha",
+      "query_type": "comparison",
+      "source_count": 7,
+      "keyword_hit": 0.6667,
+      "recall_at_k": 0.6667,
+      "mrr": 0.6667,
+      "ndcg_at_k": 0.6667,
+      "answer_hit": 0.75,
+      "wall_ms": 10156,
+      "latencies": {
+        "phase1_enhancement_ms": 5784,
+        "phase2_search_ms": 2652,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 29,
+        "phase5_rerank_ms": 913,
+        "phase6_optimize_ms": 10,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 9388
+      },
+      "retrieved_files": [
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060419_23v3_반도체용_이온_주입_공정_가스_제조/LM1903060419_23v3_반도체용_이온_주입_공정_가스_제조.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060419_23v3_반도체용_이온_주입_공정_가스_제조/LM1903060419_23v3_반도체용_이온_주입_공정_가스_제조.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060419_23v3_반도체용_이온_주입_공정_가스_제조/LM1903060419_23v3_반도체용_이온_주입_공정_가스_제조.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060419_23v3_반도체용_이온_주입_공정_가스_제조/LM1903060419_23v3_반도체용_이온_주입_공정_가스_제조.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060419_23v3_반도체용_이온_주입_공정_가스_제조/LM1903060419_23v3_반도체용_이온_주입_공정_가스_제조.md"
+      ]
+    },
+    {
+      "id": "kosha-007",
+      "query": "전자산업 작업자 보호구 착용 기준은?",
+      "namespace": "kosha",
+      "query_type": "factual",
+      "source_count": 40,
+      "keyword_hit": 1.0,
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_k": 1.0,
+      "answer_hit": 0.3333,
+      "wall_ms": 8652,
+      "latencies": {
+        "phase1_enhancement_ms": 5069,
+        "phase2_search_ms": 2228,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 25,
+        "phase5_rerank_ms": 646,
+        "phase6_optimize_ms": 287,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 8255
+      },
+      "retrieved_files": [
+        "documents/semiconductor/안전보건공단/전자산업 크린룸 공정 지원 설비 정비작업 안전 보건 가이드2/전자산업 크린룸 공정 지원 설비 정비작업 안전 보건 가이드2.md",
+        "documents/semiconductor/안전보건공단/전자산업_산화공정_설비_정비작업_안전보건가이드/전자산업_산화공정_설비_정비작업_안전보건가이드.md",
+        "documents/semiconductor/안전보건공단/전자산업_확산_공정_설비_정비_작업_안전보건_가이드/전자산업_확산_공정_설비_정비_작업_안전보건_가이드.md",
+        "documents/semiconductor/안전보건공단/전자산업_확산_공정_설비_정비_작업_안전보건_가이드/전자산업_확산_공정_설비_정비_작업_안전보건_가이드.md",
+        "documents/semiconductor/안전보건공단/전자산업_크린룸내_세정_공정_작업_안전보건가이드/전자산업_크린룸내_세정_공정_작업_안전보건가이드.md"
+      ]
+    },
+    {
+      "id": "kosha-008",
+      "query": "반도체 공장에서 가스 누출 시 대응 절차는?",
+      "namespace": "kosha",
+      "query_type": "procedural",
+      "source_count": 40,
+      "keyword_hit": 1.0,
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_k": 1.0,
+      "answer_hit": 0.5,
+      "wall_ms": 9555,
+      "latencies": {
+        "phase1_enhancement_ms": 4857,
+        "phase2_search_ms": 2634,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 45,
+        "phase5_rerank_ms": 897,
+        "phase6_optimize_ms": 267,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 8700
+      },
+      "retrieved_files": [
+        "documents/semiconductor/ncs/data/반도체장비/LM1903060329_19v1_반도체_장비_안전관리/LM1903060329_19v1_반도체_장비_안전관리.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060417_23v3_반도체용_세정_공정_가스_제조/LM1903060417_23v3_반도체용_세정_공정_가스_제조.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060417_23v3_반도체용_세정_공정_가스_제조/LM1903060417_23v3_반도체용_세정_공정_가스_제조.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060417_23v3_반도체용_세정_공정_가스_제조/LM1903060417_23v3_반도체용_세정_공정_가스_제조.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060416_23v3_반도체용_식각_공정_가스_제조/LM1903060416_23v3_반도체용_식각_공정_가스_제조.md"
+      ]
+    },
+    {
+      "id": "kosha-009",
+      "early_response": true,
+      "keyword_hit": 0.0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "ndcg": 0.0,
+      "wall_ms": 8914
+    },
+    {
+      "id": "kosha-010",
+      "query": "전자산업 산화 공정 설비 정비 시 위험요인은?",
+      "namespace": "kosha",
+      "query_type": "factual",
+      "source_count": 25,
+      "keyword_hit": 1.0,
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_k": 1.0,
+      "answer_hit": 0.6667,
+      "wall_ms": 8866,
+      "latencies": {
+        "phase1_enhancement_ms": 5308,
+        "phase2_search_ms": 1871,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 44,
+        "phase5_rerank_ms": 613,
+        "phase6_optimize_ms": 129,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 7965
+      },
+      "retrieved_files": [
+        "documents/semiconductor/ncs/data/report/반도체제조_report/반도체제조_report.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060409_23v3_반도체_재료_생산관리/LM1903060409_23v3_반도체_재료_생산관리.md",
+        "documents/semiconductor/ncs/data/반도체장비/LM1903060329_19v1_반도체_장비_안전관리/LM1903060329_19v1_반도체_장비_안전관리.md",
+        "documents/semiconductor/ncs/data/report/반도체제조_report/반도체제조_report.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060411_23v3_반도체_재료_안전관리/LM1903060411_23v3_반도체_재료_안전관리.md"
+      ]
+    },
+    {
+      "id": "chem-001",
+      "query": "반도체 세정 공정에서 불산 사용 시 위험성은?",
+      "namespace": "kosha",
+      "query_type": "factual",
+      "source_count": 30,
+      "keyword_hit": 1.0,
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_k": 1.0,
+      "answer_hit": 1.0,
+      "wall_ms": 9758,
+      "latencies": {
+        "phase1_enhancement_ms": 5376,
+        "phase2_search_ms": 2755,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 27,
+        "phase5_rerank_ms": 528,
+        "phase6_optimize_ms": 166,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 8852
+      },
+      "retrieved_files": [
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060417_23v3_반도체용_세정_공정_가스_제조/LM1903060417_23v3_반도체용_세정_공정_가스_제조.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060417_23v3_반도체용_세정_공정_가스_제조/LM1903060417_23v3_반도체용_세정_공정_가스_제조.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060417_23v3_반도체용_세정_공정_가스_제조/LM1903060417_23v3_반도체용_세정_공정_가스_제조.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060417_23v3_반도체용_세정_공정_가스_제조/LM1903060417_23v3_반도체용_세정_공정_가스_제조.md",
+        "documents/semiconductor/ncs/data/반도체장비/LM1903060329_19v1_반도체_장비_안전관리/LM1903060329_19v1_반도체_장비_안전관리.md"
+      ]
+    },
+    {
+      "id": "chem-002",
+      "query": "반도체 공정에서 사용하는 유해 화학물질의 종류는?",
+      "namespace": "semiconductor-v2",
+      "query_type": "factual",
+      "source_count": 40,
+      "keyword_hit": 1.0,
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_k": 1.0,
+      "answer_hit": 0.3333,
+      "wall_ms": 9769,
+      "latencies": {
+        "phase1_enhancement_ms": 6110,
+        "phase2_search_ms": 1933,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 45,
+        "phase5_rerank_ms": 543,
+        "phase6_optimize_ms": 308,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 8939
+      },
+      "retrieved_files": [
+        "documents/semiconductor/ncs/data/반도체장비/LM1903060329_19v1_반도체_장비_안전관리/LM1903060329_19v1_반도체_장비_안전관리.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060424_23v3_반도체용_박막_도금_공정_재료_제조/LM1903060424_23v3_반도체용_박막_도금_공정_재료_제조.md",
+        "documents/semiconductor/ncs/data/반도체장비/LM1903060329_19v1_반도체_장비_안전관리/LM1903060329_19v1_반도체_장비_안전관리.md",
+        "documents/semiconductor/ncs/data/반도체장비/LM1903060329_19v1_반도체_장비_안전관리/LM1903060329_19v1_반도체_장비_안전관리.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060422_23v3_반도체용_트랙_공정_재료_제조/LM1903060422_23v3_반도체용_트랙_공정_재료_제조.md"
+      ]
+    },
+    {
+      "id": "chem-003",
+      "query": "CVD 공정에서 사용하는 실란 가스가 왜 위험해요?",
+      "namespace": "semiconductor-v2",
+      "query_type": "factual",
+      "source_count": 40,
+      "keyword_hit": 1.0,
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_k": 1.0,
+      "answer_hit": 1.0,
+      "wall_ms": 10039,
+      "latencies": {
+        "phase1_enhancement_ms": 5540,
+        "phase2_search_ms": 2680,
+        "phase3_graph_ms": 0,
+        "phase3_5_global_ms": 0,
+        "phase4_hybrid_ms": 35,
+        "phase5_rerank_ms": 607,
+        "phase6_optimize_ms": 273,
+        "phase7_context_ms": 0,
+        "total_pipeline_ms": 9135
+      },
+      "retrieved_files": [
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060418_23v3_반도체용_박막_공정_가스_제조/LM1903060418_23v3_반도체용_박막_공정_가스_제조.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060418_23v3_반도체용_박막_공정_가스_제조/LM1903060418_23v3_반도체용_박막_공정_가스_제조.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060418_23v3_반도체용_박막_공정_가스_제조/LM1903060418_23v3_반도체용_박막_공정_가스_제조.md",
+        "documents/semiconductor/ncs/data/반도체재료/반도체_재료_03._반도체용_가스_재료_제조_LM1903060403_14v1_/반도체_재료_03._반도체용_가스_재료_제조_LM1903060403_14v1_.md",
+        "documents/semiconductor/ncs/data/반도체재료/LM1903060418_23v3_반도체용_박막_공정_가스_제조/LM1903060418_23v3_반도체용_박막_공정_가스_제조.md"
+      ]
+    },
+    {
+      "id": "chem-004",
+      "early_response": true,
+      "keyword_hit": 0.0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "ndcg": 0.0,
+      "wall_ms": 7895
+    },
+    {
+      "id": "chem-005",
+      "early_response": true,
+      "keyword_hit": 0.0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "ndcg": 0.0,
+      "wall_ms": 4362
+    }
+  ]
+}
