@@ -113,30 +113,28 @@ def _generate_answer(pipeline_result: Dict) -> str:
     Uses the same LLM call path as the production /ask endpoint.
     """
     from services.rag_pipeline import build_llm_messages
-    from services.singletons import get_gemini_client
-    from google.genai import types as genai_types
 
     messages = pipeline_result.get('messages')
     if not messages:
-        messages = build_llm_messages(pipeline_result)
+        messages = build_llm_messages(
+            query=pipeline_result.get('query', ''),
+            sources=pipeline_result.get('sources', []),
+            context=pipeline_result.get('context', ''),
+            namespace=pipeline_result.get('namespace', ''),
+            safety_references=pipeline_result.get('safety_references'),
+            msds_references=pipeline_result.get('msds_references'),
+        )
 
-    # Use Gemini for eval (same as production default)
-    client = get_gemini_client()
-    system_msg = messages[0]['content'] if messages and messages[0]['role'] == 'system' else ''
-    user_msgs = [m for m in messages if m['role'] == 'user']
-    user_content = user_msgs[-1]['content'] if user_msgs else ''
-
-    config = genai_types.GenerateContentConfig(
-        system_instruction=system_msg,
+    # Use OpenAI for eval answer generation (Gemini key may be unavailable)
+    from services.singletons import get_openai_client
+    client = get_openai_client()
+    resp = client.chat.completions.create(
+        model='gpt-4o-mini',
+        messages=messages,
         temperature=0.3,
-        max_output_tokens=1500,
+        max_tokens=1500,
     )
-    resp = client.models.generate_content(
-        model='gemini-2.5-flash',
-        contents=user_content,
-        config=config,
-    )
-    return resp.text or ''
+    return resp.choices[0].message.content or ''
 
 
 def run_evaluation(top_k: int = 5, dataset_path: str = None,
