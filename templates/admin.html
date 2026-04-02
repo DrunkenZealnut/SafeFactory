@@ -459,6 +459,9 @@
             <div class="admin-sidebar-item" data-section="graph">
                 <span class="admin-sidebar-icon">🧠</span> 지식그래프
             </div>
+            <div class="admin-sidebar-item" data-section="quality">
+                <span class="admin-sidebar-icon">📊</span> 답변 품질
+            </div>
             <div class="admin-sidebar-item" data-section="feedback">
                 <span class="admin-sidebar-icon">👎</span> 답변 피드백 <span id="feedbackBadge" style="background:#ef4444;color:#fff;border-radius:10px;padding:1px 7px;font-size:0.75rem;margin-left:4px;display:none;"></span>
             </div>
@@ -772,6 +775,32 @@
                     </table>
                 </div>
                 <div class="admin-pagination" id="log-pagination"></div>
+            </div>
+
+            <!-- ===== Answer Quality Dashboard ===== -->
+            <div id="section-quality" class="admin-section">
+                <h2 class="admin-section-title">답변 품질 대시보드</h2>
+
+                <div class="admin-card" id="qualityOverview" style="margin-bottom:20px;">
+                    <h3 style="color:var(--sf-purple);margin-bottom:16px;">📊 전체 검색 품질 (Retrieval Baseline)</h3>
+                    <div id="qualityOverviewContent">
+                        <p style="color:var(--sf-text-3);">로딩 중...</p>
+                    </div>
+                </div>
+
+                <div class="admin-card" id="qualityDomains" style="margin-bottom:20px;">
+                    <h3 style="color:var(--sf-purple);margin-bottom:16px;">🏷️ 도메인별 품질</h3>
+                    <div id="qualityDomainsContent">
+                        <p style="color:var(--sf-text-3);">로딩 중...</p>
+                    </div>
+                </div>
+
+                <div class="admin-card" id="qualityLatency">
+                    <h3 style="color:var(--sf-purple);margin-bottom:16px;">⏱️ 파이프라인 지연 시간</h3>
+                    <div id="qualityLatencyContent">
+                        <p style="color:var(--sf-text-3);">로딩 중...</p>
+                    </div>
+                </div>
             </div>
 
             <!-- ===== Answer Feedback ===== -->
@@ -2248,6 +2277,7 @@ const loaders = {
     graph: loadGraphStats,
     stats: loadStats,
     logs: loadLogs,
+    quality: loadQualityDashboard,
     feedback: loadFeedbacks,
     settings: loadSettings,
 };
@@ -2259,6 +2289,95 @@ const loaders = {
     if (item) item.click();
     else loadDashboard();
 })();
+
+    // ========================================
+    // Answer Quality Dashboard
+    // ========================================
+
+    async function loadQualityDashboard() {
+        try {
+            const resp = await fetch('/api/v1/admin/quality/baseline');
+            const data = await resp.json();
+            if (!data.success) {
+                document.getElementById('qualityOverviewContent').innerHTML =
+                    `<p style="color:var(--sf-text-3);">평가 결과 없음. <code>python -m scripts.eval.eval_pipeline --top-k 20 --embedding text-embedding-3-small --output scripts/eval/baseline_$(new Date().toISOString().split('T')[0]).json</code> 실행 필요</p>`;
+                return;
+            }
+            const d = data.data;
+            const o = d.overall || {};
+            const valid = d.query_count - d.early_response_count - d.error_count;
+
+            // Overall metrics
+            const pct = v => v != null ? (v * 100).toFixed(1) + '%' : 'N/A';
+            const scoreColor = v => v >= 0.9 ? '#10b981' : v >= 0.7 ? '#f59e0b' : '#ef4444';
+
+            document.getElementById('qualityOverviewContent').innerHTML = `
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px;">
+                    <div style="text-align:center;padding:16px;border-radius:10px;background:var(--sf-surface);">
+                        <div style="font-size:2rem;font-weight:700;color:${scoreColor(o.avg_keyword_hit || 0)};">${pct(o.avg_keyword_hit)}</div>
+                        <div style="font-size:0.85rem;color:var(--sf-text-3);">키워드 적중률</div>
+                    </div>
+                    <div style="text-align:center;padding:16px;border-radius:10px;background:var(--sf-surface);">
+                        <div style="font-size:2rem;font-weight:700;color:${scoreColor(o.avg_recall_at_k || 0)};">${pct(o.avg_recall_at_k)}</div>
+                        <div style="font-size:0.85rem;color:var(--sf-text-3);">Recall@K</div>
+                    </div>
+                    <div style="text-align:center;padding:16px;border-radius:10px;background:var(--sf-surface);">
+                        <div style="font-size:2rem;font-weight:700;color:${scoreColor(1 - (o.retrieval_failure_rate || 1))};">${pct(o.retrieval_failure_rate)}</div>
+                        <div style="font-size:0.85rem;color:var(--sf-text-3);">실패율</div>
+                    </div>
+                    <div style="text-align:center;padding:16px;border-radius:10px;background:var(--sf-surface);">
+                        <div style="font-size:2rem;font-weight:700;color:var(--sf-text-1);">${o.avg_wall_ms || 0}ms</div>
+                        <div style="font-size:0.85rem;color:var(--sf-text-3);">평균 응답시간</div>
+                    </div>
+                </div>
+                <div style="font-size:0.85rem;color:var(--sf-text-3);">
+                    파일: ${d.file} | 쿼리: ${valid}/${d.query_count}건 성공 (${d.early_response_count}건 빈 결과, ${d.error_count}건 에러)
+                    | 평가일: ${d.timestamp}
+                </div>
+            `;
+
+            // Domain metrics
+            const domains = d.domain_metrics || {};
+            const domainNames = { 'semiconductor-v2': '반도체', 'field-training': '현장실습', 'kosha': '안전보건', 'chemical-safety': '화학안전' };
+            let domHtml = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.9rem;">';
+            domHtml += '<tr style="border-bottom:2px solid var(--sf-border);"><th style="text-align:left;padding:8px;">도메인</th><th>쿼리수</th><th>KW Hit</th><th>Recall</th><th>MRR</th><th>NDCG</th><th>Avg ms</th></tr>';
+            for (const [ns, m] of Object.entries(domains)) {
+                const name = domainNames[ns] || ns;
+                domHtml += `<tr style="border-bottom:1px solid var(--sf-border-light);">
+                    <td style="padding:8px;font-weight:500;">${name}</td>
+                    <td style="text-align:center;">${m.count}</td>
+                    <td style="text-align:center;color:${scoreColor(m.avg_keyword_hit)};font-weight:600;">${pct(m.avg_keyword_hit)}</td>
+                    <td style="text-align:center;color:${scoreColor(m.avg_recall_at_k)};font-weight:600;">${pct(m.avg_recall_at_k)}</td>
+                    <td style="text-align:center;">${(m.avg_mrr || 0).toFixed(3)}</td>
+                    <td style="text-align:center;">${(m.avg_ndcg_at_k || 0).toFixed(3)}</td>
+                    <td style="text-align:center;">${m.avg_wall_ms || 0}ms</td>
+                </tr>`;
+            }
+            domHtml += '</table></div>';
+            document.getElementById('qualityDomainsContent').innerHTML = domHtml;
+
+            // Latency breakdown
+            const lat = d.latency_stats || {};
+            if (Object.keys(lat).length > 0) {
+                let latHtml = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.85rem;">';
+                latHtml += '<tr style="border-bottom:2px solid var(--sf-border);"><th style="text-align:left;padding:6px;">파이프라인 단계</th><th>Avg</th><th>P50</th><th>Max</th></tr>';
+                for (const [phase, s] of Object.entries(lat).sort()) {
+                    latHtml += `<tr style="border-bottom:1px solid var(--sf-border-light);">
+                        <td style="padding:6px;font-family:'Space Mono',monospace;font-size:0.8rem;">${phase}</td>
+                        <td style="text-align:center;">${s.avg_ms}ms</td>
+                        <td style="text-align:center;">${s.p50_ms}ms</td>
+                        <td style="text-align:center;">${s.max_ms}ms</td>
+                    </tr>`;
+                }
+                latHtml += '</table></div>';
+                document.getElementById('qualityLatencyContent').innerHTML = latHtml;
+            } else {
+                document.getElementById('qualityLatencyContent').innerHTML = '<p style="color:var(--sf-text-3);">지연 시간 데이터 없음</p>';
+            }
+        } catch (e) {
+            document.getElementById('qualityOverviewContent').innerHTML = `<p style="color:#ef4444;">대시보드 로드 실패: ${e.message}</p>`;
+        }
+    }
 
     // ========================================
     // Answer Feedback Management

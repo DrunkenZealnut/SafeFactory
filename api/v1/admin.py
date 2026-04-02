@@ -2069,3 +2069,36 @@ def admin_feedback_stats():
         'by_type': {t: c for t, c in by_type},
         'by_namespace': {ns or 'unknown': c for ns, c in by_ns},
     })
+
+
+# ---------------------------------------------------------------------------
+# RAG Quality Baseline (Eval Results)
+# ---------------------------------------------------------------------------
+
+@v1_bp.route('/admin/quality/baseline', methods=['GET'])
+@admin_required
+def admin_quality_baseline():
+    """Return the latest eval baseline results for the quality dashboard."""
+    import json as _json
+    from pathlib import Path
+
+    eval_dir = Path(__file__).parent.parent.parent / 'scripts' / 'eval'
+    # Find the most recent baseline file
+    baselines = sorted(eval_dir.glob('baseline_*.json'), reverse=True)
+    if not baselines:
+        return error_response('평가 결과가 없습니다. python -m scripts.eval.eval_pipeline을 실행하세요.', 404)
+
+    with open(baselines[0], 'r', encoding='utf-8') as f:
+        data = _json.load(f)
+
+    return success_response(data={
+        'file': baselines[0].name,
+        'timestamp': data.get('timestamp', ''),
+        'top_k': data.get('top_k', 0),
+        'overall': data.get('overall', {}),
+        'domain_metrics': data.get('domain_metrics', {}),
+        'latency_stats': data.get('latency_stats', {}),
+        'query_count': len(data.get('results', [])),
+        'early_response_count': sum(1 for r in data.get('results', []) if r.get('early_response')),
+        'error_count': sum(1 for r in data.get('results', []) if 'error' in r),
+    })
