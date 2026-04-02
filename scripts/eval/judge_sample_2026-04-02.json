@@ -1,0 +1,62 @@
+[
+  {
+    "accuracy": 5,
+    "relevance": 5,
+    "readability": 5,
+    "citation": 5,
+    "hallucination": false,
+    "overall": 5,
+    "brief_reason": "모든 정보가 정확하고 관련성이 높으며 이해하기 쉬운 설명과 적절한 인용이 포함됨.",
+    "id": "ft-002"
+  },
+  {
+    "accuracy": 5,
+    "relevance": 5,
+    "readability": 4,
+    "citation": 4,
+    "hallucination": false,
+    "overall": 5,
+    "brief_reason": "안전한 중량물 운반 방법에 대한 정보가 정확하고 관련성이 높음.",
+    "id": "ft-007"
+  },
+  {
+    "accuracy": 5,
+    "relevance": 5,
+    "readability": 4,
+    "citation": 5,
+    "hallucination": false,
+    "overall": 5,
+    "brief_reason": "모든 정보가 정확하고 관련성이 높으며 이해하기 쉬운 설명을 제공함.",
+    "id": "kosha-007"
+  },
+  {
+    "accuracy": 5,
+    "relevance": 5,
+    "readability": 4,
+    "citation": 5,
+    "hallucination": false,
+    "overall": 5,
+    "brief_reason": "CMP 공정에 대한 정확하고 관련성 높은 설명을 제공함.",
+    "id": "semi-005"
+  },
+  {
+    "accuracy": 5,
+    "relevance": 5,
+    "readability": 4,
+    "citation": 5,
+    "hallucination": false,
+    "overall": 5,
+    "brief_reason": "모든 정보가 정확하고 관련성이 높으며, 가독성도 우수함.",
+    "id": "ft-012"
+  },
+  {
+    "accuracy": 5,
+    "relevance": 5,
+    "readability": 5,
+    "citation": 5,
+    "hallucination": false,
+    "overall": 5,
+    "brief_reason": "모든 정보가 정확하고 관련성이 높으며 이해하기 쉬운 설명과 적절한 인용이 포함됨.",
+    "id": "semi-008"
+  }
+]

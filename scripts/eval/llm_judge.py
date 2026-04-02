@@ -127,20 +127,16 @@ def judge_answer(
     )
 
     try:
-        from google import genai
-        from google.genai import types as genai_types
+        from openai import OpenAI
 
-        client = genai.Client(api_key=os.getenv('GEMINI_API_KEY'))
-        config = genai_types.GenerateContentConfig(
+        client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+        resp = client.chat.completions.create(
+            model='gpt-4o-mini',
+            messages=[{"role": "user", "content": prompt}],
             temperature=0.1,
-            max_output_tokens=500,
+            max_tokens=500,
         )
-        resp = client.models.generate_content(
-            model=model,
-            contents=prompt,
-            config=config,
-        )
-        raw = resp.text or ''
+        raw = resp.choices[0].message.content or ''
 
         # Extract JSON from response (handle markdown code blocks)
         json_match = re.search(r'\{[^{}]+\}', raw, re.DOTALL)

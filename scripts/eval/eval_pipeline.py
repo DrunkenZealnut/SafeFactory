@@ -226,10 +226,13 @@ def run_evaluation(top_k: int = 5, dataset_path: str = None,
             # Answer quality metric (v2): check if answer contains expected facts
             expected_answer = q.get('expected_answer_contains', [])
             answer_hit = -1.0
+            answer_text = ''
+            sources_text = ''
             if expected_answer and eval_answer:
                 try:
                     answer_text = _generate_answer(pipeline)
                     answer_hit = answer_contains_rate(expected_answer, answer_text)
+                    sources_text = all_content[:2000]
                     logger.info("    answer_hit=%.2f (%d/%d facts)",
                                 answer_hit, int(answer_hit * len(expected_answer)), len(expected_answer))
                 except Exception as e:
@@ -253,6 +256,10 @@ def run_evaluation(top_k: int = 5, dataset_path: str = None,
                 'latencies': latencies,
                 'retrieved_files': retrieved_files[:5],
             }
+            if answer_text:
+                result['answer_text'] = answer_text
+                result['sources_text'] = sources_text
+                result['expected_answer_contains'] = expected_answer
             domain_results.append(result)
 
             # Accumulate latencies
