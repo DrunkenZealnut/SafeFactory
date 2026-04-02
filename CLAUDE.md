@@ -186,6 +186,29 @@ Different namespaces store text in different metadata keys. When accessing docum
 
 Always check for `content_preview` → `chunk_text` → `text` → `content` fallback order.
 
+## Design Context
+
+Full design context is in `.impeccable.md`. Key principles for all UI work:
+
+- **Brand**: 신뢰적인 (Trustworthy) · 친근한 (Approachable) · 전문적인 (Professional)
+- **Users**: Vocational high school students (16-18) in safety training classes
+- **Colors**: Navy (`#1e293b`) + Amber (`#f59e0b`), "Industrial Precision" theme
+- **Typography**: Noto Sans KR (Korean), Outfit (headings), Space Mono (code)
+- **Layout**: Max-width 960px, 8px border-radius, light mode only
+- **CSS convention**: All `--sf-*` variables from `theme.css`. Admin uses `admin-` class prefix.
+
+### Design Principles
+1. **Safety First, Always Visible** — emergency content is red, prominent, immediate
+2. **Clarity Over Cleverness** — scannable by a 16-year-old on first visit
+3. **Trust Through Precision** — consistent spacing, proper citations, careful typography
+4. **Warm Authority** — navy (serious) + amber (warm), never cold, never frivolous
+5. **Korean-First, Mobile-Aware** — Hangul readability over English conventions, classroom desktop primary
+
+### Anti-References
+- Government/institutional coldness — too formal
+- Gamified/playful UIs — safety demands seriousness
+- Information-dense dashboards — students need clarity, not data overload
+
 # currentDate
 Today's date is 2026-03-19.
 

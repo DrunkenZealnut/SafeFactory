@@ -853,6 +853,72 @@ class UserBookmark(db.Model):
 
 
 # ---------------------------------------------------------------------------
+# Answer Feedback (Teacher quality feedback)
+# ---------------------------------------------------------------------------
+
+class AnswerFeedback(db.Model):
+    """Teacher feedback on AI answer quality."""
+
+    __tablename__ = 'answer_feedbacks'
+    __table_args__ = (
+        db.Index('ix_feedback_created', 'created_at'),
+        db.Index('ix_feedback_ns_status', 'namespace', 'status'),
+        db.UniqueConstraint('user_id', 'query_hash', name='uq_feedback_user_query'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False,
+    )
+    query = db.Column(db.Text, nullable=False)
+    query_hash = db.Column(db.String(32), nullable=False)
+    answer = db.Column(db.Text, nullable=False)
+    namespace = db.Column(db.String(100), nullable=False, default='')
+    source_count = db.Column(db.Integer, nullable=False, default=0)
+    confidence_score = db.Column(db.Float, nullable=True)
+
+    feedback_type = db.Column(db.String(20), nullable=False)
+    comment = db.Column(db.Text, nullable=True)
+
+    status = db.Column(db.String(20), nullable=False, default='pending')
+    admin_note = db.Column(db.Text, nullable=True)
+
+    created_at = db.Column(
+        db.DateTime, nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+    resolved_at = db.Column(db.DateTime, nullable=True)
+
+    user = db.relationship('User', backref='answer_feedbacks')
+
+    FEEDBACK_TYPES = ('inaccurate', 'incomplete', 'irrelevant', 'unclear')
+    STATUSES = ('pending', 'resolved', 'dismissed')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'user_name': self.user.name if self.user else None,
+            'query': self.query,
+            'answer': self.answer[:300],
+            'namespace': self.namespace,
+            'source_count': self.source_count,
+            'confidence_score': self.confidence_score,
+            'feedback_type': self.feedback_type,
+            'comment': self.comment,
+            'status': self.status,
+            'admin_note': self.admin_note,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'resolved_at': self.resolved_at.isoformat() if self.resolved_at else None,
+        }
+
+    def to_dict_full(self):
+        d = self.to_dict()
+        d['answer'] = self.answer
+        return d
+
+
+# ---------------------------------------------------------------------------
 # Knowledge Graph (GraphRAG)
 # ---------------------------------------------------------------------------
 

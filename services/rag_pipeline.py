@@ -64,8 +64,6 @@ def post_process_answer(answer: str, source_count: int) -> str:
     # Matches [N] where N > source_count, but not inside law reference blocks
     def _replace_invalid_citation(match):
         num = int(match.group(1))
-        if num > source_count and num <= source_count:
-            return match.group(0)
         if num > source_count:
             return ''
         return match.group(0)

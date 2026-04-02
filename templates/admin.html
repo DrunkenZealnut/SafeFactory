@@ -459,6 +459,9 @@
             <div class="admin-sidebar-item" data-section="graph">
                 <span class="admin-sidebar-icon">🧠</span> 지식그래프
             </div>
+            <div class="admin-sidebar-item" data-section="feedback">
+                <span class="admin-sidebar-icon">👎</span> 답변 피드백 <span id="feedbackBadge" style="background:#ef4444;color:#fff;border-radius:10px;padding:1px 7px;font-size:0.75rem;margin-left:4px;display:none;"></span>
+            </div>
             <div class="admin-sidebar-item" data-section="settings">
                 <span class="admin-sidebar-icon">⚙️</span> 설정
             </div>
@@ -769,6 +772,31 @@
                     </table>
                 </div>
                 <div class="admin-pagination" id="log-pagination"></div>
+            </div>
+
+            <!-- ===== Answer Feedback ===== -->
+            <div id="section-feedback" class="admin-section">
+                <h2 class="admin-section-title">답변 피드백</h2>
+                <div class="admin-card">
+                    <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
+                        <select id="fbNsFilter" onchange="loadFeedbacks()" style="padding:6px 10px;border-radius:6px;border:1px solid var(--sf-border);background:var(--sf-bg-2);color:var(--sf-text-1);font-size:0.9rem;">
+                            <option value="">전체 도메인</option>
+                            <option value="semiconductor-v2">반도체</option>
+                            <option value="field-training">현장실습</option>
+                            <option value="kosha">안전보건</option>
+                        </select>
+                        <select id="fbStatusFilter" onchange="loadFeedbacks()" style="padding:6px 10px;border-radius:6px;border:1px solid var(--sf-border);background:var(--sf-bg-2);color:var(--sf-text-1);font-size:0.9rem;">
+                            <option value="">전체 상태</option>
+                            <option value="pending" selected>대기중</option>
+                            <option value="resolved">해결됨</option>
+                            <option value="dismissed">무시됨</option>
+                        </select>
+                        <button onclick="exportFeedbacks()" style="padding:6px 14px;border-radius:6px;border:1px solid var(--sf-border);background:var(--sf-bg-2);color:var(--sf-text-1);cursor:pointer;font-size:0.9rem;">📥 JSON 내보내기</button>
+                        <span id="fbCount" style="color:var(--sf-text-3);font-size:0.85rem;margin-left:auto;"></span>
+                    </div>
+                    <div id="feedbackList"></div>
+                    <div id="fbPagination" style="display:flex;justify-content:center;gap:8px;margin-top:16px;"></div>
+                </div>
             </div>
 
             <!-- ===== Settings ===== -->
@@ -2220,6 +2248,7 @@ const loaders = {
     graph: loadGraphStats,
     stats: loadStats,
     logs: loadLogs,
+    feedback: loadFeedbacks,
     settings: loadSettings,
 };
 
@@ -2230,5 +2259,105 @@ const loaders = {
     if (item) item.click();
     else loadDashboard();
 })();
+
+    // ========================================
+    // Answer Feedback Management
+    // ========================================
+
+    let _fbPage = 1;
+
+    async function loadFeedbacks(page) {
+        _fbPage = page || 1;
+        const ns = document.getElementById('fbNsFilter').value;
+        const st = document.getElementById('fbStatusFilter').value;
+        const params = new URLSearchParams({ page: _fbPage, per_page: 20 });
+        if (ns) params.set('namespace', ns);
+        if (st) params.set('status', st);
+
+        try {
+            const resp = await fetch(`/api/v1/admin/feedback?${params}`);
+            const data = await resp.json();
+            if (!data.success) return;
+
+            const list = document.getElementById('feedbackList');
+            const items = data.data.items;
+            document.getElementById('fbCount').textContent = `총 ${data.data.total}건`;
+
+            if (!items.length) {
+                list.innerHTML = '<p style="color:var(--sf-text-3);text-align:center;padding:32px 0;">피드백이 없습니다.</p>';
+                document.getElementById('fbPagination').innerHTML = '';
+                return;
+            }
+
+            const typeLabels = { inaccurate: '❌ 부정확', incomplete: '📝 불완전', irrelevant: '🔀 관련없음', unclear: '❓ 이해불가' };
+            const statusColors = { pending: '#f59e0b', resolved: '#10b981', dismissed: '#6b7280' };
+            const statusLabels = { pending: '대기중', resolved: '해결됨', dismissed: '무시됨' };
+
+            list.innerHTML = items.map(fb => `
+                <div style="padding:14px;border-left:3px solid ${statusColors[fb.status] || '#6b7280'};background:var(--sf-bg-2);border-radius:0 8px 8px 0;margin-bottom:10px;">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:4px;">
+                        <span><strong>${typeLabels[fb.feedback_type] || fb.feedback_type}</strong> · ${fb.namespace || '전체'} · ${fb.user_name || '익명'}</span>
+                        <span style="color:var(--sf-text-3);font-size:0.85rem;">${fb.created_at ? new Date(fb.created_at).toLocaleString('ko-KR') : ''}</span>
+                    </div>
+                    <div style="margin-bottom:4px;"><strong>Q:</strong> ${escapeHtml(fb.query)}</div>
+                    <div style="margin-bottom:4px;color:var(--sf-text-2);font-size:0.9rem;">A: ${escapeHtml(fb.answer)}${fb.answer && fb.answer.length >= 300 ? '...' : ''}</div>
+                    ${fb.comment ? `<div style="margin:8px 0;padding:8px;background:var(--sf-bg-1);border-radius:6px;font-size:0.9rem;">💬 교사: ${escapeHtml(fb.comment)}</div>` : ''}
+                    ${fb.status === 'pending' ? `
+                        <div style="display:flex;gap:8px;margin-top:8px;">
+                            <button onclick="updateFbStatus(${fb.id},'resolved')" style="padding:4px 12px;border-radius:6px;border:1px solid #10b981;background:rgba(16,185,129,0.1);color:#10b981;cursor:pointer;font-size:0.85rem;">✅ 해결</button>
+                            <button onclick="updateFbStatus(${fb.id},'dismissed')" style="padding:4px 12px;border-radius:6px;border:1px solid #6b7280;background:transparent;color:#6b7280;cursor:pointer;font-size:0.85rem;">무시</button>
+                        </div>
+                    ` : `<span style="color:${statusColors[fb.status]};font-size:0.85rem;">● ${statusLabels[fb.status] || fb.status}</span>`}
+                </div>
+            `).join('');
+
+            // Pagination
+            const pages = data.data.pages;
+            if (pages > 1) {
+                let pgHtml = '';
+                for (let p = 1; p <= pages; p++) {
+                    pgHtml += `<button onclick="loadFeedbacks(${p})" style="padding:4px 10px;border-radius:6px;border:1px solid var(--sf-border);background:${p === _fbPage ? 'var(--sf-purple)' : 'transparent'};color:${p === _fbPage ? '#fff' : 'var(--sf-text-2)'};cursor:pointer;font-size:0.85rem;">${p}</button>`;
+                }
+                document.getElementById('fbPagination').innerHTML = pgHtml;
+            } else {
+                document.getElementById('fbPagination').innerHTML = '';
+            }
+        } catch (e) {
+            console.error('Failed to load feedbacks:', e);
+        }
+    }
+
+    async function updateFbStatus(id, status) {
+        try {
+            const resp = await fetch(`/api/v1/admin/feedback/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status }),
+            });
+            const data = await resp.json();
+            if (data.success) loadFeedbacks(_fbPage);
+        } catch (e) {
+            console.error('Failed to update feedback:', e);
+        }
+    }
+
+    async function exportFeedbacks() {
+        window.open('/api/v1/admin/feedback/export?status=', '_blank');
+    }
+
+    async function loadFeedbackBadge() {
+        try {
+            const resp = await fetch('/api/v1/admin/feedback/stats');
+            const data = await resp.json();
+            if (data.success && data.data.pending > 0) {
+                const badge = document.getElementById('feedbackBadge');
+                badge.textContent = data.data.pending;
+                badge.style.display = 'inline';
+            }
+        } catch (e) { /* ignore */ }
+    }
+
+    // Load badge count on page load
+    loadFeedbackBadge();
 </script>
 {% endblock %}

@@ -1236,6 +1236,51 @@
         cursor: default;
     }
 
+    /* Feedback button */
+    .btn-feedback {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 6px 14px;
+        border-radius: 8px;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        background: rgba(239, 68, 68, 0.06);
+        color: #ef4444;
+        font-size: 0.82rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        font: inherit;
+        margin-left: 8px;
+    }
+    .btn-feedback:hover {
+        background: rgba(239, 68, 68, 0.15);
+    }
+    .btn-feedback.submitted {
+        border-color: rgba(107, 114, 128, 0.3);
+        color: #6b7280;
+        background: rgba(107, 114, 128, 0.06);
+        cursor: default;
+        pointer-events: none;
+    }
+    .feedback-radio {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background 0.15s;
+        color: var(--sf-text-1);
+        font-size: 0.92rem;
+    }
+    .feedback-radio:hover {
+        background: var(--sf-bg-2);
+    }
+    .feedback-radio input[type="radio"] {
+        accent-color: #ef4444;
+    }
+
     /* Recent queries dropdown */
     .recent-queries-dropdown {
         position: absolute;
@@ -1435,6 +1480,49 @@
             </div>
         </div>
     </div>
+
+    <!-- Feedback Modal -->
+    <div class="pdf-modal-overlay" id="feedbackModal">
+        <div class="pdf-modal" style="max-width: 480px;">
+            <div class="pdf-modal-header">
+                <span class="pdf-modal-title">답변 피드백</span>
+                <button class="pdf-modal-close" onclick="closeFeedbackModal()">&times;</button>
+            </div>
+            <div class="pdf-modal-body" style="padding: 20px;">
+                <p style="margin-bottom: 16px; color: var(--sf-text-2);">어떤 문제가 있나요?</p>
+                <div id="feedbackTypeGroup" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px;">
+                    <label class="feedback-radio">
+                        <input type="radio" name="feedbackType" value="inaccurate">
+                        <span>❌ 사실과 다른 내용 (부정확)</span>
+                    </label>
+                    <label class="feedback-radio">
+                        <input type="radio" name="feedbackType" value="incomplete">
+                        <span>📝 중요한 정보 누락 (불완전)</span>
+                    </label>
+                    <label class="feedback-radio">
+                        <input type="radio" name="feedbackType" value="irrelevant">
+                        <span>🔀 질문과 무관한 답변 (관련없음)</span>
+                    </label>
+                    <label class="feedback-radio">
+                        <input type="radio" name="feedbackType" value="unclear">
+                        <span>❓ 이해하기 어려움 (이해불가)</span>
+                    </label>
+                </div>
+                <textarea id="feedbackComment" rows="3"
+                    placeholder="추가 의견 (선택): 올바른 답변이나 빠진 내용을 적어주세요"
+                    style="width: 100%; padding: 10px; border: 1px solid var(--sf-border); border-radius: 8px;
+                           background: var(--sf-bg-2); color: var(--sf-text-1); resize: vertical; font: inherit; font-size: 0.9rem;"></textarea>
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px;">
+                    <button onclick="closeFeedbackModal()"
+                        style="padding: 8px 16px; border-radius: 8px; border: 1px solid var(--sf-border);
+                               background: transparent; color: var(--sf-text-2); cursor: pointer; font: inherit;">취소</button>
+                    <button id="btnSubmitFeedback" onclick="submitFeedback()"
+                        style="padding: 8px 16px; border-radius: 8px; border: none;
+                               background: #ef4444; color: white; cursor: pointer; font: inherit; font-weight: 500;">제출</button>
+                </div>
+            </div>
+        </div>
+    </div>
 {% endblock %}
 
 {% block scripts %}
@@ -1454,6 +1542,9 @@
     let _lastAskedQuery = '';
     let _lastAskedNamespace = '';
     let _lastAnswerPreview = '';
+
+    // Feedback state
+    let _lastAskMetadata = null;
 
     // ========================================
     // Popular Questions (Question Likes)
@@ -1729,6 +1820,8 @@
 
     // AI Ask functionality (SSE streaming)
     function renderAskResults(resultsContainer, metadata, answerText, calculations) {
+        _lastAskMetadata = metadata;
+
         // Destroy previous charts
         activeCharts.forEach(chart => chart.destroy());
         activeCharts = [];
@@ -1779,12 +1872,16 @@
         const shareBtn = isLoggedIn
             ? `<button class="btn-share-question" id="btnShareQuestion" onclick="shareQuestion()">📤 질문 공유</button>`
             : '';
+        const feedbackBtn = (isLoggedIn && !(metadata && metadata.emergency))
+            ? `<button class="btn-feedback" id="btnFeedback" onclick="openFeedbackModal()">👎 부정확 신고</button>`
+            : '';
 
         let html = calcHtml + `
             <div class="ai-answer-container">
                 <div class="ai-answer-header">
                     <span>🤖</span> AI 답변
                     ${shareBtn}
+                    ${feedbackBtn}
                     <button class="copy-md-btn" onclick="copyMarkdown(this, _lastAnswerMd)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Markdown 복사</button>
                 </div>
                 <div class="ai-answer-content" id="aiAnswerContent">
@@ -2417,6 +2514,69 @@
             } catch (e) {
                 console.warn('Bookmark create failed:', e);
             }
+        }
+    }
+
+    // ========================================
+    // Answer Feedback
+    // ========================================
+
+    function openFeedbackModal() {
+        document.getElementById('feedbackModal').classList.add('active');
+        document.querySelectorAll('input[name="feedbackType"]').forEach(r => r.checked = false);
+        document.getElementById('feedbackComment').value = '';
+        const btn = document.getElementById('btnSubmitFeedback');
+        btn.disabled = false;
+        btn.textContent = '제출';
+    }
+
+    function closeFeedbackModal() {
+        document.getElementById('feedbackModal').classList.remove('active');
+    }
+
+    async function submitFeedback() {
+        const typeEl = document.querySelector('input[name="feedbackType"]:checked');
+        if (!typeEl) {
+            alert('피드백 유형을 선택해주세요.');
+            return;
+        }
+
+        const btn = document.getElementById('btnSubmitFeedback');
+        btn.disabled = true;
+        btn.textContent = '제출 중...';
+
+        try {
+            const resp = await fetch('/api/v1/feedback', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    query: _lastAskedQuery,
+                    answer: window._lastAnswerMd || '',
+                    namespace: _lastAskedNamespace || DEFAULT_NAMESPACE,
+                    source_count: (_lastAskMetadata && _lastAskMetadata.source_count) || 0,
+                    confidence_score: (_lastAskMetadata && _lastAskMetadata.confidence)
+                        ? _lastAskMetadata.confidence.score : null,
+                    feedback_type: typeEl.value,
+                    comment: document.getElementById('feedbackComment').value.trim() || null,
+                }),
+            });
+
+            const result = await resp.json();
+            if (result.success) {
+                closeFeedbackModal();
+                const fbBtn = document.getElementById('btnFeedback');
+                if (fbBtn) {
+                    fbBtn.textContent = '✅ 신고 완료';
+                    fbBtn.classList.add('submitted');
+                }
+            } else {
+                alert(result.error || '피드백 제출에 실패했습니다.');
+            }
+        } catch (e) {
+            alert('네트워크 오류가 발생했습니다.');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '제출';
         }
     }
 </script>

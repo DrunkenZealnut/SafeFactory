@@ -13,8 +13,8 @@ from flask_login import current_user, login_required
 from api.response import error_response, escape_like as _escape_like, success_response
 from api.v1 import v1_bp
 from models import (
-    AdminLog, Category, Comment, Document, NewsArticle, Post, PostAttachment,
-    PostLike, SocialAccount, SystemSetting, User, db,
+    AdminLog, AnswerFeedback, Category, Comment, Document, NewsArticle, Post,
+    PostAttachment, PostLike, SocialAccount, SystemSetting, User, db,
 )
 
 # ---------------------------------------------------------------------------
@@ -1945,3 +1945,127 @@ def admin_cache_invalidate():
         return error_response('namespace 파라미터가 필요합니다.', 400)
     invalidate_semantic_cache(ns)
     return success_response(data={'invalidated': ns}, message=f'{ns} 캐시가 삭제되었습니다.')
+
+
+# ---------------------------------------------------------------------------
+# Answer Feedback Management
+# ---------------------------------------------------------------------------
+
+
+@v1_bp.route('/admin/feedback', methods=['GET'])
+@admin_required
+def admin_feedback_list():
+    """List answer feedbacks with pagination and filters."""
+    page = request.args.get('page', 1, type=int)
+    per_page = min(request.args.get('per_page', 20, type=int), 100)
+    namespace = request.args.get('namespace', '')
+    status = request.args.get('status', '')
+    feedback_type = request.args.get('feedback_type', '')
+
+    q = AnswerFeedback.query
+    if namespace:
+        q = q.filter_by(namespace=namespace)
+    if status:
+        q = q.filter_by(status=status)
+    if feedback_type:
+        q = q.filter_by(feedback_type=feedback_type)
+
+    q = q.order_by(AnswerFeedback.created_at.desc())
+    pagination = q.paginate(page=page, per_page=per_page, error_out=False)
+
+    return success_response(data={
+        'items': [fb.to_dict() for fb in pagination.items],
+        'total': pagination.total,
+        'page': page,
+        'pages': pagination.pages,
+    })
+
+
+@v1_bp.route('/admin/feedback/<int:fb_id>', methods=['PUT'])
+@admin_required
+def admin_feedback_update(fb_id):
+    """Update feedback status (resolve/dismiss)."""
+    fb = db.session.get(AnswerFeedback, fb_id)
+    if not fb:
+        return error_response('피드백을 찾을 수 없습니다.', 404)
+
+    data = request.get_json(silent=True) or {}
+    new_status = data.get('status', '')
+    if new_status not in AnswerFeedback.STATUSES:
+        return error_response(f'유효하지 않은 상태: {new_status}', 400)
+
+    fb.status = new_status
+    fb.admin_note = data.get('admin_note') or fb.admin_note
+    if new_status in ('resolved', 'dismissed'):
+        fb.resolved_at = datetime.now(timezone.utc)
+
+    db.session.commit()
+    return success_response(data=fb.to_dict())
+
+
+@v1_bp.route('/admin/feedback/export', methods=['GET'])
+@admin_required
+def admin_feedback_export():
+    """Export feedbacks as Golden Dataset compatible JSON."""
+    from flask import jsonify as _jsonify
+
+    status_filter = request.args.get('status', '')
+    q = AnswerFeedback.query
+    if status_filter:
+        q = q.filter_by(status=status_filter)
+    q = q.order_by(AnswerFeedback.created_at.desc())
+    feedbacks = q.all()
+
+    domains = {}
+    for fb in feedbacks:
+        ns = fb.namespace or 'unknown'
+        if ns not in domains:
+            domains[ns] = []
+        domains[ns].append({
+            'id': f'fb-{fb.id:04d}',
+            'query': fb.query,
+            'namespace': fb.namespace,
+            'feedback_type': fb.feedback_type,
+            'teacher_comment': fb.comment,
+            'original_answer_excerpt': fb.answer[:500],
+            'confidence_score': fb.confidence_score,
+            'source_count': fb.source_count,
+            'created_at': fb.created_at.isoformat() if fb.created_at else None,
+        })
+
+    result = {
+        'version': '2.0',
+        'source': 'teacher-feedback',
+        'exported_at': datetime.now(timezone.utc).isoformat(),
+        'total': len(feedbacks),
+        'domains': domains,
+    }
+    return _jsonify(result)
+
+
+@v1_bp.route('/admin/feedback/stats', methods=['GET'])
+@admin_required
+def admin_feedback_stats():
+    """Feedback summary stats for admin dashboard."""
+    total = AnswerFeedback.query.count()
+    pending = AnswerFeedback.query.filter_by(status='pending').count()
+    resolved = AnswerFeedback.query.filter_by(status='resolved').count()
+
+    by_type = db.session.query(
+        AnswerFeedback.feedback_type, db.func.count(),
+    ).group_by(AnswerFeedback.feedback_type).all()
+
+    by_ns = db.session.query(
+        AnswerFeedback.namespace, db.func.count(),
+    ).filter(AnswerFeedback.status == 'pending').group_by(
+        AnswerFeedback.namespace,
+    ).all()
+
+    return success_response(data={
+        'total': total,
+        'pending': pending,
+        'resolved': resolved,
+        'dismissed': total - pending - resolved,
+        'by_type': {t: c for t, c in by_type},
+        'by_namespace': {ns or 'unknown': c for ns, c in by_ns},
+    })
