@@ -47,6 +47,22 @@ def keyword_hit_rate(keywords: List[str], content: str) -> float:
     return hits / len(keywords)
 
 
+def answer_contains_rate(expected: List[str], answer: str) -> float:
+    """Fraction of expected key facts found in the generated answer.
+
+    Unlike keyword_hit_rate (which checks retrieved context), this checks
+    the final LLM-generated answer for expected content.
+    Returns -1.0 if expected list is empty (no ground truth).
+    """
+    if not expected:
+        return -1.0
+    if not answer:
+        return 0.0
+    answer_lower = answer.lower()
+    hits = sum(1 for fact in expected if fact.lower() in answer_lower)
+    return hits / len(expected)
+
+
 def recall_at_k(expected_sources: List[str], retrieved_sources: List[str], k: int) -> float:
     """Recall@K: fraction of expected sources found in top-K results.
 
@@ -91,8 +107,46 @@ def ndcg_at_k(expected_sources: List[str], retrieved_sources: List[str], k: int)
     return dcg / idcg if idcg > 0 else 0.0
 
 
-def run_evaluation(top_k: int = 5, dataset_path: str = None) -> Dict[str, Any]:
+def _generate_answer(pipeline_result: Dict) -> str:
+    """Generate LLM answer from pipeline context for answer quality evaluation.
+
+    Uses the same LLM call path as the production /ask endpoint.
+    """
+    from services.rag_pipeline import build_llm_messages
+    from services.singletons import get_gemini_client
+    from google.genai import types as genai_types
+
+    messages = pipeline_result.get('messages')
+    if not messages:
+        messages = build_llm_messages(pipeline_result)
+
+    # Use Gemini for eval (same as production default)
+    client = get_gemini_client()
+    system_msg = messages[0]['content'] if messages and messages[0]['role'] == 'system' else ''
+    user_msgs = [m for m in messages if m['role'] == 'user']
+    user_content = user_msgs[-1]['content'] if user_msgs else ''
+
+    config = genai_types.GenerateContentConfig(
+        system_instruction=system_msg,
+        temperature=0.3,
+        max_output_tokens=1500,
+    )
+    resp = client.models.generate_content(
+        model='gemini-2.5-flash',
+        contents=user_content,
+        config=config,
+    )
+    return resp.text or ''
+
+
+def run_evaluation(top_k: int = 5, dataset_path: str = None,
+                   eval_answer: bool = False) -> Dict[str, Any]:
     """Run full evaluation across all domains.
+
+    Args:
+        top_k: Number of results to retrieve.
+        dataset_path: Path to golden dataset JSON.
+        eval_answer: If True, also generate LLM answers and check answer_contains.
 
     Returns a dict with per-query results and aggregate metrics.
     """
@@ -147,7 +201,7 @@ def run_evaluation(top_k: int = 5, dataset_path: str = None) -> Dict[str, Any]:
             retrieved_files = [s.get('source_file', '') for s in sources]
             all_content = ' '.join(s.get('content_text', '') for s in sources)
 
-            # Compute metrics
+            # Compute retrieval metrics
             kw_hit = keyword_hit_rate(expected_kw, all_content)
             r_at_k = recall_at_k(expected_src, retrieved_files, top_k)
             m = mrr(expected_src, retrieved_files)
@@ -160,6 +214,18 @@ def run_evaluation(top_k: int = 5, dataset_path: str = None) -> Dict[str, Any]:
                 m = kw_hit
             if n_at_k < 0:
                 n_at_k = kw_hit
+
+            # Answer quality metric (v2): check if answer contains expected facts
+            expected_answer = q.get('expected_answer_contains', [])
+            answer_hit = -1.0
+            if expected_answer and eval_answer:
+                try:
+                    answer_text = _generate_answer(pipeline)
+                    answer_hit = answer_contains_rate(expected_answer, answer_text)
+                    logger.info("    answer_hit=%.2f (%d/%d facts)",
+                                answer_hit, int(answer_hit * len(expected_answer)), len(expected_answer))
+                except Exception as e:
+                    logger.warning("    answer generation failed: %s", e)
 
             latencies = pipeline.get('latencies', {})
             query_type = pipeline.get('query_type', 'unknown')
@@ -174,6 +240,7 @@ def run_evaluation(top_k: int = 5, dataset_path: str = None) -> Dict[str, Any]:
                 'recall_at_k': round(r_at_k, 4),
                 'mrr': round(m, 4),
                 'ndcg_at_k': round(n_at_k, 4),
+                'answer_hit': round(answer_hit, 4) if answer_hit >= 0 else None,
                 'wall_ms': wall_ms,
                 'latencies': latencies,
                 'retrieved_files': retrieved_files[:5],
@@ -193,7 +260,7 @@ def run_evaluation(top_k: int = 5, dataset_path: str = None) -> Dict[str, Any]:
         if domain_results:
             valid = [r for r in domain_results if 'error' not in r and not r.get('early_response')]
             if valid:
-                domain_metrics[domain_name] = {
+                dm = {
                     'count': len(valid),
                     'avg_keyword_hit': round(sum(r['keyword_hit'] for r in valid) / len(valid), 4),
                     'avg_recall_at_k': round(sum(r['recall_at_k'] for r in valid) / len(valid), 4),
@@ -201,6 +268,11 @@ def run_evaluation(top_k: int = 5, dataset_path: str = None) -> Dict[str, Any]:
                     'avg_ndcg_at_k': round(sum(r['ndcg_at_k'] for r in valid) / len(valid), 4),
                     'avg_wall_ms': round(sum(r['wall_ms'] for r in valid) / len(valid)),
                 }
+                # Answer quality (only if eval_answer was enabled)
+                with_answer = [r for r in valid if r.get('answer_hit') is not None]
+                if with_answer:
+                    dm['avg_answer_hit'] = round(sum(r['answer_hit'] for r in with_answer) / len(with_answer), 4)
+                domain_metrics[domain_name] = dm
 
         all_results.extend(domain_results)
 
@@ -217,6 +289,10 @@ def run_evaluation(top_k: int = 5, dataset_path: str = None) -> Dict[str, Any]:
             'avg_wall_ms': round(sum(r['wall_ms'] for r in valid_all) / len(valid_all)),
             'retrieval_failure_rate': round(1.0 - sum(r['recall_at_k'] for r in valid_all) / len(valid_all), 4),
         }
+        with_answer_all = [r for r in valid_all if r.get('answer_hit') is not None]
+        if with_answer_all:
+            overall['avg_answer_hit'] = round(
+                sum(r['answer_hit'] for r in with_answer_all) / len(with_answer_all), 4)
 
     # Latency breakdown
     latency_stats = {}
@@ -255,15 +331,20 @@ def print_report(report: Dict[str, Any]):
         print(f"  Avg Wall Time    : {overall['avg_wall_ms']}ms")
         if 'retrieval_failure_rate' in overall:
             print(f"  Failure Rate     : {overall['retrieval_failure_rate']:.2%}  (Anthropic baseline: 5.7%)")
+        if 'avg_answer_hit' in overall:
+            print(f"  Answer Hit Rate  : {overall['avg_answer_hit']:.2%}  (expected facts found in answer)")
 
     print("\nPer-Domain:")
     for domain, metrics in report.get('domain_metrics', {}).items():
         print(f"  {domain} ({metrics['count']} queries):")
-        print(f"    KW Hit={metrics['avg_keyword_hit']:.2%}  "
-              f"Recall={metrics['avg_recall_at_k']:.2%}  "
-              f"MRR={metrics['avg_mrr']:.4f}  "
-              f"NDCG={metrics['avg_ndcg_at_k']:.4f}  "
-              f"Avg={metrics['avg_wall_ms']}ms")
+        line = (f"    KW Hit={metrics['avg_keyword_hit']:.2%}  "
+                f"Recall={metrics['avg_recall_at_k']:.2%}  "
+                f"MRR={metrics['avg_mrr']:.4f}  "
+                f"NDCG={metrics['avg_ndcg_at_k']:.4f}  "
+                f"Avg={metrics['avg_wall_ms']}ms")
+        if 'avg_answer_hit' in metrics:
+            line += f"  AnswerHit={metrics['avg_answer_hit']:.2%}"
+        print(line)
 
     latency = report.get('latency_stats', {})
     if latency:
@@ -280,9 +361,11 @@ if __name__ == '__main__':
     parser.add_argument('--top-k', type=int, default=20, help='Top K for retrieval (Anthropic recommends 20)')
     parser.add_argument('--dataset', type=str, default=None, help='Path to golden dataset JSON')
     parser.add_argument('--output', type=str, default=None, help='Output JSON path')
+    parser.add_argument('--eval-answer', action='store_true',
+                        help='Also generate LLM answers and check expected_answer_contains (slower, costs API tokens)')
     args = parser.parse_args()
 
-    report = run_evaluation(top_k=args.top_k, dataset_path=args.dataset)
+    report = run_evaluation(top_k=args.top_k, dataset_path=args.dataset, eval_answer=args.eval_answer)
     print_report(report)
 
     if args.output:

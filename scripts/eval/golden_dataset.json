@@ -1,157 +1,382 @@
 {
-  "version": "1.0",
-  "description": "Golden dataset for RAG pipeline evaluation across 5 domains",
+  "version": "2.0",
+  "description": "Golden dataset for RAG pipeline evaluation — 4 active domains, v2 schema with answer quality fields",
+  "updated": "2026-04-02",
+  "schema_notes": {
+    "expected_keywords": "Keywords that MUST appear in retrieved context (retrieval quality)",
+    "expected_answer_contains": "Key facts/phrases the generated answer SHOULD include (answer quality)",
+    "query_type": "factual | procedural | comparison | overview | colloquial",
+    "difficulty": "easy | medium | hard",
+    "tags": "Optional ablation testing tags (e.g. 'needs_graphrag', 'needs_hyde')"
+  },
   "domains": {
-    "semiconductor": [
+    "semiconductor-v2": [
       {
         "id": "semi-001",
         "query": "CVD 공정에서 사용되는 가스 종류는?",
-        "expected_keywords": ["CVD", "가스", "증착"],
-        "expected_sources": [],
-        "namespace": "semiconductor",
+        "expected_keywords": ["CVD", "가스", "증착", "실란"],
+        "expected_answer_contains": ["SiH4", "PECVD", "LPCVD"],
+        "namespace": "semiconductor-v2",
         "difficulty": "easy",
         "query_type": "factual"
       },
       {
         "id": "semi-002",
         "query": "포토리소그래피 공정 순서를 설명해주세요",
-        "expected_keywords": ["포토리소그래피", "노광", "현상", "에칭"],
-        "expected_sources": [],
-        "namespace": "semiconductor",
+        "expected_keywords": ["포토리소그래피", "노광", "현상", "PR"],
+        "expected_answer_contains": ["코팅", "노광", "현상", "에칭"],
+        "namespace": "semiconductor-v2",
         "difficulty": "medium",
         "query_type": "procedural"
       },
       {
         "id": "semi-003",
         "query": "습식 에칭과 건식 에칭의 차이점은?",
-        "expected_keywords": ["습식", "건식", "에칭", "차이"],
-        "expected_sources": [],
-        "namespace": "semiconductor",
+        "expected_keywords": ["습식", "건식", "에칭"],
+        "expected_answer_contains": ["선택비", "등방성", "이방성"],
+        "namespace": "semiconductor-v2",
         "difficulty": "medium",
         "query_type": "comparison"
       },
       {
         "id": "semi-004",
-        "query": "반도체 클린룸 청정도 기준은 무엇인가요?",
-        "expected_keywords": ["클린룸", "청정도", "파티클"],
-        "expected_sources": [],
-        "namespace": "semiconductor",
-        "difficulty": "easy",
-        "query_type": "factual"
-      }
-    ],
-    "laborlaw": [
+        "query": "반도체 8대 공정을 순서대로 설명해주세요",
+        "expected_keywords": ["공정", "산화", "포토", "에칭"],
+        "expected_answer_contains": ["산화", "포토", "에칭", "증착", "이온주입"],
+        "namespace": "semiconductor-v2",
+        "difficulty": "medium",
+        "query_type": "overview"
+      },
       {
-        "id": "law-001",
-        "query": "연차휴가 발생 기준과 사용 방법은?",
-        "expected_keywords": ["연차", "휴가", "근로기준법"],
-        "expected_sources": [],
-        "namespace": "laborlaw",
+        "id": "semi-005",
+        "query": "CMP 공정이 뭐예요?",
+        "expected_keywords": ["CMP", "연마", "평탄화"],
+        "expected_answer_contains": ["슬러리", "평탄화", "웨이퍼"],
+        "namespace": "semiconductor-v2",
         "difficulty": "easy",
+        "query_type": "colloquial"
+      },
+      {
+        "id": "semi-006",
+        "query": "이온주입 공정의 목적과 원리는 무엇인가요?",
+        "expected_keywords": ["이온주입", "도핑", "불순물"],
+        "expected_answer_contains": ["도핑", "불순물", "전기적 특성"],
+        "namespace": "semiconductor-v2",
+        "difficulty": "medium",
         "query_type": "factual"
       },
       {
-        "id": "law-002",
-        "query": "퇴직금 계산 방법을 알려주세요",
-        "expected_keywords": ["퇴직금", "계산", "평균임금"],
-        "expected_sources": [],
-        "namespace": "laborlaw",
+        "id": "semi-007",
+        "query": "웨이퍼 세정 공정에서 SC-1과 SC-2의 차이는?",
+        "expected_keywords": ["세정", "SC-1", "SC-2"],
+        "expected_answer_contains": ["암모니아", "과산화수소", "염산", "유기물", "금속"],
+        "namespace": "semiconductor-v2",
+        "difficulty": "hard",
+        "query_type": "comparison"
+      },
+      {
+        "id": "semi-008",
+        "query": "PECVD랑 LPCVD 뭐가 달라요?",
+        "expected_keywords": ["PECVD", "LPCVD", "CVD"],
+        "expected_answer_contains": ["플라즈마", "저압", "온도"],
+        "namespace": "semiconductor-v2",
+        "difficulty": "medium",
+        "query_type": "colloquial"
+      },
+      {
+        "id": "semi-009",
+        "query": "반도체 패키징 공정의 종류와 특징은?",
+        "expected_keywords": ["패키징", "본딩", "몰딩"],
+        "expected_answer_contains": ["와이어 본딩", "플립칩", "몰딩"],
+        "namespace": "semiconductor-v2",
+        "difficulty": "medium",
+        "query_type": "overview"
+      },
+      {
+        "id": "semi-010",
+        "query": "산화 공정에서 열산화와 화학기상증착 산화의 차이점은?",
+        "expected_keywords": ["산화", "열산화", "CVD"],
+        "expected_answer_contains": ["SiO2", "온도", "박막"],
+        "namespace": "semiconductor-v2",
+        "difficulty": "hard",
+        "query_type": "comparison"
+      },
+      {
+        "id": "semi-011",
+        "query": "Photo 장비 운영 시 주의사항은 무엇인가요?",
+        "expected_keywords": ["Photo", "장비", "운영"],
+        "expected_answer_contains": ["PR", "노광", "정렬"],
+        "namespace": "semiconductor-v2",
         "difficulty": "medium",
         "query_type": "procedural"
       },
       {
-        "id": "law-003",
-        "query": "정규직과 계약직의 차이점은 무엇인가요?",
-        "expected_keywords": ["정규직", "계약직", "차이", "기간제"],
-        "expected_sources": [],
-        "namespace": "laborlaw",
-        "difficulty": "medium",
-        "query_type": "comparison"
+        "id": "semi-012",
+        "query": "반도체 수율이 뭐예요? 왜 중요해요?",
+        "expected_keywords": ["수율", "yield"],
+        "expected_answer_contains": ["양품", "생산성", "디펙트"],
+        "namespace": "semiconductor-v2",
+        "difficulty": "easy",
+        "query_type": "colloquial"
       },
       {
-        "id": "law-004",
-        "query": "주 52시간 근로제에서 연장근로수당은 어떻게 계산하나요?",
-        "expected_keywords": ["52시간", "연장근로", "수당", "계산"],
-        "expected_sources": [],
-        "namespace": "laborlaw",
-        "difficulty": "hard",
-        "query_type": "calculation"
+        "id": "semi-013",
+        "query": "스퍼터링 증착의 원리를 설명해주세요",
+        "expected_keywords": ["스퍼터링", "PVD", "타겟"],
+        "expected_answer_contains": ["타겟", "이온", "박막"],
+        "namespace": "semiconductor-v2",
+        "difficulty": "medium",
+        "query_type": "factual"
+      },
+      {
+        "id": "semi-014",
+        "query": "반도체 재료 품질관리 방법에는 어떤 것이 있나요?",
+        "expected_keywords": ["품질관리", "재료", "검사"],
+        "expected_answer_contains": ["순도", "입도", "불순물"],
+        "namespace": "semiconductor-v2",
+        "difficulty": "medium",
+        "query_type": "overview"
+      },
+      {
+        "id": "semi-015",
+        "query": "확산 공정이 뭔가요? 쉽게 설명해주세요",
+        "expected_keywords": ["확산", "도핑", "온도"],
+        "expected_answer_contains": ["불순물", "고온", "웨이퍼"],
+        "namespace": "semiconductor-v2",
+        "difficulty": "easy",
+        "query_type": "colloquial"
       }
     ],
     "field-training": [
       {
         "id": "ft-001",
         "query": "밀폐공간 작업 시 안전수칙은?",
-        "expected_keywords": ["밀폐공간", "안전", "산소농도"],
-        "expected_sources": [],
+        "expected_keywords": ["밀폐공간", "안전", "산소"],
+        "expected_answer_contains": ["산소농도", "환기", "구조", "감시인"],
         "namespace": "field-training",
         "difficulty": "easy",
         "query_type": "factual"
       },
       {
         "id": "ft-002",
-        "query": "고소작업 안전대 착용 절차를 설명해주세요",
-        "expected_keywords": ["고소작업", "안전대", "추락"],
-        "expected_sources": [],
+        "query": "금속절삭기계 작업 시 재해유형을 알려주세요",
+        "expected_keywords": ["금속절삭", "재해", "기계"],
+        "expected_answer_contains": ["끼임", "절단", "비래", "보호구"],
+        "namespace": "field-training",
+        "difficulty": "medium",
+        "query_type": "factual"
+      },
+      {
+        "id": "ft-003",
+        "query": "연삭기 작업 안전수칙과 보호구는?",
+        "expected_keywords": ["연삭기", "안전", "보호구"],
+        "expected_answer_contains": ["보안경", "방진마스크", "덮개"],
         "namespace": "field-training",
         "difficulty": "medium",
         "query_type": "procedural"
       },
       {
-        "id": "ft-003",
-        "query": "전기작업과 용접작업의 보호구 차이는?",
-        "expected_keywords": ["전기", "용접", "보호구"],
-        "expected_sources": [],
+        "id": "ft-004",
+        "query": "현장실습생이 화학물질에 노출되면 어떻게 해야 하나요?",
+        "expected_keywords": ["화학물질", "노출", "현장실습"],
+        "expected_answer_contains": ["세척", "MSDS", "119", "보고"],
+        "namespace": "field-training",
+        "difficulty": "medium",
+        "query_type": "procedural"
+      },
+      {
+        "id": "ft-005",
+        "query": "차량계 건설기계 작업할 때 뭘 조심해야 해요?",
+        "expected_keywords": ["차량계", "건설기계", "안전"],
+        "expected_answer_contains": ["전도", "협착", "유도자", "안전벨트"],
+        "namespace": "field-training",
+        "difficulty": "easy",
+        "query_type": "colloquial"
+      },
+      {
+        "id": "ft-006",
+        "query": "현장실습생 건강관리 방법은 무엇인가요?",
+        "expected_keywords": ["건강관리", "현장실습", "건강검진"],
+        "expected_answer_contains": ["건강검진", "유해인자", "보호구"],
+        "namespace": "field-training",
+        "difficulty": "easy",
+        "query_type": "factual"
+      },
+      {
+        "id": "ft-007",
+        "query": "중량물 운반 작업 시 안전한 방법은?",
+        "expected_keywords": ["중량물", "운반", "안전"],
+        "expected_answer_contains": ["무게", "자세", "보조기구", "근골격계"],
+        "namespace": "field-training",
+        "difficulty": "medium",
+        "query_type": "procedural"
+      },
+      {
+        "id": "ft-008",
+        "query": "반도체 공장 포토공정에서 유해요인은?",
+        "expected_keywords": ["포토공정", "유해", "반도체"],
+        "expected_answer_contains": ["포토레지스트", "유기용제", "노출"],
+        "namespace": "field-training",
+        "difficulty": "medium",
+        "query_type": "factual"
+      },
+      {
+        "id": "ft-009",
+        "query": "식품제조 작업이랑 세척제 취급 작업 보호구가 다른가요?",
+        "expected_keywords": ["식품제조", "세척제", "보호구"],
+        "expected_answer_contains": ["장갑", "마스크", "보안경"],
         "namespace": "field-training",
         "difficulty": "medium",
         "query_type": "comparison"
       },
       {
-        "id": "ft-004",
-        "query": "크레인 작업 전 점검사항은 무엇인가요?",
-        "expected_keywords": ["크레인", "점검", "안전"],
-        "expected_sources": [],
+        "id": "ft-010",
+        "query": "실습 중에 다쳤는데 어떻게 해야 해요?",
+        "expected_keywords": ["다쳤", "실습", "사고"],
+        "expected_answer_contains": ["담당 교사", "119", "산재보험", "보고"],
         "namespace": "field-training",
         "difficulty": "easy",
+        "query_type": "colloquial"
+      },
+      {
+        "id": "ft-011",
+        "query": "금속성형기계 작업의 위험요인과 안전대책은?",
+        "expected_keywords": ["금속성형", "위험", "안전"],
+        "expected_answer_contains": ["프레스", "끼임", "방호장치", "양수조작"],
+        "namespace": "field-training",
+        "difficulty": "medium",
         "query_type": "factual"
+      },
+      {
+        "id": "ft-012",
+        "query": "현장실습 산업안전보건법에서 실습생 보호 규정은?",
+        "expected_keywords": ["산업안전보건법", "실습생", "보호"],
+        "expected_answer_contains": ["안전교육", "건강검진", "보호구 지급"],
+        "namespace": "field-training",
+        "difficulty": "hard",
+        "query_type": "factual",
+        "tags": ["needs_hyde"]
+      },
+      {
+        "id": "ft-013",
+        "query": "전기작업과 용접작업의 보호구 차이는?",
+        "expected_keywords": ["전기", "용접", "보호구"],
+        "expected_answer_contains": ["절연장갑", "용접면", "차광"],
+        "namespace": "field-training",
+        "difficulty": "medium",
+        "query_type": "comparison"
+      },
+      {
+        "id": "ft-014",
+        "query": "클린룸에서 일할 때 뭘 주의해야 해요?",
+        "expected_keywords": ["클린룸", "주의", "청정"],
+        "expected_answer_contains": ["파티클", "방진복", "에어샤워"],
+        "namespace": "field-training",
+        "difficulty": "easy",
+        "query_type": "colloquial"
+      },
+      {
+        "id": "ft-015",
+        "query": "현장실습 안전교육 전체 내용을 정리해주세요",
+        "expected_keywords": ["안전교육", "현장실습", "교육"],
+        "expected_answer_contains": ["안전수칙", "보호구", "비상연락", "응급조치"],
+        "namespace": "field-training",
+        "difficulty": "hard",
+        "query_type": "overview",
+        "tags": ["needs_graphrag"]
       }
     ],
-    "safeguide": [
+    "kosha": [
       {
-        "id": "sg-001",
-        "query": "화재 발생 시 대피 절차는?",
-        "expected_keywords": ["화재", "대피", "소화기"],
-        "expected_sources": [],
-        "namespace": "safeguide",
-        "difficulty": "easy",
-        "query_type": "procedural"
-      },
-      {
-        "id": "sg-002",
-        "query": "안전보건관리체제에서 안전관리자의 역할은?",
-        "expected_keywords": ["안전관리자", "역할", "안전보건"],
-        "expected_sources": [],
-        "namespace": "safeguide",
+        "id": "kosha-001",
+        "query": "반도체 세정 공정에서 사용하는 화학물질의 위험성은?",
+        "expected_keywords": ["세정", "화학물질", "위험"],
+        "expected_answer_contains": ["불산", "황산", "과산화수소", "보호구"],
+        "namespace": "kosha",
         "difficulty": "medium",
         "query_type": "factual"
       },
       {
-        "id": "sg-003",
-        "query": "위험성평가 실시 절차와 방법은?",
-        "expected_keywords": ["위험성평가", "절차", "유해위험요인"],
-        "expected_sources": [],
-        "namespace": "safeguide",
+        "id": "kosha-002",
+        "query": "포토 공정 설비 정비 시 안전수칙은?",
+        "expected_keywords": ["포토", "정비", "안전"],
+        "expected_answer_contains": ["전원차단", "잠금장치", "LOTO", "환기"],
+        "namespace": "kosha",
         "difficulty": "medium",
         "query_type": "procedural"
       },
       {
-        "id": "sg-004",
-        "query": "산업재해 발생 시 보고 절차는 어떻게 되나요?",
-        "expected_keywords": ["산업재해", "보고", "산재"],
-        "expected_sources": [],
-        "namespace": "safeguide",
-        "difficulty": "easy",
+        "id": "kosha-003",
+        "query": "화학물질 건강 위험성평가 절차를 설명해주세요",
+        "expected_keywords": ["위험성평가", "화학물질", "건강"],
+        "expected_answer_contains": ["유해인자", "노출기준", "측정", "개선"],
+        "namespace": "kosha",
+        "difficulty": "hard",
         "query_type": "procedural"
+      },
+      {
+        "id": "kosha-004",
+        "query": "크린룸 공정 지원 설비 정비작업 안전보건 가이드의 주요 내용은?",
+        "expected_keywords": ["크린룸", "정비", "안전보건"],
+        "expected_answer_contains": ["설비", "정비", "위험요인", "보호구"],
+        "namespace": "kosha",
+        "difficulty": "medium",
+        "query_type": "overview"
+      },
+      {
+        "id": "kosha-005",
+        "query": "확산 공정 설비 정비할 때 뭐가 위험해요?",
+        "expected_keywords": ["확산", "정비", "위험"],
+        "expected_answer_contains": ["고온", "가스", "독성", "환기"],
+        "namespace": "kosha",
+        "difficulty": "easy",
+        "query_type": "colloquial"
+      },
+      {
+        "id": "kosha-006",
+        "query": "산화 공정과 확산 공정의 안전 위험요인 비교",
+        "expected_keywords": ["산화", "확산", "위험요인"],
+        "expected_answer_contains": ["고온", "가스", "화상", "중독"],
+        "namespace": "kosha",
+        "difficulty": "hard",
+        "query_type": "comparison"
+      },
+      {
+        "id": "kosha-007",
+        "query": "전자산업 작업자 보호구 착용 기준은?",
+        "expected_keywords": ["보호구", "착용", "기준"],
+        "expected_answer_contains": ["방독면", "보안경", "내화학장갑"],
+        "namespace": "kosha",
+        "difficulty": "medium",
+        "query_type": "factual"
+      },
+      {
+        "id": "kosha-008",
+        "query": "반도체 공장에서 가스 누출 시 대응 절차는?",
+        "expected_keywords": ["가스", "누출", "대응"],
+        "expected_answer_contains": ["대피", "환기", "119", "차단"],
+        "namespace": "kosha",
+        "difficulty": "medium",
+        "query_type": "procedural"
+      },
+      {
+        "id": "kosha-009",
+        "query": "화학물질 취급할 때 주의사항 알려주세요",
+        "expected_keywords": ["화학물질", "취급", "주의"],
+        "expected_answer_contains": ["MSDS", "보호구", "환기", "저장"],
+        "namespace": "kosha",
+        "difficulty": "easy",
+        "query_type": "colloquial"
+      },
+      {
+        "id": "kosha-010",
+        "query": "안전보건공단 반도체 안전 가이드 전체 내용을 요약해주세요",
+        "expected_keywords": ["안전보건공단", "반도체", "가이드"],
+        "expected_answer_contains": ["공정별", "위험요인", "안전수칙", "보호구"],
+        "namespace": "kosha",
+        "difficulty": "hard",
+        "query_type": "overview",
+        "tags": ["needs_graphrag"]
       }
     ],
     "msds": [
@@ -159,36 +384,90 @@
         "id": "msds-001",
         "query": "아세톤의 유해성과 취급 시 주의사항은?",
         "expected_keywords": ["아세톤", "유해성", "취급"],
-        "expected_sources": [],
+        "expected_answer_contains": ["인화성", "증기", "환기"],
         "namespace": "msds",
         "difficulty": "easy",
         "query_type": "factual"
       },
       {
         "id": "msds-002",
-        "query": "화학물질 누출 시 응급조치 방법은?",
-        "expected_keywords": ["누출", "응급조치", "화학물질"],
-        "expected_sources": [],
+        "query": "불산(HF)의 위험성과 응급조치는?",
+        "expected_keywords": ["불산", "HF", "위험"],
+        "expected_answer_contains": ["피부침투", "칼슘", "119", "세척"],
         "namespace": "msds",
-        "difficulty": "medium",
+        "difficulty": "hard",
         "query_type": "procedural"
       },
       {
         "id": "msds-003",
-        "query": "GHS 분류에서 인화성 액체와 가연성 액체의 차이는?",
-        "expected_keywords": ["GHS", "인화성", "가연성"],
-        "expected_sources": [],
+        "query": "황산이랑 염산 뭐가 더 위험해요?",
+        "expected_keywords": ["황산", "염산", "위험"],
+        "expected_answer_contains": ["부식성", "GHS", "보호구"],
         "namespace": "msds",
         "difficulty": "medium",
-        "query_type": "comparison"
+        "query_type": "colloquial"
       },
       {
         "id": "msds-004",
         "query": "MSDS에서 노출기준 TWA 값은 무엇을 의미하나요?",
         "expected_keywords": ["MSDS", "TWA", "노출기준"],
-        "expected_sources": [],
+        "expected_answer_contains": ["시간가중평균", "8시간", "농도"],
+        "namespace": "msds",
+        "difficulty": "medium",
+        "query_type": "factual"
+      },
+      {
+        "id": "msds-005",
+        "query": "톨루엔의 안전 정보를 알려주세요",
+        "expected_keywords": ["톨루엔", "안전"],
+        "expected_answer_contains": ["유기용제", "흡입", "환기", "보호구"],
         "namespace": "msds",
         "difficulty": "easy",
+        "query_type": "factual"
+      },
+      {
+        "id": "msds-006",
+        "query": "GHS 분류에서 인화성 액체와 가연성 액체의 차이는?",
+        "expected_keywords": ["GHS", "인화성", "가연성"],
+        "expected_answer_contains": ["인화점", "구분", "등급"],
+        "namespace": "msds",
+        "difficulty": "medium",
+        "query_type": "comparison"
+      },
+      {
+        "id": "msds-007",
+        "query": "실란(SiH4) 가스의 위험성과 취급 주의사항은?",
+        "expected_keywords": ["실란", "SiH4", "가스"],
+        "expected_answer_contains": ["자연발화", "폭발", "환기", "누출"],
+        "namespace": "msds",
+        "difficulty": "hard",
+        "query_type": "factual"
+      },
+      {
+        "id": "msds-008",
+        "query": "반도체 공장에서 쓰는 위험한 화학물질 종류를 정리해주세요",
+        "expected_keywords": ["반도체", "화학물질", "종류"],
+        "expected_answer_contains": ["불산", "황산", "실란", "포토레지스트"],
+        "namespace": "msds",
+        "difficulty": "medium",
+        "query_type": "overview"
+      },
+      {
+        "id": "msds-009",
+        "query": "약품 냄새가 심한데 괜찮은 건가요?",
+        "expected_keywords": ["냄새", "약품"],
+        "expected_answer_contains": ["환기", "마스크", "노출", "대피"],
+        "namespace": "msds",
+        "difficulty": "easy",
+        "query_type": "colloquial"
+      },
+      {
+        "id": "msds-010",
+        "query": "PGMEA의 유해성 정보와 보호구는?",
+        "expected_keywords": ["PGMEA", "유해", "보호구"],
+        "expected_answer_contains": ["유기용제", "호흡보호구", "환기"],
+        "namespace": "msds",
+        "difficulty": "medium",
         "query_type": "factual"
       }
     ]
